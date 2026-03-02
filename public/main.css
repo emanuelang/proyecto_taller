@@ -1,0 +1,6 @@
+/* public/assets/main.css */
+body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
+a { color: #0066cc; text-decoration: none; }
+input, button { padding: 6px; margin: 4px 0; }
+div.card { border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:6px; }
+small.note { color: #666; }
