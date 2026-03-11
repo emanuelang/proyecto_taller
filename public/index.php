@@ -9,7 +9,7 @@ require_once __DIR__ . '/../config/app.php';
 $ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
 
 /* ============================
-   CAPTURAR FILTROS
+   CAPTURAR FILTROS ...
 ============================ */
 $origen = $_GET['origen'] ?? '';
 $destino = $_GET['destino'] ?? '';
