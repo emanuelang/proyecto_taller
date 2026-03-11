@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
 /* ============================
-   TRAER CIUDADES
+   TRAER CIUDADES...
 ============================ */
 $ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
 
