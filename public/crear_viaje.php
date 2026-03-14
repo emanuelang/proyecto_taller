@@ -8,7 +8,13 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     exit;
 }
 
+// Obtenemos ciudades para los select
 $ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
+
+// NUEVO: Obtenemos los vehículos del conductor logueado
+$stmt_v = $pdo->prepare("SELECT id, marca, modelo, patente FROM vehiculos WHERE conductor_id = ?");
+$stmt_v->execute([$_SESSION['conductor_id']]);
+$vehiculos = $stmt_v->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -16,9 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $destino = $_POST['destino'];
     $fecha = $_POST['fecha'];
     $precio = $_POST['precio'];
+    $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehículo seleccionado
     $observaciones = $_POST['observaciones'] ?? '';
 
-    // Simulación simple de API de distancia geométrica/estática
+    // Simulación de distancia
     $diff = abs($origen - $destino);
     $distancia_km = ($diff == 0) ? 15 : ($diff * 50 + rand(5, 30));
     
@@ -26,14 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mins = round((($distancia_km % 80) / 80) * 60);
     $duracion_estimada = "{$horas}h {$mins}m";
 
+    // INSERT CORREGIDO: Ahora incluye vehiculo_id
     $stmt = $pdo->prepare("
         INSERT INTO viajes 
-        (conductor_id, origen_id, destino_id, fecha, precio, estado, observaciones, distancia_km, duracion_estimada, creado_en)
-        VALUES (?, ?, ?, ?, ?, 'activo', ?, ?, ?, NOW())
+        (conductor_id, vehiculo_id, origen_id, destino_id, fecha, precio, estado, observaciones, distancia_km, duracion_estimada, creado_en)
+        VALUES (?, ?, ?, ?, ?, ?, 'activo', ?, ?, ?, NOW())
     ");
 
     $stmt->execute([
         $_SESSION['conductor_id'],
+        $vehiculo_id, // Se inserta el ID del vehículo
         $origen,
         $destino,
         $fecha,
@@ -60,9 +69,23 @@ $obs_def = $_GET['observaciones'] ?? '';
 <hr>
 
 <form method="POST">
+    <label>Selecciona tu vehículo:</label><br>
+    <select name="vehiculo_id" required>
+        <option value="">-- Mis Vehículos --</option>
+        <?php foreach ($vehiculos as $v): ?>
+            <option value="<?= $v['id'] ?>">
+                <?= htmlspecialchars($v['marca'] . " " . $v['modelo'] . " [" . $v['patente'] . "]") ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <?php if (empty($vehiculos)): ?>
+        <p style="color:red;">⚠️ No tienes vehículos registrados. <a href="registrar_vehiculo.php">Registra uno aquí</a>.</p>
+    <?php endif; ?>
+    <br><br>
 
+    <label>Origen:</label><br>
     <select name="origen" required>
-        <option value="">Origen</option>
+        <option value="">Seleccionar Origen</option>
         <?php foreach ($ciudades as $c): ?>
             <option value="<?= $c['id'] ?>" <?= ($origen_def == $c['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
@@ -70,8 +93,9 @@ $obs_def = $_GET['observaciones'] ?? '';
         <?php endforeach; ?>
     </select><br><br>
 
+    <label>Destino:</label><br>
     <select name="destino" required>
-        <option value="">Destino</option>
+        <option value="">Seleccionar Destino</option>
         <?php foreach ($ciudades as $c): ?>
             <option value="<?= $c['id'] ?>" <?= ($destino_def == $c['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
@@ -79,11 +103,14 @@ $obs_def = $_GET['observaciones'] ?? '';
         <?php endforeach; ?>
     </select><br><br>
 
+    <label>Fecha y Hora:</label><br>
     <input type="datetime-local" name="fecha" required><br><br>
-    <input type="number" name="precio" placeholder="Precio" value="<?= htmlspecialchars($precio_def) ?>" required><br><br>
 
-    <textarea name="observaciones" placeholder="Observaciones"><?= htmlspecialchars($obs_def) ?></textarea><br><br>
+    <label>Precio:</label><br>
+    <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required><br><br>
 
-    <button type="submit">Crear viaje</button>
+    <label>Observaciones:</label><br>
+    <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas"><?= htmlspecialchars($obs_def) ?></textarea><br><br>
 
+    <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?>>Crear viaje</button>
 </form>
