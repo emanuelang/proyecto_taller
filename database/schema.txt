@@ -1,0 +1,72 @@
+Table: calificaciones
+  id - int(11)
+  reserva_id - int(11)
+  conductor_id - int(11)
+  pasajero_id - int(11)
+  puntaje - int(11)
+  comentario - text
+  fecha - datetime
+Table: ciudades
+  id - int(11)
+  nombre - varchar(100)
+  provincia - varchar(100)
+  pais - varchar(100)
+Table: conductores
+  id - int(11)
+  usuario_id - int(11)
+  documentacion - varchar(255)
+  estado - enum('pendiente','aprobado')
+  creado_en - datetime
+  licencia_foto - varchar(255)
+  licencia_vencimiento - date
+  experiencia - text
+  disponibilidad - text
+  vehiculo_activo_id - int(11)
+Table: reservas
+  id - int(11)
+  viaje_id - int(11)
+  usuario_id - int(11)
+  fecha_reserva - datetime
+  estado - enum('activa','cancelada')
+  fecha_cancelacion - datetime
+Table: usuarios
+  id - int(11)
+  nombre - varchar(100)
+  email - varchar(150)
+  password - varchar(255)
+  creado_en - datetime
+  genero - enum('Masculino','Femenino','Otro')
+  fecha_nacimiento - date
+  telefono - varchar(20)
+  foto_perfil - varchar(255)
+  dni_foto - varchar(255)
+Table: vehiculos
+  id - int(11)
+  conductor_id - int(11)
+  marca - varchar(50)
+  modelo - varchar(50)
+  color - varchar(30)
+  patente - varchar(20)
+  asientos - int(11)
+  documentacion - varchar(255)
+  creado_en - datetime
+  tipo - enum('auto','moto','camioneta','otro')
+  anio - int(11)
+  seguro_vencimiento - date
+  vtv_vencimiento - date
+  foto - varchar(255)
+  papeles_foto - varchar(255)
+  estado - enum('pendiente','aprobado','rechazado')
+Table: viajes
+  id - int(11)
+  conductor_id - int(11)
+  fecha - datetime
+  creado_en - datetime
+  vehiculo_id - int(11)
+  precio - decimal(10,2)
+  estado - enum('activo','cancelado','finalizado')
+  observaciones - text
+  origen_id - int(11)
+  destino_id - int(11)
+  distancia_km - int(11)
+  duracion_estimada - varchar(50)
