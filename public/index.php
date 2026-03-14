@@ -152,17 +152,7 @@ $viajes = $stmt->fetchAll();
         Precio: $<?= $v['precio'] ?><br>
         Conductor: <?= htmlspecialchars($v['conductor_nombre']) ?><br><br>
 
-        <?php
-        if (
-            isset($_SESSION['user_id']) &&
-            (
-                !$_SESSION['is_conductor'] ||
-                $_SESSION['conductor_id'] != $v['conductor_id']
-            )
-        ):
-        ?>
-            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $v['id'] ?>">Reservar</a>
-        <?php endif; ?>
+        <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>">Ver Detalle</a>
     </div>
     <hr>
 <?php endforeach; ?>

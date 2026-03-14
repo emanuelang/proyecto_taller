@@ -18,7 +18,8 @@ $sql = "SELECT
             v.precio,
             u.nombre AS conductor_nombre,
             c1.nombre AS origen_nombre,
-            c2.nombre AS destino_nombre
+            c2.nombre AS destino_nombre,
+            (SELECT COUNT(*) FROM calificaciones calif WHERE calif.reserva_id = r.id) AS calificada
         FROM reservas r
         JOIN viajes v ON r.viaje_id = v.id
         JOIN conductores c ON v.conductor_id = c.id
@@ -44,6 +45,20 @@ $reservas = $stmt->fetchAll();
 <a href="<?= BASE_URL ?>index.php">← Volver</a>
 <hr>
 
+<?php if (isset($_SESSION['mensaje_exito'])): ?>
+    <div style="color: green; margin-bottom: 20px;">
+        <?= htmlspecialchars($_SESSION['mensaje_exito']) ?>
+    </div>
+    <?php unset($_SESSION['mensaje_exito']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['mensaje_cancelacion'])): ?>
+    <div style="background-color: #f0f8ff; border: 1px solid #0056b3; padding: 10px; color: #0056b3; margin-bottom: 20px;">
+        <?= htmlspecialchars($_SESSION['mensaje_cancelacion']) ?>
+    </div>
+    <?php unset($_SESSION['mensaje_cancelacion']); ?>
+<?php endif; ?>
+
 <?php if (count($reservas) > 0): ?>
     <?php foreach ($reservas as $r): ?>
         <div style="margin-bottom:20px;border:1px solid #ccc;padding:10px;">
@@ -55,10 +70,18 @@ $reservas = $stmt->fetchAll();
             Estado: <?= $r['estado'] ?><br><br>
 
             <?php if ($r['estado'] === 'activa'): ?>
-                <form method="POST" action="cancelar_reserva.php">
-                    <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
-                    <button type="submit">Cancelar reserva</button>
-                </form>
+                <?php if (strtotime($r['fecha']) > time()): ?>
+                    <form method="POST" action="cancelar_reserva.php">
+                        <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
+                        <button type="submit">Cancelar reserva</button>
+                    </form>
+                <?php else: ?>
+                    <?php if ($r['calificada'] == 0): ?>
+                        <a href="calificar.php?reserva_id=<?= $r['reserva_id'] ?>" style="display:inline-block; padding: 5px 10px; background: #007bff; color: white; text-decoration: none; border-radius: 3px;">⭐ Calificar al conductor</a>
+                    <?php else: ?>
+                        <p style="color:green; margin:0;"><em>Ya calificaste este viaje.</em></p>
+                    <?php endif; ?>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

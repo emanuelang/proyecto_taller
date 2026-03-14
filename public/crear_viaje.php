@@ -18,10 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $precio = $_POST['precio'];
     $observaciones = $_POST['observaciones'] ?? '';
 
+    // Simulación simple de API de distancia geométrica/estática
+    $diff = abs($origen - $destino);
+    $distancia_km = ($diff == 0) ? 15 : ($diff * 50 + rand(5, 30));
+    
+    $horas = floor($distancia_km / 80);
+    $mins = round((($distancia_km % 80) / 80) * 60);
+    $duracion_estimada = "{$horas}h {$mins}m";
+
     $stmt = $pdo->prepare("
         INSERT INTO viajes 
-        (conductor_id, origen_id, destino_id, fecha, precio, estado, observaciones, creado_en)
-        VALUES (?, ?, ?, ?, ?, 'activo', ?, NOW())
+        (conductor_id, origen_id, destino_id, fecha, precio, estado, observaciones, distancia_km, duracion_estimada, creado_en)
+        VALUES (?, ?, ?, ?, ?, 'activo', ?, ?, ?, NOW())
     ");
 
     $stmt->execute([
@@ -30,12 +38,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $destino,
         $fecha,
         $precio,
-        $observaciones
+        $observaciones,
+        $distancia_km,
+        $duracion_estimada
     ]);
 
     header("Location: " . BASE_URL . "conductor/viajes.php");
     exit;
 }
+?>
+
+<?php
+$origen_def = $_GET['origen'] ?? '';
+$destino_def = $_GET['destino'] ?? '';
+$precio_def = $_GET['precio'] ?? '';
+$obs_def = $_GET['observaciones'] ?? '';
 ?>
 
 <h2>Crear viaje</h2>
@@ -47,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <select name="origen" required>
         <option value="">Origen</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>">
+            <option value="<?= $c['id'] ?>" <?= ($origen_def == $c['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>
@@ -56,16 +73,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <select name="destino" required>
         <option value="">Destino</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>">
+            <option value="<?= $c['id'] ?>" <?= ($destino_def == $c['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>
     </select><br><br>
 
     <input type="datetime-local" name="fecha" required><br><br>
-    <input type="number" name="precio" placeholder="Precio" required><br><br>
+    <input type="number" name="precio" placeholder="Precio" value="<?= htmlspecialchars($precio_def) ?>" required><br><br>
 
-    <textarea name="observaciones" placeholder="Observaciones"></textarea><br><br>
+    <textarea name="observaciones" placeholder="Observaciones"><?= htmlspecialchars($obs_def) ?></textarea><br><br>
 
     <button type="submit">Crear viaje</button>
 

@@ -14,17 +14,27 @@ if (!isset($_GET['id'])) {
 
 $viaje_id = (int) $_GET['id'];
 
-/* Verificar viaje */
+/* Verificar viaje y cupo */
 $sql = "
-    SELECT v.id, c.usuario_id
+    SELECT v.id, c.usuario_id, veh.asientos,
+           (SELECT COUNT(*) FROM reservas r WHERE r.viaje_id = v.id AND r.estado = 'activa') as ocupados
     FROM viajes v
     JOIN conductores c ON v.conductor_id = c.id
+    JOIN vehiculos veh ON v.vehiculo_id = veh.id
     WHERE v.id = :viaje_id
 ";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':viaje_id' => $viaje_id]);
 $viaje = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$viaje) {
+    die("El viaje no existe.");
+}
+
+if ($viaje['ocupados'] >= $viaje['asientos']) {
+    die("No hay asientos disponibles en este viaje.");
+}
 
 if (!$viaje) {
     die("El viaje no existe.");
@@ -41,6 +51,7 @@ $sql = "
     FROM reservas
     WHERE viaje_id = :viaje_id
     AND usuario_id = :usuario_id
+    AND estado = 'activa'
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -53,17 +64,7 @@ if ($stmt->fetchColumn() > 0) {
     die("Ya reservaste este viaje.");
 }
 
-/* Insertar */
-$sql = "
-    INSERT INTO reservas (viaje_id, usuario_id, fecha_reserva)
-    VALUES (:viaje_id, :usuario_id, NOW())
-";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute([
-    ':viaje_id' => $viaje_id,
-    ':usuario_id' => $_SESSION['user_id']
-]);
-
-header("Location: " . BASE_URL . "reservas/mis_reservas.php");
+/* Redirigir a pago simulado */
+$_SESSION['reserva_pendiente'] = $viaje_id;
+header("Location: " . BASE_URL . "reservas/pago_simulado.php");
 exit;
