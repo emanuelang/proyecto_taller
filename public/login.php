@@ -36,10 +36,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<h2>Login</h2>
-<?php if ($error): ?><p style="color:red"><?= htmlspecialchars($error) ?></p><?php endif; ?>
-<form method="post">
-    <input name="email" type="email" required placeholder="Email"><br>
-    <input name="password" type="password" required placeholder="Contraseña"><br>
-    <button>Ingresar</button>
-</form>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Login - Carpooling</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+</head>
+<body>
+    <div class="nav-menu">
+        <h2>Iniciar Sesión</h2>
+        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al inicio</a>
+    </div>
+
+    <?php if ($error): ?>
+        <p style="color:#ef4444; background:#fef2f2; border:1px solid #ef4444; padding:10px; border-radius:6px; text-align:center;">
+            <?= htmlspecialchars($error) ?>
+        </p>
+    <?php endif; ?>
+
+    <form method="post">
+        <h3 style="margin-top:0; color:var(--primary); text-align:center;">Bienvenido de nuevo</h3>
+        
+        <label>Correo Electrónico:</label>
+        <input name="email" type="email" required placeholder="tu@email.com">
+        
+        <label>Contraseña:</label>
+        <input name="password" type="password" required placeholder="••••••••">
+        
+        <button type="submit" style="width: 100%; margin-top: 15px;">Ingresar</button>
+        
+        <p style="text-align:center; margin-top: 20px;">
+            ¿No tienes cuenta? <a href="<?= BASE_URL ?>registro_usuario.php">Regístrate aquí</a>
+        </p>
+    </form>
+</body>
+</html>

@@ -61,25 +61,42 @@ if (!$viaje) {
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
 </head>
 <body>
-    <h1>Pago Seguro</h1>
-    <a href="<?= BASE_URL ?>index.php">← Cancelar y volver</a>
-    <hr>
+    <div class="nav-menu">
+        <h2>Pago Seguro</h2>
+        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Cancelar y volver</a>
+    </div>
     
-    <h2>Resumen del viaje</h2>
-    <p>Ruta: <?= htmlspecialchars($viaje['origen']) ?> → <?= htmlspecialchars($viaje['destino']) ?></p>
-    <p>Total a Pagar: $<?= number_format($viaje['precio'], 2) ?></p>
+    <div class="card" style="max-width: 600px; margin: 0 auto 20px auto; background-color: #f8fafc; border-left: 4px solid var(--primary);">
+        <h3 style="margin-top: 0;">Resumen del viaje</h3>
+        <p><strong>Ruta:</strong> <?= htmlspecialchars($viaje['origen']) ?> → <?= htmlspecialchars($viaje['destino']) ?></p>
+        <p style="font-size: 1.2em;"><strong>Total a Pagar: <span style="color: var(--success);">$<?= number_format($viaje['precio'], 2) ?></span></strong></p>
+    </div>
 
     <?php if (isset($error)): ?>
-        <p style="color:red;"><?= $error ?></p>
+        <p style="color:red; text-align: center; font-weight: bold;"><?= $error ?></p>
     <?php endif; ?>
 
     <form method="POST">
-        <h3>Datos de la Tarjeta</h3>
-        <input type="text" name="titular" placeholder="Nombre en la tarjeta" required><br><br>
-        <input type="text" name="tarjeta" placeholder="Número de tarjeta" required minlength="14"><br><br>
-        <input type="text" name="vencimiento" placeholder="MM/AA" required style="width: 80px;">
-        <input type="text" name="cvv" placeholder="CVV" required minlength="3" maxlength="4" style="width: 60px;"><br><br>
-        <button type="submit">Confirmar Pago</button>
+        <h3 style="margin-top: 0; color: var(--primary);">Datos de la Tarjeta</h3>
+        
+        <label>Nombre del Titular</label>
+        <input type="text" name="titular" placeholder="Tal como figura en la tarjeta" required>
+        
+        <label>Número de Tarjeta</label>
+        <input type="text" name="tarjeta" placeholder="0000 0000 0000 0000" required minlength="14">
+        
+        <div style="display: flex; gap: 15px;">
+            <div style="flex: 1;">
+                <label>Vencimiento</label>
+                <input type="text" name="vencimiento" placeholder="MM/AA" required>
+            </div>
+            <div style="flex: 1;">
+                <label>Código de Seguridad</label>
+                <input type="text" name="cvv" placeholder="CVV" required minlength="3" maxlength="4">
+            </div>
+        </div>
+        
+        <button type="submit" class="success-bg" style="width: 100%; margin-top: 20px; font-size: 1.1em;">Confirmar Pago</button>
     </form>
 </body>
 </html>

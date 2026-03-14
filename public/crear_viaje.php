@@ -64,12 +64,15 @@ $precio_def = $_GET['precio'] ?? '';
 $obs_def = $_GET['observaciones'] ?? '';
 ?>
 
-<h2>Crear viaje</h2>
-<a href="<?= BASE_URL ?>conductor/dashboard.php">← Volver</a>
-<hr>
+<div class="nav-menu">
+    <h2>Crear viaje</h2>
+    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver</a>
+</div>
 
 <form method="POST">
-    <label>Selecciona tu vehículo:</label><br>
+    <h3 style="margin-top:0; color:var(--primary);">Detalles de la Publicación</h3>
+    
+    <label>Selecciona tu vehículo:</label>
     <select name="vehiculo_id" required>
         <option value="">-- Mis Vehículos --</option>
         <?php foreach ($vehiculos as $v): ?>
@@ -79,38 +82,42 @@ $obs_def = $_GET['observaciones'] ?? '';
         <?php endforeach; ?>
     </select>
     <?php if (empty($vehiculos)): ?>
-        <p style="color:red;">⚠️ No tienes vehículos registrados. <a href="registrar_vehiculo.php">Registra uno aquí</a>.</p>
+        <p style="color:red; font-size: 0.9em; margin-top: 0;">⚠️ No tienes vehículos registrados. <a href="registrar_vehiculo.php">Registra uno aquí</a>.</p>
     <?php endif; ?>
-    <br><br>
 
-    <label>Origen:</label><br>
-    <select name="origen" required>
-        <option value="">Seleccionar Origen</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>" <?= ($origen_def == $c['id']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select><br><br>
+    <div style="display: flex; gap: 15px; margin-top: 10px;">
+        <div style="flex: 1;">
+            <label>Origen:</label>
+            <select name="origen" required>
+                <option value="">Seleccionar Origen</option>
+                <?php foreach ($ciudades as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($origen_def == $c['id']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['nombre']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div style="flex: 1;">
+            <label>Destino:</label>
+            <select name="destino" required>
+                <option value="">Seleccionar Destino</option>
+                <?php foreach ($ciudades as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($destino_def == $c['id']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['nombre']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
 
-    <label>Destino:</label><br>
-    <select name="destino" required>
-        <option value="">Seleccionar Destino</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>" <?= ($destino_def == $c['id']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select><br><br>
+    <label>Fecha y Hora:</label>
+    <input type="datetime-local" name="fecha" required>
 
-    <label>Fecha y Hora:</label><br>
-    <input type="datetime-local" name="fecha" required><br><br>
+    <label>Precio por persona ($):</label>
+    <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required>
 
-    <label>Precio:</label><br>
-    <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required><br><br>
+    <label>Observaciones:</label>
+    <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4"><?= htmlspecialchars($obs_def) ?></textarea>
 
-    <label>Observaciones:</label><br>
-    <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas"><?= htmlspecialchars($obs_def) ?></textarea><br><br>
-
-    <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?>>Crear viaje</button>
+    <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> style="width: 100%; margin-top: 15px; background-color: var(--success);">Publicar viaje</button>
 </form>

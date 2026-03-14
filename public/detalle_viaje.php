@@ -47,47 +47,49 @@ $asientos_disponibles = $viaje['asientos'] - $viaje['ocupados'];
     </style>
 </head>
 <body>
-    <h1>Detalle del Viaje</h1>
-    <a href="<?= BASE_URL ?>index.php">← Volver al inicio</a>
-    <hr>
+<div class="nav-menu">
+        <h2>Detalle del Viaje</h2>
+        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al inicio</a>
+    </div>
 
     <div class="flex-container">
         <div class="col detail-box">
-            <h2>Ruta y Horario</h2>
+            <h3 style="margin-top:0; color:var(--primary);">Ruta y Horario</h3>
             <p><strong>Origen:</strong> <?= htmlspecialchars($viaje['origen_nombre']) ?></p>
             <p><strong>Destino:</strong> <?= htmlspecialchars($viaje['destino_nombre']) ?></p>
-            <p><strong>Fecha y Hora:</strong> <?= $viaje['fecha'] ?></p>
+            <p><strong>Fecha y Hora:</strong> <?= date('d/m/Y H:i', strtotime($viaje['fecha'])) ?></p>
             <?php if (isset($viaje['distancia_km']) && $viaje['distancia_km'] > 0): ?>
                 <p><strong>Distancia:</strong> <?= $viaje['distancia_km'] ?> km</p>
                 <p><strong>Duración Estimada:</strong> <?= htmlspecialchars($viaje['duracion_estimada'] ?? 'N/A') ?></p>
             <?php endif; ?>
-            <p><strong>Precio:</strong> $<?= number_format($viaje['precio'], 2) ?></p>
+            <p style="font-size: 1.1em;"><strong>Precio:</strong> <span style="color:var(--success); font-weight:bold;">$<?= number_format($viaje['precio'], 2) ?></span></p>
             <p><strong>Asientos disponibles:</strong> <?= max(0, $asientos_disponibles) ?> de <?= $viaje['asientos'] ?></p>
-            <p><strong>Observaciones:</strong> <?= nl2br(htmlspecialchars($viaje['observaciones'] ?? 'Sin observaciones')) ?></p>
+            <p><strong>Observaciones:</strong> <em><?= nl2br(htmlspecialchars($viaje['observaciones'] ?? 'Sin observaciones')) ?></em></p>
         </div>
 
         <div class="col detail-box">
-            <h2>Conductor</h2>
+            <h3 style="margin-top:0; color:var(--primary);">Conductor</h3>
             <p><strong>Nombre:</strong> <?= htmlspecialchars($viaje['conductor_nombre']) ?></p>
             <p><strong>Calificación:</strong> 
                 <?= $viaje['promedio_calif'] ? number_format($viaje['promedio_calif'], 1) . ' ⭐' : 'Sin calificaciones aún' ?>
             </p>
-            
-            <h3>Vehículo asignado</h3>
-            <p><?= htmlspecialchars($viaje['marca'] . ' ' . $viaje['modelo']) ?> (<?= htmlspecialchars($viaje['color']) ?>)</p>
+            <hr>
+            <h3 style="color:var(--primary);">Vehículo asignado</h3>
+            <p><strong>Modelo:</strong> <?= htmlspecialchars($viaje['marca'] . ' ' . $viaje['modelo']) ?></p>
+            <p><strong>Color:</strong> <?= htmlspecialchars($viaje['color']) ?></p>
             <p><strong>Patente:</strong> <?= htmlspecialchars($viaje['patente']) ?></p>
         </div>
     </div>
 
-    <div style="text-align: center; margin-top: 30px;">
+    <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
         <?php if (!isset($_SESSION['user_id'])): ?>
-            <p><a href="<?= BASE_URL ?>login.php">Iniciá sesión para reservar</a></p>
+            <p><a href="<?= BASE_URL ?>login.php" class="btn">Iniciá sesión para reservar</a></p>
         <?php elseif ($asientos_disponibles <= 0): ?>
-            <button disabled style="padding: 10px 20px;">El viaje está lleno</button>
+            <button disabled style="padding: 12px 25px;">El viaje está lleno</button>
         <?php elseif (isset($_SESSION['is_conductor']) && $_SESSION['is_conductor'] && isset($_SESSION['conductor_id']) && $_SESSION['conductor_id'] == $viaje['conductor_id']): ?>
-            <p><em>Este es tu viaje publicado.</em></p>
+            <p style="color: #64748b;"><em>⚠️ Este es tu viaje publicado.</em></p>
         <?php else: ?>
-            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $viaje['id'] ?>" style="padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; font-size: 1.2em;">Comenzar Reserva</a>
+            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $viaje['id'] ?>" class="btn success-bg" style="padding: 12px 25px; font-size: 1.1em; display: inline-block;">Comenzar Reserva</a>
         <?php endif; ?>
     </div>
 </body>

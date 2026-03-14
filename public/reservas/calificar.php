@@ -78,30 +78,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Calificar Conductor - Carpooling</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <style>
+        .star-select {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h1>
-    <a href="<?= BASE_URL ?>reservas/mis_reservas.php">← Cancelar y volver</a>
-    <hr>
+    <div class="nav-menu">
+        <h2>Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h2>
+        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" style="margin-left: auto;">← Cancelar y volver</a>
+    </div>
     
     <?php if (isset($error)): ?>
-        <p style="color:red;"><?= $error ?></p>
+        <p style="color:red; text-align: center; font-weight: bold;"><?= $error ?></p>
     <?php endif; ?>
 
     <form method="POST">
-        <label>Del 1 al 5, ¿cómo calificarías tu experiencia?</label><br>
-        <select name="puntaje" required style="padding: 5px; font-size: 1.1em; margin: 10px 0;">
+        <h3 style="margin-top:0; color:var(--primary);">Tu Opinión Cuenta</h3>
+        <p style="color: #64748b; margin-bottom: 20px;">
+            Ayudá a la comunidad calificando cómo estuvo el viaje.
+        </p>
+
+        <label>Del 1 al 5, ¿cómo calificarías tu experiencia?</label>
+        <select name="puntaje" required class="star-select">
             <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
             <option value="4">⭐⭐⭐⭐ Muy bueno</option>
             <option value="3">⭐⭐⭐ Bueno / Regular</option>
             <option value="2">⭐⭐ Malo</option>
             <option value="1">⭐ Pésimo</option>
-        </select><br><br>
+        </select>
 
-        <label>Dejá una crítica/comentario (Opcional):</label><br>
-        <textarea name="comentario" rows="4" cols="50" placeholder="¿Cómo estuvo el viaje, el conductor, el vehículo...?"></textarea><br><br>
+        <label>Dejá una crítica/comentario (Opcional):</label>
+        <textarea name="comentario" rows="5" placeholder="¿Cómo estuvo el viaje, el conductor, el vehículo...?"></textarea>
 
-        <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer;">Enviar Calificación</button>
+        <button type="submit" class="success-bg" style="width: 100%; margin-top: 15px; font-size: 1.1em;">Enviar Calificación</button>
     </form>
 </body>
 </html>
