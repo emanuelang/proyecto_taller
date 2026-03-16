@@ -12,12 +12,17 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt->fetchAll();
+require_once __DIR__ . '/../../config/app.php';
 ?>
+<?php require_once __DIR__ . '/../header.php'; ?>
 
-<h2>Mis vehículos</h2>
-
-<a href="crear_vehiculo.php">Agregar vehículo</a>
-<hr>
+<div class="nav-menu">
+    <h2>Mis vehículos</h2>
+    <div>
+        <a href="crear_vehiculo.php" class="btn" style="margin-right: 10px;">+ Agregar vehículo</a>
+        <a href="dashboard.php" class="btn" style="background-color: #64748b;">← Volver</a>
+    </div>
+</div>
 
 <?php if (empty($vehiculos)): ?>
     <p>No tenés vehículos registrados.</p>

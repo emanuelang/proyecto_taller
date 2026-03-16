@@ -48,9 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: viajes.php');
     exit;
 }
+require_once __DIR__ . '/../../config/app.php';
 ?>
+<?php require_once __DIR__ . '/../header.php'; ?>
 
-<h2>Editar viaje</h2>
+<div class="nav-menu">
+    <h2>Editar viaje</h2>
+    <a href="viajes.php" style="margin-left: auto;">← Cancelar</a>
+</div>
 
 <form method="post">
     Origen:

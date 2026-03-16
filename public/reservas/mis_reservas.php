@@ -33,13 +33,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$usuario_id]);
 $reservas = $stmt->fetchAll();
 ?>
-
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Mis Reservas</title>
-</head>
-<body>
+<?php require_once __DIR__ . '/../header.php'; ?>
 
 <div class="nav-menu">
     <h2>Mis reservas</h2>

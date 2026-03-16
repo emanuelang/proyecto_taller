@@ -11,8 +11,14 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$_SESSION['conductor_id']]);
 $viajes = $stmt->fetchAll();
+require_once __DIR__ . '/../../config/app.php';
 ?>
-<h2>Mis viajes</h2>
+<?php require_once __DIR__ . '/../header.php'; ?>
+
+<div class="nav-menu">
+    <h2>Mis viajes</h2>
+    <a href="dashboard.php" style="margin-left: auto;">← Volver al panel</a>
+</div>
 
 <?php if (!$viajes): ?>
     <p>No creaste viajes todavía.</p>

@@ -24,9 +24,14 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt->fetchAll();
-?>
 
-<h2>Panel del conductor</h2>
+require_once __DIR__ . '/../../config/app.php';
+?>
+<?php require_once __DIR__ . '/../header.php'; ?>
+
+<div class="nav-menu">
+    <h2>Panel del conductor</h2>
+</div>
 
 <p><strong>Nombre:</strong> <?= htmlspecialchars($conductor['nombre']) ?></p>
 <p><strong>Email:</strong> <?= htmlspecialchars($conductor['email']) ?></p>

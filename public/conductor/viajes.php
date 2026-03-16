@@ -21,10 +21,12 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$_SESSION['conductor_id']]);
 $viajes = $stmt->fetchAll();
 ?>
+<?php require_once __DIR__ . '/../header.php'; ?>
 
-<h2>Mis viajes</h2>
-<a href="<?= BASE_URL ?>conductor/dashboard.php">← Volver</a>
-<hr>
+<div class="nav-menu">
+    <h2>Mis viajes</h2>
+    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver al panel</a>
+</div>
 
 <?php if (empty($viajes)): ?>
     <p>No creaste viajes todavía.</p>

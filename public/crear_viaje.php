@@ -56,18 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
+<?php require_once __DIR__ . '/header.php'; ?>
 
-<?php
-$origen_def = $_GET['origen'] ?? '';
-$destino_def = $_GET['destino'] ?? '';
-$precio_def = $_GET['precio'] ?? '';
-$obs_def = $_GET['observaciones'] ?? '';
-?>
-
-<div class="nav-menu">
-    <h2>Crear viaje</h2>
-    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver</a>
-</div>
+<h2>Crear viaje</h2>
+<a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-bottom: 20px; display: inline-block;">← Volver al Panel</a>
 
 <form method="POST">
     <h3 style="margin-top:0; color:var(--primary);">Detalles de la Publicación</h3>

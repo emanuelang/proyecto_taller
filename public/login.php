@@ -36,17 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Login - Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-</head>
-<body>
-    <div class="nav-menu">
+<?php require_once __DIR__ . '/header.php'; ?>
+
+    <div>
         <h2>Iniciar Sesión</h2>
-        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al inicio</a>
+        <a href="<?= BASE_URL ?>index.php" style="margin-bottom: 20px; display: inline-block;">← Volver al inicio</a>
     </div>
 
     <?php if ($error): ?>

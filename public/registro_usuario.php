@@ -20,19 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
+<?php require_once __DIR__ . '/header.php'; ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Registro - Carpooling</title>
-    <link rel="stylesheet" href="main.css">
-</head>
-<body>
-    <div class="nav-menu">
-        <h2>Crear Cuenta</h2>
-        <a href="index.php" style="margin-left: auto;">← Volver al inicio</a>
-    </div>
+    <h2>Crear Cuenta</h2>
+    <a href="index.php" style="margin-bottom: 20px; display: inline-block;">← Volver al inicio</a>
 
     <form method="POST">
         <h3 style="margin-top:0; color:var(--primary); text-align:center;">Únete a Carpooling</h3>

@@ -97,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+<?php require_once __DIR__ . '/header.php'; ?>
 
 <h2>Convertirme en conductor</h2>
 
