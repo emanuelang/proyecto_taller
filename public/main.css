@@ -1,6 +1,138 @@
-/* public/assets/main.css */
-body { font-family: Arial, sans-serif; margin: 20px; color: #222; }
-a { color: #0066cc; text-decoration: none; }
-input, button { padding: 6px; margin: 4px 0; }
-div.card { border:1px solid #ddd; padding:10px; margin-bottom:10px; border-radius:6px; }
-small.note { color: #666; }
+/* Paleta de colores solicitada */
+:root {
+    --bg-main: #FFFFFF;
+    --text-main: #1A1A1A;
+    --primary: #38BDF8;      /* Azul cielo principal */
+    --primary-hover: #0EA5E9; /* Azul cielo oscuro */
+    --success: #84CC16;      /* Verde lima principal */
+    --success-hover: #65A30D; /* Verde lima oscuro */
+    --border-color: #F1F5F9;  /* Gris claro */
+}
+
+* {
+    box-sizing: border-box;
+    font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+h1, h2, h3 {
+    color: var(--text-main);
+}
+
+a {
+    color: var(--primary-hover);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 20px 0;
+}
+
+input[type="text"], 
+input[type="email"], 
+input[type="password"], 
+input[type="number"], 
+input[type="datetime-local"], 
+select, 
+textarea {
+    width: 100%;
+    padding: 10px 14px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    color: var(--text-main);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+button, input[type="submit"], .btn {
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+button:hover, input[type="submit"]:hover, .btn:hover {
+    background-color: var(--primary-hover);
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Clases utilitarias y componentes */
+.card, .viaje, .detail-box {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.card:hover, .viaje:hover {
+    border-color: rgba(56, 189, 248, 0.3);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.success-text { color: var(--success); }
+.success-bg { background-color: var(--success); color: white; }
+.success-bg:hover { background-color: var(--success-hover); }
+
+/* Para formularios largos */
+form {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: inline-block;
+}
+
+/* Contenedor flex para header / menu */
+.nav-menu {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
