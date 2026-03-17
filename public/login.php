@@ -9,21 +9,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE Correo = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($pass, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['nombre'] = $user['nombre'];
+    if ($user && password_verify($pass, $user['Contraseña'])) {
+        $_SESSION['user_id'] = $user['ID_usuario'];
+        $_SESSION['nombre'] = $user['Nombre'];
 
-        $stmt2 = $pdo->prepare("SELECT id FROM conductores WHERE usuario_id = ?");
-        $stmt2->execute([$user['id']]);
+        $stmt2 = $pdo->prepare("SELECT ID_conductor FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");
+        $stmt2->execute([$user['ID_usuario']]);
         $cond = $stmt2->fetch();
 
         if ($cond) {
             $_SESSION['is_conductor'] = true;
-            $_SESSION['conductor_id'] = $cond['id'];
+            $_SESSION['conductor_id'] = $cond['ID_conductor'];
         } else {
             $_SESSION['is_conductor'] = false;
             unset($_SESSION['conductor_id']);

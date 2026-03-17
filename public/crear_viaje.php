@@ -8,7 +8,19 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     exit;
 }
 
-$ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
+$ciudades = [];
+$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones ORDER BY nombre");
+$ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
+
+// If no cities exist, we can pre-populate a few common ones for dropdowns
+if (empty($ciudades)) {
+    $ciudades = [
+        ['nombre' => 'Buenos Aires'],
+        ['nombre' => 'Córdoba'],
+        ['nombre' => 'Rosario'],
+        ['nombre' => 'La Plata']
+    ];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -18,20 +30,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $precio = $_POST['precio'];
     $observaciones = $_POST['observaciones'] ?? '';
 
+    // Get the first vehicle for this conductor to attach the trip to
+    $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ? LIMIT 1");
+    $stmt_vehiculo->execute([$_SESSION['conductor_id']]);
+    $vehiculo = $stmt_vehiculo->fetch();
+    
+    if (!$vehiculo) {
+        die("Error: No tienes un vehículo asignado para publicar el viaje.");
+    }
+    
+    $vehiculo_id = $vehiculo['ID_vehiculo'];
+
     $stmt = $pdo->prepare("
-        INSERT INTO viajes 
-        (conductor_id, origen_id, destino_id, fecha, precio, estado, observaciones, creado_en)
-        VALUES (?, ?, ?, ?, ?, 'activo', ?, NOW())
+        INSERT INTO Publicaciones 
+        (CiudadOrigen, CiudadDestino, HoraSalida, Precio, Estado, ID_vehiculo)
+        VALUES (?, ?, ?, ?, 'Activa', ?)
     ");
 
     $stmt->execute([
-        $_SESSION['conductor_id'],
         $origen,
         $destino,
         $fecha,
         $precio,
-        $observaciones
+        $vehiculo_id
     ]);
+
+    $publicacion_id = $pdo->lastInsertId();
+
+    $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
+    $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
 
     header("Location: " . BASE_URL . "conductor/viajes.php");
     exit;
@@ -47,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <select name="origen" required>
         <option value="">Origen</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>">
+            <option value="<?= htmlspecialchars($c['nombre']) ?>">
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>
@@ -56,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <select name="destino" required>
         <option value="">Destino</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>">
+            <option value="<?= htmlspecialchars($c['nombre']) ?>">
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>

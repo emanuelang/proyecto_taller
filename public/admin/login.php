@@ -16,24 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
-    // Buscamos al usuario por email y nos aseguramos de que tenga rol 'admin'
-    // IMPORTANTE: Deberás tener la columna 'rol' en tu tabla 'usuarios'
-    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND rol = 'admin'");
+    $stmt = $pdo->prepare("
+        SELECT u.*, a.ID_administrador 
+        FROM Usuarios u 
+        JOIN Administradores a ON u.ID_usuario = a.ID_usuario 
+        WHERE u.Correo = ?
+    ");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    // Verificamos si existe el usuario y si el estado no es suspendido o baneado
-    if ($user && password_verify($pass, $user['password'])) {
+    if ($user && password_verify($pass, $user['Contraseña'])) {
         
-        // OPCIONAL: Verificar aquí si el usuario está baneado/suspendido
-        // Si tienes la columna 'estado', podrías hacer:
-        // if ($user['estado'] !== 'activo') { $error = "Cuenta suspendida."; } else { ... }
-
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['nombre'] = $user['nombre'];
-        $_SESSION['is_admin'] = true; // Flag importante para proteger otras rutas
+        $_SESSION['user_id'] = $user['ID_usuario'];
+        $_SESSION['nombre'] = $user['Nombre'];
+        $_SESSION['is_admin'] = true; 
         
-        // Limpiamos flags de conductor por precaución para la sesión admin
         $_SESSION['is_conductor'] = false;
         unset($_SESSION['conductor_id']);
 

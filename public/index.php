@@ -6,7 +6,8 @@ require_once __DIR__ . '/../config/app.php';
 /* ============================
    TRAER CIUDADES
 ============================ */
-$ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
+$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones ORDER BY nombre");
+$ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
 
 /* ============================
    CAPTURAR FILTROS ...
@@ -19,50 +20,53 @@ $orden = $_GET['orden'] ?? '';
    QUERY DINÁMICA DE VIAJES
 ============================ */
 $sql = "
-    SELECT v.*, 
-           u.nombre AS conductor_nombre,
-           c1.nombre AS origen_nombre,
-           c2.nombre AS destino_nombre
-    FROM viajes v
-    JOIN conductores c ON v.conductor_id = c.id
-    JOIN usuarios u ON c.usuario_id = u.id
-    JOIN ciudades c1 ON v.origen_id = c1.id
-    JOIN ciudades c2 ON v.destino_id = c2.id
-    WHERE v.fecha >= NOW()
+    SELECT p.*, 
+           u.Nombre AS conductor_nombre,
+           p.CiudadOrigen AS origen_nombre,
+           p.CiudadDestino AS destino_nombre,
+           p.HoraSalida AS fecha,
+           p.Precio AS precio,
+           p.ID_publicacion AS id,
+           c.ID_conductor AS conductor_id
+    FROM Publicaciones p
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'
 ";
 
 $params = [];
 
 if ($origen !== '') {
-    $sql .= " AND v.origen_id = ?";
+    $sql .= " AND p.CiudadOrigen = ?";
     $params[] = $origen;
 }
 
 if ($destino !== '') {
-    $sql .= " AND v.destino_id = ?";
+    $sql .= " AND p.CiudadDestino = ?";
     $params[] = $destino;
 }
 
 switch ($orden) {
     case 'precio_asc':
-        $sql .= " ORDER BY v.precio ASC";
+        $sql .= " ORDER BY p.Precio ASC";
         break;
     case 'precio_desc':
-        $sql .= " ORDER BY v.precio DESC";
+        $sql .= " ORDER BY p.Precio DESC";
         break;
     case 'fecha_desc':
-        $sql .= " ORDER BY v.fecha DESC";
+        $sql .= " ORDER BY p.HoraSalida DESC";
         break;
     case 'fecha_asc':
-        $sql .= " ORDER BY v.fecha ASC";
+        $sql .= " ORDER BY p.HoraSalida ASC";
         break;
     default:
-        $sql .= " ORDER BY v.fecha ASC";
+        $sql .= " ORDER BY p.HoraSalida ASC";
 }
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$viajes = $stmt->fetchAll();
+$viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html>
@@ -100,6 +104,18 @@ $viajes = $stmt->fetchAll();
 
 <hr>
 
+<?php if (isset($_GET['msg'])): ?>
+    <?php if ($_GET['msg'] === 'solicitud_enviada'): ?>
+        <div style="background-color: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; margin-bottom: 15px; border-radius: 4px;">
+            <strong>¡Solicitud enviada exitosamente!</strong> Tu cuenta ha sido registrada y se encuentra <strong>Esperando</strong> la aprobación de un administrador.
+        </div>
+    <?php elseif ($_GET['msg'] === 'esperando_aprobacion'): ?>
+        <div style="background-color: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; margin-bottom: 15px; border-radius: 4px;">
+            <strong>Aviso:</strong> Ya enviaste una solicitud para ser conductor y todavía está <strong>Esperando</strong> revisión por parte de los administradores.
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
+
 <h2>Buscar viajes</h2>
 
 <form method="GET" style="margin-bottom:20px;">
@@ -107,7 +123,7 @@ $viajes = $stmt->fetchAll();
     <select name="origen">
         <option value="">Salida</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>" <?= ($origen == $c['id']) ? 'selected' : '' ?>>
+            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen == $c['nombre']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>
@@ -116,7 +132,7 @@ $viajes = $stmt->fetchAll();
     <select name="destino">
         <option value="">Llegada</option>
         <?php foreach ($ciudades as $c): ?>
-            <option value="<?= $c['id'] ?>" <?= ($destino == $c['id']) ? 'selected' : '' ?>>
+            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino == $c['nombre']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>

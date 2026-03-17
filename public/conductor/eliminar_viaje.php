@@ -9,8 +9,10 @@ if (!isset($_SESSION['is_conductor'])) {
 $id = (int)$_GET['id'];
 
 $stmt = $pdo->prepare("
-    DELETE FROM viajes
-    WHERE id = ? AND conductor_id = ?
+    DELETE p 
+    FROM Publicaciones p
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    WHERE p.ID_publicacion = ? AND cp.ID_conductor = ?
 ");
 $stmt->execute([$id, $_SESSION['conductor_id']]);
 
