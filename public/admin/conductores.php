@@ -12,10 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
         $stmt = $pdo->prepare("UPDATE Conductores SET Estado = 'Aceptada' WHERE ID_conductor = ?");
         $stmt->execute([$conductor_id]);
         $msg = "Conductor aprobado con éxito.";
-    } elseif ($accion === 'rechazar') {
+    } elseif ($accion === 'rechazar' || $accion === 'eliminar') {
+        // Obtenemos publicaciones vinculadas para borrarlas y evitar fallo en foreign key de Vehiculos
+        $stmt_pub = $pdo->prepare("SELECT ID_publicacion FROM ConductorPublicacion WHERE ID_conductor = ?");
+        $stmt_pub->execute([$conductor_id]);
+        $publicaciones = $stmt_pub->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($publicaciones as $p) {
+            $stmt_del_pub = $pdo->prepare("DELETE FROM Publicaciones WHERE ID_publicacion = ?");
+            $stmt_del_pub->execute([$p['ID_publicacion']]);
+        }
+
         // Al borrar el conductor, la BD borrará automáticamente su registro en ConductorVehiculo (ON DELETE CASCADE)
         // pero necesitamos borrar el Vehiculo también para no dejar huérfanos.
-        
         $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ?");
         $stmt_vehiculo->execute([$conductor_id]);
         $vehiculos = $stmt_vehiculo->fetchAll(PDO::FETCH_ASSOC);
@@ -28,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
             $stmt_del_veh->execute([$v['ID_vehiculo']]);
         }
         
-        $msg = "Conductor rechazado (solicitud y vehículo eliminados).";
+        $msg = ($accion === 'rechazar') ? "Conductor rechazado (solicitud eliminada)." : "Conductor eliminado correctamente del sistema.";
     }
 }
 
@@ -45,6 +54,20 @@ $stmt = $pdo->query("
     ORDER BY c.FechaRegistro DESC
 ");
 $pendientes = $stmt->fetchAll();
+
+// Obtener la lista de conductores aceptados
+$stmt2 = $pdo->query("
+    SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en,
+           u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email,
+           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Foto AS vehiculo_doc
+    FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
+    LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
+    WHERE c.Estado = 'Aceptada'
+    ORDER BY c.FechaRegistro DESC
+");
+$aceptados = $stmt2->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -140,6 +163,70 @@ $pendientes = $stmt->fetchAll();
                             <input type="hidden" name="conductor_id" value="<?= $c['id'] ?>">
                             <input type="hidden" name="accion" value="rechazar">
                             <button type="submit" class="btn-rechazar" onclick="return confirm('¿Rechazar a este conductor?');">Rechazar</button>
+                        </form>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+
+    <hr style="margin-top: 40px; margin-bottom: 20px;">
+
+    <h2>Conductores Aprobados</h2>
+    <p>Lista de conductores activos en la plataforma. Puedes eliminarlos si infringen las reglas.</p>
+
+    <?php if (empty($aceptados)): ?>
+        <p>No hay conductores activos.</p>
+    <?php else: ?>
+        <table class="table-admin">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Perfil y Licencia</th>
+                    <th>Vehículo Asociado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($aceptados as $a): ?>
+                <tr>
+                    <td>
+                        <strong>Nom:</strong> <?= htmlspecialchars($a['nombre']) ?><br>
+                        <strong>Email:</strong> <?= htmlspecialchars($a['email']) ?><br>
+                        <strong>ID:</strong> <?= $a['usuario_id'] ?>
+                    </td>
+                    <td>
+                        <ul class="details-list">
+                            <li><strong>Licencia:</strong> <?= htmlspecialchars($a['LicenciaConducir']) ?></li>
+                            <li><strong>Seguro:</strong> <?= htmlspecialchars($a['SeguroVehiculo']) ?></li>
+                            <li><strong>Cta Bancaria:</strong> <?= htmlspecialchars($a['CuentaBancaria']) ?></li>
+                            <li><strong>Registrado el:</strong> <?= htmlspecialchars($a['creado_en']) ?></li>
+                        </ul>
+                    </td>
+                    <td>
+                        <?php if($a['marca']): ?>
+                            <ul class="details-list">
+                                <li><strong>Auto:</strong> <?= htmlspecialchars($a['marca'] . ' ' . $a['modelo']) ?></li>
+                                <li><strong>Color:</strong> <?= htmlspecialchars($a['color']) ?></li>
+                                <li><strong>Asientos:</strong> <?= $a['asientos'] ?></li>
+                                <li>
+                                    <?php if($a['vehiculo_doc']): ?>
+                                        <a href="<?= BASE_URL . $a['vehiculo_doc'] ?>" target="_blank">Ver Foto Vehículo</a>
+                                    <?php else: ?>
+                                        <em>Sin documento</em>
+                                    <?php endif; ?>
+                                </li>
+                            </ul>
+                        <?php else: ?>
+                            <em>No registró vehículo</em>
+                        <?php endif; ?>
+                    </td>
+                    <td style="vertical-align: middle; text-align: center;">
+                        <form method="post">
+                            <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
+                            <input type="hidden" name="accion" value="eliminar">
+                            <button type="submit" class="btn-rechazar" onclick="return confirm('¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarán sus viajes y vehículos.');">Eliminar Definitivamente</button>
                         </form>
                     </td>
                 </tr>
