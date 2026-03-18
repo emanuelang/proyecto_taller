@@ -31,22 +31,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $seguro = trim($_POST['seguro_vehiculo']);
     $banco = trim($_POST['cuenta_bancaria']);
 
-    /* Subidas */
-    function subirArchivo($campo, $dir) {
+    /* Convertir foto a Base64 */
+    function procesarFotoBase64($campo) {
         if (!isset($_FILES[$campo]) || $_FILES[$campo]['error'] !== UPLOAD_ERR_OK) {
             return null;
         }
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+
+        $tmpName = $_FILES[$campo]['tmp_name'];
+        $tipoMime = mime_content_type($tmpName);
+
+        // Validar que sea realmente una imagen
+        if (strpos($tipoMime, 'image/') !== 0) {
+            return null;
         }
-        $nombre = time() . '_' . basename($_FILES[$campo]['name']);
-        $ruta = $dir . '/' . $nombre;
-        move_uploaded_file($_FILES[$campo]['tmp_name'], $ruta);
-        // Devolvemos la ruta relativa a public/
-        return 'uploads/' . basename($dir) . '/' . $nombre;
+
+        $contenidoBinario = file_get_contents($tmpName);
+        $base64 = base64_encode($contenidoBinario);
+        
+        return "data:" . $tipoMime . ";base64," . $base64;
     }
 
-    $foto_vehiculo = subirArchivo('foto_vehiculo', __DIR__ . '/uploads/vehiculos');
+    $foto_vehiculo = procesarFotoBase64('foto_vehiculo');
 
     /* Vehículo */
     $marca = trim($_POST['marca']);

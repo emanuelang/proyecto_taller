@@ -143,7 +143,10 @@ $aceptados = $stmt2->fetchAll();
                                 <li><strong>Asientos:</strong> <?= $c['asientos'] ?></li>
                                 <li>
                                     <?php if($c['vehiculo_doc']): ?>
-                                        <a href="<?= BASE_URL . $c['vehiculo_doc'] ?>" target="_blank">Ver Foto Vehículo</a>
+                                        <div style="margin-top: 5px;">
+                                            <strong>Foto del Vehículo:</strong><br>
+                                            <img src="<?= $c['vehiculo_doc'] ?>" style="max-width: 150px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;" alt="Foto del Vehículo">
+                                        </div>
                                     <?php else: ?>
                                         <em>Sin documento</em>
                                     <?php endif; ?>
@@ -212,7 +215,10 @@ $aceptados = $stmt2->fetchAll();
                                 <li><strong>Asientos:</strong> <?= $a['asientos'] ?></li>
                                 <li>
                                     <?php if($a['vehiculo_doc']): ?>
-                                        <a href="<?= BASE_URL . $a['vehiculo_doc'] ?>" target="_blank">Ver Foto Vehículo</a>
+                                        <div style="margin-top: 5px;">
+                                            <strong>Foto del Vehículo:</strong><br>
+                                            <img src="<?= $a['vehiculo_doc'] ?>" style="max-width: 150px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;" alt="Foto del Vehículo">
+                                        </div>
                                     <?php else: ?>
                                         <em>Sin documento</em>
                                     <?php endif; ?>

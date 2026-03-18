@@ -43,7 +43,7 @@ CREATE TABLE Vehiculos (
     Color VARCHAR(50) NOT NULL,
     Modelo VARCHAR(100) NOT NULL,
     Marca VARCHAR(100) NOT NULL,
-    Foto VARCHAR(255)
+    Foto MEDIUMTEXT
 );
 
 CREATE TABLE Publicaciones (
