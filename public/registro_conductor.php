@@ -42,7 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nombre = time() . '_' . basename($_FILES[$campo]['name']);
         $ruta = $dir . '/' . $nombre;
         move_uploaded_file($_FILES[$campo]['tmp_name'], $ruta);
-        return str_replace(__DIR__ . '/../', '', $ruta);
+        // Devolvemos la ruta relativa a public/
+        return 'uploads/' . basename($dir) . '/' . $nombre;
     }
 
     $foto_vehiculo = subirArchivo('foto_vehiculo', __DIR__ . '/uploads/vehiculos');
