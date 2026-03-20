@@ -7,14 +7,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre']);
     $email = trim($_POST['email']);
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $fecha_nacimiento = $_POST['fecha_nacimiento'];
+    
+    // Placeholder para cumplir con el esquema que asume valores NO NULL obligatorios
+    // Idealmente el formulario debe pedir estos datos a futuro
+    $apellido = ''; 
+    $dni = uniqid(); 
+    $telefono = null;
 
     $stmt = $pdo->prepare("
-        INSERT INTO usuarios (nombre, email, password, fecha_nacimiento)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO Usuarios (Nombre, Apellido, DNI, Correo, Telefono, Contraseña)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
 
-    $stmt->execute([$nombre, $email, $password, $fecha_nacimiento]);
+    $stmt->execute([$nombre, $apellido, $dni, $email, $telefono, $password]);
+
+    // Lo agregamos automáticamente como "Pasajero"
+    $id_usuario = $pdo->lastInsertId();
+    $stmt2 = $pdo->prepare("INSERT INTO Pasajeros (ID_usuario) VALUES (?)");
+    $stmt2->execute([$id_usuario]);
 
     header("Location: login.php");
     exit;

@@ -10,42 +10,53 @@ if (!isset($_SESSION['user_id'])) {
 $usuario_id = $_SESSION['user_id'];
 
 /* Verificar si ya es conductor */
-$stmt = $pdo->prepare("SELECT id FROM conductores WHERE usuario_id = ?");
+$stmt = $pdo->prepare("SELECT Estado FROM Conductores WHERE ID_usuario = ?");
 $stmt->execute([$usuario_id]);
-if ($stmt->fetch()) {
-    header('Location: conductor/dashboard.php');
-    exit;
+$cond = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($cond) {
+    if ($cond['Estado'] === 'Aceptada') {
+        header('Location: conductor/dashboard.php');
+        exit;
+    } else {
+        // Todavía está esperando (o en algún otro estado)
+        header('Location: index.php?msg=esperando_aprobacion');
+        exit;
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $experiencia = trim($_POST['experiencia']);
-    $disponibilidad = trim($_POST['disponibilidad']);
-    $licencia_vencimiento = $_POST['licencia_vencimiento'];
+    $licencia = trim($_POST['licencia_conducir']);
+    $seguro = trim($_POST['seguro_vehiculo']);
+    $banco = trim($_POST['cuenta_bancaria']);
 
-    /* Subidas */
-    function subirArchivo($campo, $dir) {
+    /* Convertir foto a Base64 */
+    function procesarFotoBase64($campo) {
         if (!isset($_FILES[$campo]) || $_FILES[$campo]['error'] !== UPLOAD_ERR_OK) {
             return null;
         }
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+
+        $tmpName = $_FILES[$campo]['tmp_name'];
+        $tipoMime = mime_content_type($tmpName);
+
+        // Validar que sea realmente una imagen
+        if (strpos($tipoMime, 'image/') !== 0) {
+            return null;
         }
-        $nombre = time() . '_' . basename($_FILES[$campo]['name']);
-        $ruta = $dir . '/' . $nombre;
-        move_uploaded_file($_FILES[$campo]['tmp_name'], $ruta);
-        return str_replace(__DIR__ . '/../', '', $ruta);
+
+        $contenidoBinario = file_get_contents($tmpName);
+        $base64 = base64_encode($contenidoBinario);
+        
+        return "data:" . $tipoMime . ";base64," . $base64;
     }
 
-    $licencia_foto = subirArchivo('licencia_foto', __DIR__ . '/uploads/licencias');
-    $doc_vehiculo = subirArchivo('documentacion_vehiculo', __DIR__ . '/uploads/vehiculos');
-    $foto_vehiculo = subirArchivo('foto_vehiculo', __DIR__ . '/uploads/vehiculos');
+    $foto_vehiculo = procesarFotoBase64('foto_vehiculo');
 
     /* Vehículo */
     $marca = trim($_POST['marca']);
     $modelo = trim($_POST['modelo']);
     $color = trim($_POST['color']);
-    $patente = trim($_POST['patente']);
     $asientos = (int)$_POST['asientos'];
 
     try {
@@ -53,42 +64,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         /* Crear conductor */
         $stmt = $pdo->prepare("
-            INSERT INTO conductores 
-            (usuario_id, experiencia, disponibilidad, licencia_foto, licencia_vencimiento, estado)
-            VALUES (?, ?, ?, ?, ?, 'pendiente')
+            INSERT INTO Conductores 
+            (LicenciaConducir, SeguroVehiculo, CuentaBancaria, Estado, ID_usuario)
+            VALUES (?, ?, ?, 'Esperando', ?)
         ");
         $stmt->execute([
-            $usuario_id,
-            $experiencia,
-            $disponibilidad,
-            $licencia_foto,
-            $licencia_vencimiento
+            $licencia,
+            $seguro,
+            $banco,
+            $usuario_id
         ]);
 
         $conductor_id = $pdo->lastInsertId();
 
         /* Crear vehículo inicial */
         $stmt = $pdo->prepare("
-            INSERT INTO vehiculos
-            (conductor_id, marca, modelo, color, patente, asientos, documentacion)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Vehiculos
+            (CantidadAsientos, Color, Modelo, Marca, Foto)
+            VALUES (?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $conductor_id,
-            $marca,
-            $modelo,
-            $color,
-            $patente,
             $asientos,
-            $doc_vehiculo ?? $foto_vehiculo
+            $color,
+            $modelo,
+            $marca,
+            $foto_vehiculo
         ]);
-
-        $_SESSION['is_conductor'] = true;
-        $_SESSION['conductor_id'] = $conductor_id;
+        
+        $vehiculo_id = $pdo->lastInsertId();
+        
+        /* Conectar ambos */
+        $stmt = $pdo->prepare("
+            INSERT INTO ConductorVehiculo (ID_conductor, ID_vehiculo)
+            VALUES (?, ?)
+        ");
+        $stmt->execute([$conductor_id, $vehiculo_id]);
 
         $pdo->commit();
 
-        header('Location: conductor/dashboard.php');
+        header('Location: index.php?msg=solicitud_enviada');
         exit;
 
     } catch (PDOException $e) {
@@ -102,17 +116,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <form method="post" enctype="multipart/form-data">
 
-    <label>Experiencia</label><br>
-    <textarea name="experiencia" rows="4" required></textarea><br><br>
+    <label>Licencia de Conducir (Número)</label><br>
+    <input type="text" name="licencia_conducir" required><br><br>
 
-    <label>Disponibilidad</label><br>
-    <textarea name="disponibilidad" rows="3" required></textarea><br><br>
+    <label>Póliza del Seguro Vehicular</label><br>
+    <input type="text" name="seguro_vehiculo" required><br><br>
 
-    <label>Foto de licencia</label><br>
-    <input type="file" name="licencia_foto" accept="image/*"><br><br>
-
-    <label>Vencimiento licencia</label><br>
-    <input type="date" name="licencia_vencimiento" required><br><br>
+    <label>Cuenta Bancaria (CBU / ALIAS)</label><br>
+    <input type="text" name="cuenta_bancaria" required><br><br>
 
     <hr>
 
@@ -121,11 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input name="marca" placeholder="Marca" required><br>
     <input name="modelo" placeholder="Modelo" required><br>
     <input name="color" placeholder="Color" required><br>
-    <input name="patente" placeholder="Patente" required><br>
-    <input type="number" name="asientos" min="1" required placeholder="Asientos"><br><br>
-
-    <label>Documentación vehículo (PDF o imagen)</label><br>
-    <input type="file" name="documentacion_vehiculo"><br><br>
+    <input type="number" name="asientos" min="1" required placeholder="Cantidad de Asientos"><br><br>
 
     <label>Foto del vehículo (opcional)</label><br>
     <input type="file" name="foto_vehiculo" accept="image/*"><br><br>
