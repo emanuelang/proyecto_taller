@@ -1,0 +1,72 @@
+*ESTE ARCHIVO SIRVE PARA GUARDAR LA DOCUMENTACION DEL PROYECTO*.
+
+Requerimientos Funcionales
+Conductor
+1- El sistema debe permitir que el conductor se registre cargando sus datos personales, licencia de conducir, seguro del vehículo, datos del vehículo, foto y cuenta bancaria.
+2- El sistema debe validar los datos del conductor antes de habilitarlo para publicar viajes.
+3- El conductor debe poder crear publicaciones de viaje indicando ciudad de salida, ciudad de llegada, hora de salida y precio.
+4- El sistema debe calcular automáticamente la distancia y la hora estimada de llegada del viaje.
+5- El conductor debe poder reutilizar una publicación anterior como plantilla para otra fecha.
+6- El conductor debe poder eliminar una publicación de viaje.
+7- El sistema debe notificar a los pasajeros cuando un viaje es eliminado.
+8- El conductor debe contar con una plantilla de viaje que incluya nombre, ruta, fecha, hora y listado de pasajeros.
+9- El conductor debe poder expulsar pasajeros de la plantilla.
+10- El sistema debe permitir al conductor visualizar las calificaciones recibidas.
+11- El sistema debe permitir que los pasajeros dejen críticas al conductor.
+12- El sistema debe recibir reportes anónimos sobre conductores.
+13- El conductor debe tener un apartado personal con sus datos, calificaciones y publicaciones activas/históricas.
+Pasajero
+14- El sistema debe permitir que un pasajero se registre (opcional para búsqueda de viajes).
+15- El pasajero debe poder buscar publicaciones de viaje por ciudad de origen y destino.
+16- El pasajero debe poder visualizar el detalle de una publicación (ruta, horarios, precio).
+17- El pasajero debe poder visualizar los datos del conductor y vehículo asociados a una publicación.
+18- El pasajero debe poder aceptar una publicación de viaje.
+19- El pasajero debe completar un formulario con datos personales y tarjeta de pago para confirmar la reserva.
+20- El pasajero debe realizar el pago al confirmar la reserva.
+21- El pasajero debe quedar asignado a la plantilla del viaje del conductor.
+22- El pasajero debe poder cancelar una reserva hasta 12 horas antes de la salida.
+23- El sistema debe devolver el importe al pasajero de forma inmediata si la cancelación ocurre dentro del plazo,
+24- El pasajero no recibe reembolso si la cancelación ocurre fuera del plazo,
+25- El pasajero debe poder calificar al conductor después del viaje.
+26- El pasajero debe poder dejar una crítica escrita.
+Administrador
+27- El sistema debe permitir que el administrador inicie sesión con credenciales únicas
+28- El administrador debe poder visualizar todos los usuarios (conductores y pasajeros)
+29- El administrador debe poder Restringir cuentas de usuarios por tiempo definido o indefinido
+30- El administrador debe poder eliminar publicaciones de viaje que inflijan políticas o sean reportadas
+31- El administrador debe poder revisar y responder reportes anónimos sobre conductores
+32- El administrador debe poder visualizar estadísticas del sistema como cantidad de viajes, usuarios activos y reportes abiertos
+33- El administrador debe poder editar o actualizar políticas y términos del servicio
+34- El administrador debe poder restaurar publicaciones o cuentas que hayan sido suspendidas por error
+35- El administrador debe poder gestionar los pagos retenidos por disputas entre pasajeros y conductores
+36- El sistema debe registrar todas las acciones administrativas
+
+Sistema
+37- El sistema debe enviar correos electrónicos de confirmación de reserva.
+38- El sistema debe enviar correos en caso de cancelación del viaje por parte del conductor.
+29- El sistema debe enviar recordatorios antes de la salida del viaje.
+30- El sistema debe gestionar la disponibilidad de asientos por vehículo.
+31- El sistema debe liberar asientos cuando un pasajero cancele su reserva.
+32- El sistema debe guardar los datos de los pasajeros asociados a un viaje.
+33- El sistema debe generar la planilla de viaje para el conductor.
+34- El sistema debe aplicar una comisión sobre el total del viaje.
+35- El sistema debe depositar el pago al conductor 6 horas después de finalizado el viaje.
+36- El sistema debe eliminar las publicaciones y sus plantillas una vez terminado el viaje.
+37- El sistema debe almacenar las calificaciones y críticas de pasajeros.
+38- El sistema debe mostrar al conductor su calificación promedio.
+
+Requerimientos No funcionales
+1- El sistema debe proteger los datos personales, bancarios y de pago con encriptación.
+2- El sistema debe estar disponible 24/7 salvo tiempos programados de mantenimiento.
+3- La interfaz debe ser intuitiva y accesible desde dispositivos móviles y web.
+4- El sistema debe poder soportar un incremento en el número de usuarios y publicaciones sin afectar el rendimiento.
+5- El sistema debe procesar operaciones críticas (reserva, pago, cancelación) en menos de 3 segundos.
+6- El sistema debe garantizar consistencia en la asignación y liberación de asientos.
+7- El sistema no se hace responsable de retrasos, llegada tarde de pasajeros ni devolución de dinero en estos casos.
+8- Los reportes anónimos deben garantizar que no se revele la identidad del denunciante.
+9- El sistema debe enviar correos electrónicos de manera confiable y en tiempo oportuno.
+10- La arquitectura debe permitir modificaciones futuras sin impacto en la operación principal.
+11- El sistema debe garantizar que solo los administradores autorizados puedan acceder al panel de control
+12- Debe existir un registro inalterable de las acciones de administrador
+13- Las restricciones a las cuentas deben aplicarse en tiempo real y propagarse en toda la plataforma
+14- El panel de administrador debe tener una interfaz separada y segura, accesible solo con autenticación de dos factores

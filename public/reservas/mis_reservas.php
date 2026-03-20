@@ -50,19 +50,46 @@ $reservas = $stmt->fetchAll();
 </head>
 <body>
 
-<h2>Mis reservas</h2>
-<a href="<?= BASE_URL ?>index.php">← Volver</a>
-<hr>
+<div class="nav-menu">
+    <h2>Mis reservas</h2>
+    <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al Dashboard</a>
+</div>
+
+<?php if (isset($_SESSION['mensaje_exito'])): ?>
+    <div style="padding: 15px; margin-bottom: 20px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid var(--success); color: var(--success-hover);">
+        <?= htmlspecialchars($_SESSION['mensaje_exito']) ?>
+    </div>
+    <?php unset($_SESSION['mensaje_exito']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['mensaje_cancelacion'])): ?>
+    <div style="padding: 15px; margin-bottom: 20px; border-radius: 6px; background-color: #f8fafc; border: 1px solid #94a3b8; color: #475569;">
+        <?= htmlspecialchars($_SESSION['mensaje_cancelacion']) ?>
+    </div>
+    <?php unset($_SESSION['mensaje_cancelacion']); ?>
+<?php endif; ?>
 
 <?php if (count($reservas) > 0): ?>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
     <?php foreach ($reservas as $r): ?>
-        <div style="margin-bottom:20px;border:1px solid #ccc;padding:10px;">
-            <strong><?= htmlspecialchars($r['origen_nombre']) ?> → <?= htmlspecialchars($r['destino_nombre']) ?></strong><br>
-            Fecha del viaje: <?= $r['fecha'] ?><br>
-            Precio: $<?= number_format($r['precio'], 2) ?><br>
-            Conductor: <?= htmlspecialchars($r['conductor_nombre']) ?><br>
-            Reservado el: <?= $r['fecha_reserva'] ?><br>
-            Estado: <?= $r['estado'] ?><br><br>
+        <div class="card" style="margin-bottom: 0;">
+            <h3 style="margin-top: 0; color: var(--primary);">
+                <?= htmlspecialchars($r['origen_nombre']) ?> → <?= htmlspecialchars($r['destino_nombre']) ?>
+            </h3>
+            
+            <p><strong>Fecha del viaje:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha'])) ?></p>
+            <p><strong>Precio:</strong> $<?= number_format($r['precio'], 2) ?></p>
+            <p><strong>Conductor:</strong> <?= htmlspecialchars($r['conductor_nombre']) ?></p>
+            <p><strong>Fecha Reserva:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha_reserva'])) ?></p>
+            
+            <p>
+                <strong>Estado:</strong> 
+                <?php if ($r['estado'] === 'activa'): ?>
+                    <span style="color: var(--success); font-weight: bold;">Activa</span>
+                <?php else: ?>
+                    <span style="color: #ef4444; font-weight: bold;">Cancelada</span>
+                <?php endif; ?>
+            </p>
 
             <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
                 <form method="POST" action="cancelar_reserva.php">
@@ -70,10 +97,15 @@ $reservas = $stmt->fetchAll();
                     <button type="submit">Cancelar reserva</button>
                 </form>
             <?php endif; ?>
+            </div>
         </div>
     <?php endforeach; ?>
+    </div>
 <?php else: ?>
-    <p>No tenés reservas registradas.</p>
+    <div class="card" style="text-align: center; color: #64748b; padding: 40px;">
+        <p style="font-size: 1.2em;">No tenés reservas registradas actualmente.</p>
+        <a href="<?= BASE_URL ?>index.php" class="btn" style="margin-top: 15px; display: inline-block;">Buscar Viajes</a>
+    </div>
 <?php endif; ?>
 
 </body>

@@ -14,7 +14,7 @@ if (!isset($_GET['id'])) {
 
 $viaje_id = (int) $_GET['id'];
 
-/* Verificar viaje */
+/* Verificar viaje y cupo */
 $sql = "
     SELECT p.ID_publicacion, c.ID_usuario
     FROM Publicaciones p
@@ -26,6 +26,14 @@ $sql = "
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':viaje_id' => $viaje_id]);
 $viaje = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$viaje) {
+    die("El viaje no existe.");
+}
+
+if ($viaje['ocupados'] >= $viaje['asientos']) {
+    die("No hay asientos disponibles en este viaje.");
+}
 
 if (!$viaje) {
     die("El viaje no existe.");

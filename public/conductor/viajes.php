@@ -41,6 +41,10 @@ $viajes = $stmt->fetchAll();
         <a href="<?= BASE_URL ?>conductor/eliminar_viaje.php?id=<?= $v['ID_publicacion'] ?>">
             Eliminar viaje
         </a>
+        &nbsp;|&nbsp;
+        <a href="<?= BASE_URL ?>crear_viaje.php?origen=<?= $v['origen_id'] ?>&destino=<?= $v['destino_id'] ?>&precio=<?= $v['precio'] ?>&observaciones=<?= urlencode($v['observaciones'] ?? '') ?>">
+            📋 Reutilizar como Plantilla
+        </a>
     </div>
     <hr>
 <?php endforeach; ?>

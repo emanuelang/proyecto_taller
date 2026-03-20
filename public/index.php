@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
 /* ============================
-   TRAER CIUDADES
+   TRAER CIUDADES...
 ============================ */
 $stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones ORDER BY nombre");
 $ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
@@ -79,28 +79,24 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <h1>Carpooling</h1>
 
+<div class="nav-menu">
 <?php if (!isset($_SESSION['user_id'])): ?>
-
-    <a href="<?= BASE_URL ?>login.php">Iniciar sesión</a> |
+    <a href="<?= BASE_URL ?>login.php" class="btn">Iniciar sesión</a>
     <a href="<?= BASE_URL ?>registro_usuario.php">Registrarse</a>
-
 <?php else: ?>
+    <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong></span>
+    <a href="<?= BASE_URL ?>index.php">Ver viajes</a>
+    <a href="<?= BASE_URL ?>reservas/mis_reservas.php">Mis reservas</a>
 
-    <p>
-        Hola <?= htmlspecialchars($_SESSION['nombre']) ?> |
-        <a href="<?= BASE_URL ?>index.php">Ver viajes</a> |
-        <a href="<?= BASE_URL ?>reservas/mis_reservas.php">Mis reservas</a> |
+    <?php if (!$_SESSION['is_conductor']): ?>
+        <a href="<?= BASE_URL ?>registro_conductor.php">Convertirme en conductor</a>
+    <?php else: ?>
+        <a href="<?= BASE_URL ?>conductor/dashboard.php">Panel conductor</a>
+    <?php endif; ?>
 
-        <?php if (!$_SESSION['is_conductor']): ?>
-            <a href="<?= BASE_URL ?>registro_conductor.php">Convertirme en conductor</a> |
-        <?php else: ?>
-            <a href="<?= BASE_URL ?>conductor/dashboard.php">Panel conductor</a> |
-        <?php endif; ?>
-
-        <a href="<?= BASE_URL ?>logout.php">Salir</a>
-    </p>
-
+    <a href="<?= BASE_URL ?>logout.php" style="color: #ef4444; margin-left: auto;">Salir</a>
 <?php endif; ?>
+</div>
 
 <hr>
 
@@ -153,35 +149,26 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <h2>Viajes disponibles</h2>
 
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
 <?php if (empty($viajes)): ?>
     <p>No hay viajes disponibles.</p>
 <?php endif; ?>
 
 <?php foreach ($viajes as $v): ?>
-    <div class="viaje">
-        <strong>
+    <div class="viaje card" style="margin-bottom: 0;">
+        <h3 style="margin-top: 0; color: var(--primary);">
             <?= htmlspecialchars($v['origen_nombre']) ?> →
             <?= htmlspecialchars($v['destino_nombre']) ?>
-        </strong><br>
+        </h3>
 
-        Fecha: <?= $v['fecha'] ?><br>
-        Precio: $<?= $v['precio'] ?><br>
-        Conductor: <?= htmlspecialchars($v['conductor_nombre']) ?><br><br>
+        <p><strong>Fecha:</strong> <?= date('d/m/Y H:i', strtotime($v['fecha'])) ?></p>
+        <p><strong>Precio:</strong> $<?= number_format($v['precio'], 2) ?></p>
+        <p><strong>Conductor:</strong> <?= htmlspecialchars($v['conductor_nombre']) ?></p>
 
-        <?php
-        if (
-            isset($_SESSION['user_id']) &&
-            (
-                !$_SESSION['is_conductor'] ||
-                $_SESSION['conductor_id'] != $v['conductor_id']
-            )
-        ):
-        ?>
-            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $v['id'] ?>">Reservar</a>
-        <?php endif; ?>
+        <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn" style="display: block; text-align: center; margin-top: 15px;">Ver Detalle</a>
     </div>
-    <hr>
 <?php endforeach; ?>
+</div>
 
 </body>
 </html>
