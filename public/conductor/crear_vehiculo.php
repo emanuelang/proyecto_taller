@@ -32,14 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: vehiculos.php');
     exit;
 }
-require_once __DIR__ . '/../../config/app.php';
 ?>
-<?php require_once __DIR__ . '/../header.php'; ?>
 
-<div class="nav-menu">
-    <h2>Registrar vehículo</h2>
-    <a href="vehiculos.php" style="margin-left: auto;">← Cancelar</a>
-</div>
+<h2>Registrar vehículo</h2>
 
 <form method="post">
     Marca: <input name="marca" required><br>

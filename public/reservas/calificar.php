@@ -72,8 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<?php require_once __DIR__ . '/../header.php'; ?>
-
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Calificar Conductor - Carpooling</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
     <style>
         .star-select {
             width: 100%;
@@ -84,7 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 20px;
         }
     </style>
-
+</head>
+<body>
     <div class="nav-menu">
         <h2>Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h2>
         <a href="<?= BASE_URL ?>reservas/mis_reservas.php" style="margin-left: auto;">← Cancelar y volver</a>

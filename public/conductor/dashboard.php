@@ -8,30 +8,26 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 
 /* Datos del conductor */
 $stmt = $pdo->prepare("
-    SELECT u.nombre, u.email, c.estado
-    FROM conductores c
-    JOIN usuarios u ON c.usuario_id = u.id
-    WHERE c.id = ?
+    SELECT u.Nombre as nombre, u.Correo as email, c.Estado as estado
+    FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE c.ID_conductor = ?
 ");
 $stmt->execute([$_SESSION['conductor_id']]);
 $conductor = $stmt->fetch();
 
 /* Vehículos */
 $stmt = $pdo->prepare("
-    SELECT *
-    FROM vehiculos
-    WHERE conductor_id = ?
+    SELECT v.*
+    FROM Vehiculos v
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+    WHERE cv.ID_conductor = ?
 ");
 $stmt->execute([$_SESSION['conductor_id']]);
-$vehiculos = $stmt->fetchAll();
-
-require_once __DIR__ . '/../../config/app.php';
+$vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<?php require_once __DIR__ . '/../header.php'; ?>
 
-<div class="nav-menu">
-    <h2>Panel del conductor</h2>
-</div>
+<h2>Panel del conductor</h2>
 
 <p><strong>Nombre:</strong> <?= htmlspecialchars($conductor['nombre']) ?></p>
 <p><strong>Email:</strong> <?= htmlspecialchars($conductor['email']) ?></p>
@@ -47,10 +43,9 @@ require_once __DIR__ . '/../../config/app.php';
     <ul>
         <?php foreach ($vehiculos as $v): ?>
             <li>
-                <?= htmlspecialchars($v['marca']) ?>
-                <?= htmlspecialchars($v['modelo']) ?> -
-                <?= htmlspecialchars($v['color']) ?> -
-                <?= htmlspecialchars($v['patente']) ?>
+                <?= htmlspecialchars($v['Marca']) ?>
+                <?= htmlspecialchars($v['Modelo']) ?> -
+                <?= htmlspecialchars($v['Color']) ?>
             </li>
         <?php endforeach; ?>
     </ul>

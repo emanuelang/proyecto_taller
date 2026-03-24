@@ -53,8 +53,14 @@ if (!$viaje) {
     die("El viaje pendiente no existe.");
 }
 ?>
-<?php require_once __DIR__ . '/../header.php'; ?>
-
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pago - Carpooling</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+</head>
+<body>
     <div class="nav-menu">
         <h2>Pago Seguro</h2>
         <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Cancelar y volver</a>

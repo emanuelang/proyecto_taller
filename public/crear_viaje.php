@@ -8,8 +8,19 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     exit;
 }
 
-// Obtenemos ciudades para los select
-$ciudades = $pdo->query("SELECT * FROM ciudades ORDER BY nombre")->fetchAll();
+$ciudades = [];
+$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones ORDER BY nombre");
+$ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
+
+// If no cities exist, we can pre-populate a few common ones for dropdowns
+if (empty($ciudades)) {
+    $ciudades = [
+        ['nombre' => 'Buenos Aires'],
+        ['nombre' => 'Córdoba'],
+        ['nombre' => 'Rosario'],
+        ['nombre' => 'La Plata']
+    ];
+}
 
 // NUEVO: Obtenemos los vehículos del conductor logueado
 $stmt_v = $pdo->prepare("SELECT id, marca, modelo, patente FROM vehiculos WHERE conductor_id = ?");
@@ -25,51 +36,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehículo seleccionado
     $observaciones = $_POST['observaciones'] ?? '';
 
-    // Simulación de distancia
-    $diff = abs($origen - $destino);
-    $distancia_km = ($diff == 0) ? 15 : ($diff * 50 + rand(5, 30));
+    // Get the first vehicle for this conductor to attach the trip to
+    $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ? LIMIT 1");
+    $stmt_vehiculo->execute([$_SESSION['conductor_id']]);
+    $vehiculo = $stmt_vehiculo->fetch();
     
-    $horas = floor($distancia_km / 80);
-    $mins = round((($distancia_km % 80) / 80) * 60);
-    $duracion_estimada = "{$horas}h {$mins}m";
+    if (!$vehiculo) {
+        die("Error: No tienes un vehículo asignado para publicar el viaje.");
+    }
+    
+    $vehiculo_id = $vehiculo['ID_vehiculo'];
 
-    // INSERT CORREGIDO: Ahora incluye vehiculo_id
     $stmt = $pdo->prepare("
-        INSERT INTO viajes 
-        (conductor_id, vehiculo_id, origen_id, destino_id, fecha, precio, estado, observaciones, distancia_km, duracion_estimada, creado_en)
-        VALUES (?, ?, ?, ?, ?, ?, 'activo', ?, ?, ?, NOW())
+        INSERT INTO Publicaciones 
+        (CiudadOrigen, CiudadDestino, HoraSalida, Precio, Estado, ID_vehiculo)
+        VALUES (?, ?, ?, ?, 'Activa', ?)
     ");
 
     $stmt->execute([
-        $_SESSION['conductor_id'],
-        $vehiculo_id, // Se inserta el ID del vehículo
         $origen,
         $destino,
         $fecha,
         $precio,
-        $observaciones,
-        $distancia_km,
-        $duracion_estimada
+        $vehiculo_id
     ]);
+
+    $publicacion_id = $pdo->lastInsertId();
+
+    $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
+    $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
 
     header("Location: " . BASE_URL . "conductor/viajes.php");
     exit;
 }
 ?>
-<?php require_once __DIR__ . '/header.php'; ?>
 
-<h2>Crear viaje</h2>
-<a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-bottom: 20px; display: inline-block;">← Volver al Panel</a>
+<?php
+$origen_def = $_GET['origen'] ?? '';
+$destino_def = $_GET['destino'] ?? '';
+$precio_def = $_GET['precio'] ?? '';
+$obs_def = $_GET['observaciones'] ?? '';
+?>
+
+<div class="nav-menu">
+    <h2>Crear viaje</h2>
+    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver</a>
+</div>
 
 <form method="POST">
-    <h3 style="margin-top:0; color:var(--primary);">Detalles de la Publicación</h3>
-    
-    <label>Selecciona tu vehículo:</label>
-    <select name="vehiculo_id" required>
-        <option value="">-- Mis Vehículos --</option>
-        <?php foreach ($vehiculos as $v): ?>
-            <option value="<?= $v['id'] ?>">
-                <?= htmlspecialchars($v['marca'] . " " . $v['modelo'] . " [" . $v['patente'] . "]") ?>
+
+    <select name="origen" required>
+        <option value="">Origen</option>
+        <?php foreach ($ciudades as $c): ?>
+            <option value="<?= htmlspecialchars($c['nombre']) ?>">
+                <?= htmlspecialchars($c['nombre']) ?>
             </option>
         <?php endforeach; ?>
     </select>
@@ -77,30 +97,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p style="color:red; font-size: 0.9em; margin-top: 0;">⚠️ No tienes vehículos registrados. <a href="registrar_vehiculo.php">Registra uno aquí</a>.</p>
     <?php endif; ?>
 
-    <div style="display: flex; gap: 15px; margin-top: 10px;">
-        <div style="flex: 1;">
-            <label>Origen:</label>
-            <select name="origen" required>
-                <option value="">Seleccionar Origen</option>
-                <?php foreach ($ciudades as $c): ?>
-                    <option value="<?= $c['id'] ?>" <?= ($origen_def == $c['id']) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c['nombre']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div style="flex: 1;">
-            <label>Destino:</label>
-            <select name="destino" required>
-                <option value="">Seleccionar Destino</option>
-                <?php foreach ($ciudades as $c): ?>
-                    <option value="<?= $c['id'] ?>" <?= ($destino_def == $c['id']) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c['nombre']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    </div>
+    <select name="destino" required>
+        <option value="">Destino</option>
+        <?php foreach ($ciudades as $c): ?>
+            <option value="<?= htmlspecialchars($c['nombre']) ?>">
+                <?= htmlspecialchars($c['nombre']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select><br><br>
 
     <label>Fecha y Hora:</label>
     <input type="datetime-local" name="fecha" required>

@@ -12,16 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserva_id'])) {
     $reserva_id = (int) $_POST['reserva_id'];
     $usuario_id = $_SESSION['user_id'];
 
-    // Obtener info del viaje para calcular la diferencia de horas
-    $sql_viaje = "
-        SELECT v.fecha 
-        FROM reservas r
-        JOIN viajes v ON r.viaje_id = v.id
-        WHERE r.id = ? AND r.usuario_id = ?
-    ";
-    $stmt_v = $pdo->prepare($sql_viaje);
-    $stmt_v->execute([$reserva_id, $usuario_id]);
-    $viaje = $stmt_v->fetch(PDO::FETCH_ASSOC);
+    $sql = "UPDATE Reservas r
+            JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+            JOIN Pasajeros p ON pr.ID_pasajero = p.ID_pasajero
+            SET r.Estado = 'Cancelada'
+            WHERE r.ID_reserva = ? AND p.ID_usuario = ?";
 
     if ($viaje) {
         $fecha_viaje = strtotime($viaje['fecha']);

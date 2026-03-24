@@ -10,30 +10,45 @@ if (!isset($_SESSION['user_id'])) {
 
 $usuario_id = $_SESSION['user_id'];
 
+// Para las reservas del usuario, necesitamos encontrar el ID de Pasajero
+$stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
+$stmt_pasajero->execute([$usuario_id]);
+$pasajero = $stmt_pasajero->fetch();
+
+if (!$pasajero) {
+    die("Error: No estás registrado como pasajero.");
+}
+$pasajero_id = $pasajero['ID_pasajero'];
+
 $sql = "SELECT 
-            r.id AS reserva_id,
-            r.fecha_reserva,
-            r.estado,
-            v.fecha,
-            v.precio,
-            u.nombre AS conductor_nombre,
-            c1.nombre AS origen_nombre,
-            c2.nombre AS destino_nombre,
-            (SELECT COUNT(*) FROM calificaciones calif WHERE calif.reserva_id = r.id) AS calificada
-        FROM reservas r
-        JOIN viajes v ON r.viaje_id = v.id
-        JOIN conductores c ON v.conductor_id = c.id
-        JOIN usuarios u ON c.usuario_id = u.id
-        JOIN ciudades c1 ON v.origen_id = c1.id
-        JOIN ciudades c2 ON v.destino_id = c2.id
-        WHERE r.usuario_id = ?
-        ORDER BY v.fecha ASC";
+            r.ID_reserva AS reserva_id,
+            r.FechaReserva AS fecha_reserva,
+            r.Estado AS estado,
+            p.HoraSalida AS fecha,
+            p.Precio AS precio,
+            u.Nombre AS conductor_nombre,
+            p.CiudadOrigen AS origen_nombre,
+            p.CiudadDestino AS destino_nombre
+        FROM Reservas r
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+        JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+        JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+        JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+        WHERE pr.ID_pasajero = ?
+        ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute([$usuario_id]);
+$stmt->execute([$pasajero_id]);
 $reservas = $stmt->fetchAll();
 ?>
-<?php require_once __DIR__ . '/../header.php'; ?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mis Reservas</title>
+</head>
+<body>
 
 <div class="nav-menu">
     <h2>Mis reservas</h2>
@@ -76,22 +91,11 @@ $reservas = $stmt->fetchAll();
                 <?php endif; ?>
             </p>
 
-            <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-            <?php if ($r['estado'] === 'activa'): ?>
-                <?php if (strtotime($r['fecha']) > time()): ?>
-                    <form method="POST" action="cancelar_reserva.php" style="padding:0; box-shadow:none; border:none; margin:0;" onsubmit="return confirm('¿Seguro quieres cancelar esta reserva?');">
-                        <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
-                        <button type="submit" style="background-color: #f1f5f9; color: #ef4444; border: 1px solid #ef4444; width: 100%;">Cancelar Reserva</button>
-                    </form>
-                <?php else: ?>
-                    <?php if ($r['calificada'] == 0): ?>
-                        <a href="calificar.php?reserva_id=<?= $r['reserva_id'] ?>" class="btn" style="display:block; text-align:center;">⭐ Calificar al conductor</a>
-                    <?php else: ?>
-                        <p style="color:var(--success); margin:0; text-align:center; font-weight:500;"><em>✔ Ya calificaste este viaje.</em></p>
-                    <?php endif; ?>
-                <?php endif; ?>
-            <?php else: ?>
-                <p style="color:#64748b; margin:0; text-align:center; font-size: 0.9em;">Este viaje ya no está activo</p>
+            <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
+                <form method="POST" action="cancelar_reserva.php">
+                    <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
+                    <button type="submit">Cancelar reserva</button>
+                </form>
             <?php endif; ?>
             </div>
         </div>

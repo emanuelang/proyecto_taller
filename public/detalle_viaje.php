@@ -34,16 +34,23 @@ if (!$viaje) {
 }
 $asientos_disponibles = $viaje['asientos'] - $viaje['ocupados'];
 ?>
-<?php require_once __DIR__ . '/header.php'; ?>
-
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Detalle del Viaje - Carpooling</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
     <style>
         .detail-box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
         .flex-container { display: flex; gap: 20px; flex-wrap: wrap; }
         .col { flex: 1; min-width: 300px; }
     </style>
-
-    <h2>Detalle del Viaje</h2>
-    <a href="<?= BASE_URL ?>index.php" style="margin-bottom: 20px; display: inline-block;">← Volver al inicio</a>
+</head>
+<body>
+<div class="nav-menu">
+        <h2>Detalle del Viaje</h2>
+        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al inicio</a>
+    </div>
 
     <div class="flex-container">
         <div class="col detail-box">
