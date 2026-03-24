@@ -15,19 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $asientos = (int)$_POST['asientos'];
 
     $stmt = $pdo->prepare("
-        INSERT INTO vehiculos
-        (conductor_id, marca, modelo, color, patente, asientos)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO Vehiculos
+        (Marca, Modelo, Color, Patente, CantidadAsientos)
+        VALUES (?, ?, ?, ?, ?)
     ");
 
     $stmt->execute([
-        $_SESSION['conductor_id'],
         $marca,
         $modelo,
         $color,
         $patente,
         $asientos
     ]);
+    
+    $vehiculo_id = $pdo->lastInsertId();
+    
+    $stmt_rel = $pdo->prepare("INSERT INTO ConductorVehiculo (ID_conductor, ID_vehiculo) VALUES (?, ?)");
+    $stmt_rel->execute([$_SESSION['conductor_id'], $vehiculo_id]);
 
     header('Location: vehiculos.php');
     exit;
