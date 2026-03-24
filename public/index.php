@@ -103,6 +103,10 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <a href="<?= BASE_URL ?>conductor/dashboard.php">Panel conductor</a>
     <?php endif; ?>
 
+    <?php if ($es_admin): ?>
+        <a href="<?= BASE_URL ?>admin/dashboard.php" style="color: #10b981; font-weight: bold;">Panel Admin</a>
+    <?php endif; ?>
+
     <a href="<?= BASE_URL ?>logout.php" style="color: #ef4444; margin-left: auto;">Salir</a>
 <?php endif; ?>
 </div>
