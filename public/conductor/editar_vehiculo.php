@@ -9,11 +9,13 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 $id = (int)$_GET['id'];
 
 $stmt = $pdo->prepare("
-    SELECT * FROM vehiculos
-    WHERE id = ? AND conductor_id = ?
+    SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Patente AS patente
+    FROM Vehiculos v
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+    WHERE v.ID_vehiculo = ? AND cv.ID_conductor = ?
 ");
 $stmt->execute([$id, $_SESSION['conductor_id']]);
-$vehiculo = $stmt->fetch();
+$vehiculo = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$vehiculo) {
     die('Vehículo no encontrado');
@@ -22,9 +24,9 @@ if (!$vehiculo) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("
-        UPDATE vehiculos
-        SET marca = ?, modelo = ?, color = ?, patente = ?, asientos = ?
-        WHERE id = ? AND conductor_id = ?
+        UPDATE Vehiculos
+        SET Marca = ?, Modelo = ?, Color = ?, Patente = ?, CantidadAsientos = ?
+        WHERE ID_vehiculo = ?
     ");
 
     $stmt->execute([
@@ -33,8 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['color'],
         $_POST['patente'],
         $_POST['asientos'],
-        $id,
-        $_SESSION['conductor_id']
+        $id
     ]);
 
     header('Location: vehiculos.php');

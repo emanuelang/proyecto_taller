@@ -9,20 +9,20 @@ if (!isset($_GET['id'])) {
 $viaje_id = (int) $_GET['id'];
 
 $sql = "
-    SELECT v.*, 
-           u.nombre AS conductor_nombre, u.foto_perfil,
-           c1.nombre AS origen_nombre,
-           c2.nombre AS destino_nombre,
-           veh.marca, veh.modelo, veh.color, veh.patente, veh.foto AS vehiculo_foto, veh.asientos,
-           (SELECT COUNT(*) FROM reservas r WHERE r.viaje_id = v.id AND r.estado = 'activa') as ocupados,
-           (SELECT AVG(puntaje) FROM calificaciones calif WHERE calif.conductor_id = v.conductor_id) as promedio_calif
-    FROM viajes v
-    JOIN conductores c ON v.conductor_id = c.id
-    JOIN usuarios u ON c.usuario_id = u.id
-    JOIN vehiculos veh ON v.vehiculo_id = veh.id
-    JOIN ciudades c1 ON v.origen_id = c1.id
-    JOIN ciudades c2 ON v.destino_id = c2.id
-    WHERE v.id = :viaje_id
+    SELECT p.ID_publicacion AS id, p.CiudadOrigen AS origen_nombre, p.CiudadDestino AS destino_nombre, p.HoraSalida AS fecha, p.Precio AS precio, 
+           p.Estado AS estado,
+           u.Nombre AS conductor_nombre, NULL AS foto_perfil,
+           veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.Foto AS vehiculo_foto, veh.CantidadAsientos AS asientos,
+           (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'activa') as ocupados,
+           (SELECT AVG(Puntuacion) FROM Calificaciones calif WHERE calif.ID_conductor = c.ID_conductor) as promedio_calif,
+           c.ID_conductor AS conductor_id,
+           NULL AS observaciones
+    FROM Publicaciones p
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    JOIN Vehiculos veh ON p.ID_vehiculo = veh.ID_vehiculo
+    WHERE p.ID_publicacion = :viaje_id
 ";
 
 $stmt = $pdo->prepare($sql);

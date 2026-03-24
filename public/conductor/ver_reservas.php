@@ -9,10 +9,12 @@ if (!isset($_SESSION['is_conductor'])) {
 $viaje_id = (int)$_GET['id'];
 
 $stmt = $pdo->prepare("
-    SELECT r.id AS reserva_id, u.nombre, u.email
-    FROM reservas r
-    JOIN usuarios u ON r.usuario_id = u.id
-    WHERE r.viaje_id = ?
+    SELECT r.ID_reserva AS reserva_id, u.Nombre AS nombre, u.Correo AS email
+    FROM Reservas r
+    JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+    JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+    WHERE r.ID_publicacion = ?
 ");
 $stmt->execute([$viaje_id]);
 $reservas = $stmt->fetchAll();
