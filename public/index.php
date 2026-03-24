@@ -84,7 +84,16 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <a href="<?= BASE_URL ?>login.php" class="btn">Iniciar sesión</a>
     <a href="<?= BASE_URL ?>registro_usuario.php">Registrarse</a>
 <?php else: ?>
-    <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong></span>
+    <?php
+    $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
+    $stmt_admin->execute([$_SESSION['user_id']]);
+    $es_admin = $stmt_admin->fetch() !== false;
+    ?>
+    <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong>
+        <?php if ($es_admin): ?>
+            <span style="color: #10b981; font-weight: bold; margin-left: 5px;">(Estás como admin)</span>
+        <?php endif; ?>
+    </span>
     <a href="<?= BASE_URL ?>index.php">Ver viajes</a>
     <a href="<?= BASE_URL ?>reservas/mis_reservas.php">Mis reservas</a>
 
