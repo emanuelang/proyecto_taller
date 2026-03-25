@@ -23,7 +23,7 @@ if (empty($ciudades)) {
 }
 
 // NUEVO: Obtenemos los vehículos del conductor logueado
-$stmt_v = $pdo->prepare("SELECT id, marca, modelo, patente FROM vehiculos WHERE conductor_id = ?");
+$stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ?");
 $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
 

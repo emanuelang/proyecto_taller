@@ -7,11 +7,13 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT * FROM vehiculos
-    WHERE conductor_id = ?
+    SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Patente AS patente
+    FROM Vehiculos v
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+    WHERE cv.ID_conductor = ?
 ");
 $stmt->execute([$_SESSION['conductor_id']]);
-$vehiculos = $stmt->fetchAll();
+$vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <h2>Mis vehículos</h2>
