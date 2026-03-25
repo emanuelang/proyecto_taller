@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -43,37 +44,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<h2>Editar vehículo</h2>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Vehículo</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+</head>
+<body>
 
-<form method="post">
-    Marca:
-    <input name="marca"
-           value="<?= htmlspecialchars($vehiculo['marca']) ?>"
-           required><br>
+<div class="nav-menu">
+    <h2>Editar vehículo</h2>
+    <a href="vehiculos.php" style="margin-left: auto;">← Volver</a>
+</div>
 
-    Modelo:
-    <input name="modelo"
-           value="<?= htmlspecialchars($vehiculo['modelo']) ?>"
-           required><br>
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+    <form method="post">
+        <label>Marca:</label>
+        <input name="marca"
+               value="<?= htmlspecialchars($vehiculo['marca']) ?>"
+               required><br>
 
-    Color:
-    <input name="color"
-           value="<?= htmlspecialchars($vehiculo['color']) ?>"
-           required><br>
+        <label>Modelo:</label>
+        <input name="modelo"
+               value="<?= htmlspecialchars($vehiculo['modelo']) ?>"
+               required><br>
 
-    Patente:
-    <input name="patente"
-           value="<?= htmlspecialchars($vehiculo['patente']) ?>"
-           required><br>
+        <label>Color:</label>
+        <input name="color"
+               value="<?= htmlspecialchars($vehiculo['color']) ?>"
+               required><br>
 
-    Asientos:
-    <input type="number"
-           name="asientos"
-           min="1"
-           value="<?= $vehiculo['asientos'] ?>"
-           required><br><br>
+        <label>Patente:</label>
+        <input name="patente"
+               value="<?= htmlspecialchars($vehiculo['patente']) ?>"
+               required><br>
 
-    <button>Guardar cambios</button>
-</form>
+        <label>Asientos:</label>
+        <input type="number"
+               name="asientos"
+               min="1"
+               value="<?= $vehiculo['asientos'] ?>"
+               required><br><br>
 
-<a href="vehiculos.php">Cancelar</a>
+        <button type="submit" class="btn" style="width: 100%; margin-top: 15px; background-color: var(--success);">Guardar cambios</button>
+    </form>
+</div>
+
+</body>
+</html>

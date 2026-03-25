@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -27,35 +28,54 @@ $stmt->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<h2>Panel del conductor</h2>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Panel Conductor</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+</head>
+<body>
 
-<p><strong>Nombre:</strong> <?= htmlspecialchars($conductor['nombre']) ?></p>
-<p><strong>Email:</strong> <?= htmlspecialchars($conductor['email']) ?></p>
-<p><strong>Estado:</strong> <?= htmlspecialchars($conductor['estado']) ?></p>
+<div class="nav-menu">
+    <h2>Panel del conductor</h2>
+    <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">Volver al inicio</a>
+    <a href="<?= BASE_URL ?>logout.php" style="color: #ef4444; margin-left: 15px;">Salir</a>
+</div>
 
-<hr>
+<div class="card">
+    <h3 style="margin-top: 0; color: var(--primary);">Mi Perfil</h3>
+    <p><strong>Nombre:</strong> <?= htmlspecialchars($conductor['nombre']) ?></p>
+    <p><strong>Email:</strong> <?= htmlspecialchars($conductor['email']) ?></p>
+    <p><strong>Estado:</strong> <?= htmlspecialchars($conductor['estado']) ?></p>
+</div>
 
-<h3>Vehículos registrados</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-top: 0; color: var(--primary);">Vehículos registrados</h3>
+        <?php if (empty($vehiculos)): ?>
+            <p>No tenés vehículos registrados.</p>
+        <?php else: ?>
+            <ul>
+                <?php foreach ($vehiculos as $v): ?>
+                    <li>
+                        <?= htmlspecialchars($v['Marca']) ?>
+                        <?= htmlspecialchars($v['Modelo']) ?> -
+                        <?= htmlspecialchars($v['Color']) ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+        <a href="vehiculos.php" class="btn" style="display: block; text-align: center; margin-top: 15px;">Administrar vehículos</a>
+    </div>
 
-<?php if (empty($vehiculos)): ?>
-    <p>No tenés vehículos registrados.</p>
-<?php else: ?>
-    <ul>
-        <?php foreach ($vehiculos as $v): ?>
-            <li>
-                <?= htmlspecialchars($v['Marca']) ?>
-                <?= htmlspecialchars($v['Modelo']) ?> -
-                <?= htmlspecialchars($v['Color']) ?>
-            </li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
+    <div class="card" style="margin-bottom: 0;">
+        <h3 style="margin-top: 0; color: var(--primary);">Mis viajes</h3>
+        <p>Administrá los viajes que publicaste.</p>
+        <a href="viajes.php" class="btn" style="display: block; text-align: center; margin-bottom: 10px;">Ver mis viajes</a>
+        <a href="<?= BASE_URL ?>crear_viaje.php" class="btn" style="display: block; text-align: center; background-color: var(--success);">Crear nuevo viaje</a>
+    </div>
+</div>
 
-<br>
-<a href="vehiculos.php">Administrar vehículos</a>
-
-<hr>
-
-<a href="viajes.php">Mis viajes</a><br><br>
-<a href="../crear_viaje.php">Crear nuevo viaje</a><br><br>
-<a href="../index.php">Volver al inicio</a>
+</body>
+</html>
