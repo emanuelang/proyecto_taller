@@ -78,42 +78,61 @@ $precio_def = $_GET['precio'] ?? '';
 $obs_def = $_GET['observaciones'] ?? '';
 ?>
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Crear Viaje</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+</head>
+<body>
+
 <div class="nav-menu">
     <h2>Crear viaje</h2>
-    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver</a>
+    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver al Dashboard</a>
 </div>
 
-<form method="POST">
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <form method="POST">
 
-    <select name="origen" required>
-        <option value="">Origen</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= htmlspecialchars($c['nombre']) ?>">
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-    <?php if (empty($vehiculos)): ?>
-        <p style="color:red; font-size: 0.9em; margin-top: 0;">⚠️ No tienes vehículos registrados. <a href="registrar_vehiculo.php">Registra uno aquí</a>.</p>
-    <?php endif; ?>
+        <label>Origen:</label>
+        <select name="origen" required>
+            <option value="">Origen</option>
+            <?php foreach ($ciudades as $c): ?>
+                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen_def === $c['nombre']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['nombre']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
 
-    <select name="destino" required>
-        <option value="">Destino</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= htmlspecialchars($c['nombre']) ?>">
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select><br><br>
+        <?php if (empty($vehiculos)): ?>
+            <div style="padding: 10px; margin-bottom: 15px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px;">
+                ⚠️ No tienes vehículos registrados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a>.
+            </div>
+        <?php endif; ?>
 
-    <label>Fecha y Hora:</label>
-    <input type="datetime-local" name="fecha" required>
+        <label>Destino:</label>
+        <select name="destino" required>
+            <option value="">Destino</option>
+            <?php foreach ($ciudades as $c): ?>
+                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino_def === $c['nombre']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['nombre']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select><br><br>
 
-    <label>Precio por persona ($):</label>
-    <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required>
+        <label>Fecha y Hora:</label>
+        <input type="datetime-local" name="fecha" required>
 
-    <label>Observaciones:</label>
-    <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4"><?= htmlspecialchars($obs_def) ?></textarea>
+        <label>Precio por persona ($):</label>
+        <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required>
 
-    <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> style="width: 100%; margin-top: 15px; background-color: var(--success);">Publicar viaje</button>
-</form>
+        <label>Observaciones:</label>
+        <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4"><?= htmlspecialchars($obs_def) ?></textarea>
+
+        <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> class="btn" style="width: 100%; margin-top: 15px; background-color: var(--success);">Publicar viaje</button>
+    </form>
+</div>
+
+</body>
+</html>

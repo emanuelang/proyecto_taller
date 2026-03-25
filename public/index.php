@@ -127,7 +127,7 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <h2>Buscar viajes</h2>
 
-<form method="GET" style="margin-bottom:20px;">
+<form method="GET" style="margin-bottom:20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
 
     <select name="origen">
         <option value="">Salida</option>
