@@ -125,38 +125,46 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php endif; ?>
 <?php endif; ?>
 
-<h2>Buscar viajes</h2>
+<h2 style="text-align: center; margin-top: 20px; margin-bottom: 15px;">Buscar viajes</h2>
 
-<form method="GET" style="margin-bottom:20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+<div style="display: flex; justify-content: center; margin-bottom: 40px; padding: 0 10px;">
+    <form method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 8px 12px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 850px; border: 1px solid #e2e8f0; justify-content: center;">
 
-    <select name="origen">
-        <option value="">Salida</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen == $c['nombre']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
+        <select name="origen" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
+            <option value="">Salida</option>
+            <?php foreach ($ciudades as $c): ?>
+                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen == $c['nombre']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['nombre']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
 
-    <select name="destino">
-        <option value="">Llegada</option>
-        <?php foreach ($ciudades as $c): ?>
-            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino == $c['nombre']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($c['nombre']) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
+        <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
-    <select name="orden">
-        <option value="">Ordenar</option>
-        <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
-        <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
-        <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
-        <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
-    </select>
+        <select name="destino" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
+            <option value="">Llegada</option>
+            <?php foreach ($ciudades as $c): ?>
+                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino == $c['nombre']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['nombre']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
 
-    <button>Buscar</button>
-</form>
+        <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
+
+        <select name="orden" style="flex: 1; min-width: 160px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
+            <option value="">Ordenar</option>
+            <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
+            <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
+            <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
+            <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
+        </select>
+
+        <button type="submit" class="btn" style="border-radius: 30px; padding: 10px 25px; margin: 0; white-space: nowrap; font-size: 1rem;">
+            Buscar
+        </button>
+    </form>
+</div>
 
 <hr>
 
