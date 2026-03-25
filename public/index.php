@@ -6,8 +6,26 @@ require_once __DIR__ . '/../config/app.php';
 /* ============================
    TRAER CIUDADES...
 ============================ */
-$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones ORDER BY nombre");
-$ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
+$ciudades_predefinidas = [
+    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 
+    'Gualeguay', 'Colón', 'Federación', 'La Paz', 'Villaguay', 
+    'Victoria', 'Chajarí', 'Crespo', 'Diamante', 'Federal', 
+    'Nogoyá', 'Rosario del Tala', 'San Salvador', 'San José de Feliciano', 
+    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'Córdoba', 'Rosario', 'La Plata'
+];
+
+$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones");
+$ciudades_db = $stmt_ciudades->fetchAll(PDO::FETCH_COLUMN);
+
+$todas_las_ciudades = array_unique(array_merge($ciudades_predefinidas, $ciudades_db));
+sort($todas_las_ciudades);
+
+$ciudades = [];
+foreach ($todas_las_ciudades as $c) {
+    if (trim($c) !== '') {
+        $ciudades[] = ['nombre' => trim($c)];
+    }
+}
 
 /* ============================
    CAPTURAR FILTROS ...
