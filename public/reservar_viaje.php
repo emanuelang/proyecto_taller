@@ -24,6 +24,7 @@ $sql = "
         SELECT COUNT(*) 
         FROM Reservas r
         WHERE r.ID_publicacion = p.ID_publicacion
+        AND r.Estado != 'Cancelada'
     ) AS ocupados
 FROM Publicaciones p
 JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
@@ -73,6 +74,7 @@ $sql = "
     JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
     WHERE r.ID_publicacion = :viaje_id
     AND pr.ID_pasajero = :pasajero_id
+    AND r.Estado != 'Cancelada'
 ";
 
 $stmt = $pdo->prepare($sql);

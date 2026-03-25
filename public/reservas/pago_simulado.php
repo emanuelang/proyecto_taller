@@ -30,16 +30,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             $pdo->beginTransaction();
-            /* Insertar Reserva */
-            $sql = "INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva) VALUES (:viaje_id, 'Pendiente', NOW())";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([':viaje_id' => $viaje_id]);
-            $reserva_id = $pdo->lastInsertId();
+            
+            // Buscar reserva existente (por ejemplo, una cancelada, debe ser la más reciente)
+            $stmt_check = $pdo->prepare("
+                SELECT r.ID_reserva 
+                FROM Reservas r 
+                JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva 
+                WHERE r.ID_publicacion = ? AND pr.ID_pasajero = ? 
+                ORDER BY r.ID_reserva DESC
+                LIMIT 1
+            ");
+            $stmt_check->execute([$viaje_id, $pasajero_id]);
+            $existing_reserva = $stmt_check->fetchColumn();
 
-            /* Conectar Pasajero-Reserva */
-            $sql2 = "INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)";
-            $stmt2 = $pdo->prepare($sql2);
-            $stmt2->execute([$pasajero_id, $reserva_id]);
+            if ($existing_reserva) {
+                // Actualizar reserva existente
+                $sql = "UPDATE Reservas SET Estado = 'Aceptada', FechaReserva = NOW() WHERE ID_reserva = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$existing_reserva]);
+            } else {
+                /* Insertar Reserva nueva */
+                $sql = "INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva) VALUES (:viaje_id, 'Aceptada', NOW())";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':viaje_id' => $viaje_id]);
+                $reserva_id = $pdo->lastInsertId();
+
+                /* Conectar Pasajero-Reserva */
+                $sql2 = "INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)";
+                $stmt2 = $pdo->prepare($sql2);
+                $stmt2->execute([$pasajero_id, $reserva_id]);
+            }
+            
             $pdo->commit();
             
             // Vaciar pendiente y definir un éxito para mostrar

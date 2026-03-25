@@ -36,6 +36,12 @@ $sql = "SELECT
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
         JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
         WHERE pr.ID_pasajero = ?
+        AND r.ID_reserva = (
+            SELECT MAX(r2.ID_reserva)
+            FROM Reservas r2
+            JOIN PasajerosReservas pr2 ON r2.ID_reserva = pr2.ID_reserva
+            WHERE pr2.ID_pasajero = pr.ID_pasajero AND r2.ID_publicacion = r.ID_publicacion
+        )
         ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
@@ -96,7 +102,7 @@ $reservas = $stmt->fetchAll();
             </p>
 
             <?php if ($r['estado'] !== 'Cancelada'): ?>
-                <form method="POST" action="cancelar_reserva.php">
+                <form method="POST" action="cancelar_reserva.php" onsubmit="return confirm('¿Estás seguro de que deseas cancelar la reserva?');">
                     <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
                     <button type="submit">Cancelar reserva</button>
                 </form>
