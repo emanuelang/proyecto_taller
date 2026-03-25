@@ -16,11 +16,20 @@ $viaje_id = (int) $_GET['id'];
 
 /* Verificar viaje y cupo */
 $sql = "
-    SELECT p.ID_publicacion, c.ID_usuario
-    FROM Publicaciones p
-    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
-    JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
-    WHERE p.ID_publicacion = :viaje_id
+    SELECT 
+    p.ID_publicacion,
+    c.ID_usuario,
+    v.CantidadAsientos AS asientos,
+    (
+        SELECT COUNT(*) 
+        FROM Reservas r
+        WHERE r.ID_publicacion = p.ID_publicacion
+    ) AS ocupados
+FROM Publicaciones p
+JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
+WHERE p.ID_publicacion = :viaje_id
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -76,33 +85,6 @@ if ($stmt->fetchColumn() > 0) {
     die("Ya reservaste este viaje.");
 }
 
-try {
-    $pdo->beginTransaction();
-    
-    /* Insertar Reserva */
-    $sql = "
-        INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva)
-        VALUES (:viaje_id, 'Pendiente', NOW())
-    ";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        ':viaje_id' => $viaje_id
-    ]);
-    
-    $reserva_id = $pdo->lastInsertId();
-    
-    /* Conectar Pasajero-Reserva */
-    $sql2 = "INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)";
-    $stmt2 = $pdo->prepare($sql2);
-    $stmt2->execute([$pasajero_id, $reserva_id]);
-    
-    $pdo->commit();
-
-} catch (Exception $e) {
-    $pdo->rollBack();
-    die("Error al reservar el viaje: " . $e->getMessage());
-}
-
-header("Location: " . BASE_URL . "reservas/mis_reservas.php");
+$_SESSION['reserva_pendiente'] = $viaje_id;
+header("Location: " . BASE_URL . "reservas/pago_simulado.php");
 exit;

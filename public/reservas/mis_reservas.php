@@ -86,14 +86,16 @@ $reservas = $stmt->fetchAll();
             
             <p>
                 <strong>Estado:</strong> 
-                <?php if ($r['estado'] === 'activa'): ?>
-                    <span style="color: var(--success); font-weight: bold;">Activa</span>
+                <?php if ($r['estado'] === 'Pendiente'): ?>
+                    <span style="color: #eab308; font-weight: bold;">Pendiente</span>
+                <?php elseif ($r['estado'] === 'Aceptada'): ?>
+                    <span style="color: var(--success); font-weight: bold;">Aceptada</span>
                 <?php else: ?>
                     <span style="color: #ef4444; font-weight: bold;">Cancelada</span>
                 <?php endif; ?>
             </p>
 
-            <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
+            <?php if ($r['estado'] !== 'Cancelada'): ?>
                 <form method="POST" action="cancelar_reserva.php">
                     <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
                     <button type="submit">Cancelar reserva</button>
