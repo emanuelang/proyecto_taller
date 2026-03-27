@@ -14,23 +14,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
-        $_SESSION['user_id'] = $user['ID_usuario'];
-        $_SESSION['nombre'] = $user['Nombre'];
-
-        $stmt2 = $pdo->prepare("SELECT ID_conductor FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");
-        $stmt2->execute([$user['ID_usuario']]);
-        $cond = $stmt2->fetch();
-
-        if ($cond) {
-            $_SESSION['is_conductor'] = true;
-            $_SESSION['conductor_id'] = $cond['ID_conductor'];
+        
+        // Check User global ban
+        if ($user['BaneadoHasta'] && strtotime($user['BaneadoHasta']) > time()) {
+            $error = 'Tu cuenta está suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
         } else {
-            $_SESSION['is_conductor'] = false;
-            unset($_SESSION['conductor_id']);
-        }
+            $_SESSION['user_id'] = $user['ID_usuario'];
+            $_SESSION['nombre'] = $user['Nombre'];
 
-        header('Location: ' . BASE_URL . 'index.php');
-        exit;
+            $stmt2 = $pdo->prepare("SELECT ID_conductor, BaneadoHasta FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");
+            $stmt2->execute([$user['ID_usuario']]);
+            $cond = $stmt2->fetch();
+
+            if ($cond) {
+                if ($cond['BaneadoHasta'] && strtotime($cond['BaneadoHasta']) > time()) {
+                    $_SESSION['is_conductor'] = false;
+                    unset($_SESSION['conductor_id']);
+                } else {
+                    $_SESSION['is_conductor'] = true;
+                    $_SESSION['conductor_id'] = $cond['ID_conductor'];
+                }
+            } else {
+                $_SESSION['is_conductor'] = false;
+                unset($_SESSION['conductor_id']);
+            }
+
+            header('Location: ' . BASE_URL . 'index.php');
+            exit;
+        }
     } else {
         $error = 'Credenciales incorrectas';
     }

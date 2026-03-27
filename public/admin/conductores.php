@@ -38,6 +38,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
         }
         
         $msg = ($accion === 'rechazar') ? "Conductor rechazado (solicitud eliminada)." : "Conductor eliminado correctamente del sistema.";
+    } elseif ($accion === 'banear_conductor') {
+        $fecha_ban = $_POST['fecha_ban'] ?? '';
+        if (!empty($fecha_ban)) {
+            $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
+            $stmt_ban->execute([$fecha_ban, $conductor_id]);
+            
+            $stmt_cancel = $pdo->prepare("UPDATE Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion SET p.Estado = 'Cancelada' WHERE cp.ID_conductor = ? AND p.Estado = 'Activa'");
+            $stmt_cancel->execute([$conductor_id]);
+            
+            $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Sus viajes han sido cancelados.";
+        }
     }
 }
 
@@ -57,7 +68,7 @@ $pendientes = $stmt->fetchAll();
 
 // Obtener la lista de conductores aceptados
 $stmt2 = $pdo->query("
-    SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en,
+    SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en, c.BaneadoHasta,
            u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email,
            v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Foto AS vehiculo_doc
     FROM Conductores c
@@ -205,6 +216,10 @@ $aceptados = $stmt2->fetchAll();
                             <li><strong>Seguro:</strong> <?= htmlspecialchars($a['SeguroVehiculo']) ?></li>
                             <li><strong>Cta Bancaria:</strong> <?= htmlspecialchars($a['CuentaBancaria']) ?></li>
                             <li><strong>Registrado el:</strong> <?= htmlspecialchars($a['creado_en']) ?></li>
+                            
+                            <?php if ($a['BaneadoHasta'] && strtotime($a['BaneadoHasta']) > time()): ?>
+                                <li><strong style="color:red;">Baneado como Conductor hasta:</strong><br><span style="color:red;"><?= date('d/m/Y H:i', strtotime($a['BaneadoHasta'])) ?></span></li>
+                            <?php endif; ?>
                         </ul>
                     </td>
                     <td>
@@ -229,10 +244,18 @@ $aceptados = $stmt2->fetchAll();
                         <?php endif; ?>
                     </td>
                     <td style="vertical-align: middle; text-align: center;">
+                        <form method="post" style="margin-bottom: 5px; text-align: left; background: #f9f9f9; padding: 5px; border: 1px solid #ddd;">
+                            <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
+                            <input type="hidden" name="accion" value="banear_conductor">
+                            <label style="font-size: 0.8em; font-weight: bold;">Suspender conductor hasta:</label><br>
+                            <input type="datetime-local" name="fecha_ban" required style="width: 100%; box-sizing: border-box; margin-bottom: 5px; font-size: 0.85em;">
+                            <button type="submit" style="background-color: #f0ad4e; color: white; padding: 4px; border: none; cursor: pointer; border-radius: 3px; width: 100%; font-size: 0.85em;">Suspender</button>
+                        </form>
+
                         <form method="post">
                             <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
                             <input type="hidden" name="accion" value="eliminar">
-                            <button type="submit" class="btn-rechazar" onclick="return confirm('¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarán sus viajes y vehículos.');">Eliminar Definitivamente</button>
+                            <button type="submit" class="btn-rechazar" style="width: 100%; font-size: 0.85em;" onclick="return confirm('¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarán sus viajes y vehículos.');">Eliminar Permanente</button>
                         </form>
                     </td>
                 </tr>
