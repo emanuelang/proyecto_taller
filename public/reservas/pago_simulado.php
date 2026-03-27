@@ -15,63 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tarjeta = $_POST['tarjeta'] ?? '';
     
     if (strlen($tarjeta) >= 14) {
-        // Obtener o Crear ID Pasajero
-        $stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
-        $stmt_pasajero->execute([$_SESSION['user_id']]);
-        $pasajero = $stmt_pasajero->fetch();
+        // Insertar la reserva
+        $sql = "
+            INSERT INTO reservas (viaje_id, usuario_id, fecha_reserva, estado)
+            VALUES (:viaje_id, :usuario_id, NOW(), 'activa')
+        ";
 
-        if (!$pasajero) {
-            $stmt_insert = $pdo->prepare("INSERT INTO Pasajeros (ID_usuario) VALUES (?)");
-            $stmt_insert->execute([$_SESSION['user_id']]);
-            $pasajero_id = $pdo->lastInsertId();
-        } else {
-            $pasajero_id = $pasajero['ID_pasajero'];
-        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':viaje_id' => $viaje_id,
+            ':usuario_id' => $_SESSION['user_id']
+        ]);
 
-        try {
-            $pdo->beginTransaction();
-            
-            // Buscar reserva existente (por ejemplo, una cancelada, debe ser la más reciente)
-            $stmt_check = $pdo->prepare("
-                SELECT r.ID_reserva 
-                FROM Reservas r 
-                JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva 
-                WHERE r.ID_publicacion = ? AND pr.ID_pasajero = ? 
-                ORDER BY r.ID_reserva DESC
-                LIMIT 1
-            ");
-            $stmt_check->execute([$viaje_id, $pasajero_id]);
-            $existing_reserva = $stmt_check->fetchColumn();
-
-            if ($existing_reserva) {
-                // Actualizar reserva existente
-                $sql = "UPDATE Reservas SET Estado = 'Aceptada', FechaReserva = NOW() WHERE ID_reserva = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$existing_reserva]);
-            } else {
-                /* Insertar Reserva nueva */
-                $sql = "INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva) VALUES (:viaje_id, 'Aceptada', NOW())";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([':viaje_id' => $viaje_id]);
-                $reserva_id = $pdo->lastInsertId();
-
-                /* Conectar Pasajero-Reserva */
-                $sql2 = "INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)";
-                $stmt2 = $pdo->prepare($sql2);
-                $stmt2->execute([$pasajero_id, $reserva_id]);
-            }
-            
-            $pdo->commit();
-            
-            // Vaciar pendiente y definir un éxito para mostrar
-            unset($_SESSION['reserva_pendiente']);
-            $_SESSION['mensaje_exito'] = "Pago exitoso. Reserva confirmada.";
-            header("Location: " . BASE_URL . "reservas/mis_reservas.php");
-            exit;
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $error = "Error de base de datos al confirmar la reserva.";
-        }
+        // Vaciar pendiente y definir un éxito para mostrar
+        unset($_SESSION['reserva_pendiente']);
+        $_SESSION['mensaje_exito'] = "Pago exitoso. Reserva confirmada.";
+        header("Location: " . BASE_URL . "reservas/mis_reservas.php");
+        exit;
     } else {
         $error = "Tarjeta inválida (mínimo 14 números).";
     }
@@ -79,9 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Obtener detalles del viaje para mostrar el total a pagar
 $sql = "
-    SELECT p.Precio as precio, p.CiudadOrigen as origen, p.CiudadDestino as destino 
-    FROM Publicaciones p
-    WHERE p.ID_publicacion = :viaje_id
+    SELECT v.precio, c1.nombre as origen, c2.nombre as destino 
+    FROM viajes v
+    JOIN ciudades c1 ON v.origen_id = c1.id
+    JOIN ciudades c2 ON v.destino_id = c2.id
+    WHERE v.id = :viaje_id
 ";
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':viaje_id' => $viaje_id]);

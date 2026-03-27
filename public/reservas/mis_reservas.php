@@ -36,12 +36,6 @@ $sql = "SELECT
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
         JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
         WHERE pr.ID_pasajero = ?
-        AND r.ID_reserva = (
-            SELECT MAX(r2.ID_reserva)
-            FROM Reservas r2
-            JOIN PasajerosReservas pr2 ON r2.ID_reserva = pr2.ID_reserva
-            WHERE pr2.ID_pasajero = pr.ID_pasajero AND r2.ID_publicacion = r.ID_publicacion
-        )
         ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
@@ -92,17 +86,15 @@ $reservas = $stmt->fetchAll();
             
             <p>
                 <strong>Estado:</strong> 
-                <?php if ($r['estado'] === 'Pendiente'): ?>
-                    <span style="color: #eab308; font-weight: bold;">Pendiente</span>
-                <?php elseif ($r['estado'] === 'Aceptada'): ?>
-                    <span style="color: var(--success); font-weight: bold;">Aceptada</span>
+                <?php if ($r['estado'] === 'activa'): ?>
+                    <span style="color: var(--success); font-weight: bold;">Activa</span>
                 <?php else: ?>
                     <span style="color: #ef4444; font-weight: bold;">Cancelada</span>
                 <?php endif; ?>
             </p>
 
-            <?php if ($r['estado'] !== 'Cancelada'): ?>
-                <form method="POST" action="cancelar_reserva.php" onsubmit="return confirm('¿Estás seguro de que deseas cancelar la reserva?');">
+            <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
+                <form method="POST" action="cancelar_reserva.php">
                     <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
                     <button type="submit">Cancelar reserva</button>
                 </form>
