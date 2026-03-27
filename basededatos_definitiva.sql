@@ -9,7 +9,8 @@ CREATE TABLE Usuarios (
     DNI VARCHAR(20) UNIQUE NOT NULL,
     Correo VARCHAR(150) UNIQUE NOT NULL,
     Telefono VARCHAR(20),
-    Contraseña VARCHAR(255) NOT NULL
+    Contraseña VARCHAR(255) NOT NULL,
+    BaneadoHasta DATETIME NULL DEFAULT NULL
 );
 
 -- 2. Subtipos de usuarios
@@ -26,6 +27,7 @@ CREATE TABLE Conductores (
     CuentaBancaria VARCHAR(100) NOT NULL,
     Estado VARCHAR(50) DEFAULT 'Pendiente',
     FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    BaneadoHasta DATETIME NULL DEFAULT NULL,
     ID_usuario INT NOT NULL,
     FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 );
@@ -43,6 +45,7 @@ CREATE TABLE Vehiculos (
     Color VARCHAR(50) NOT NULL,
     Modelo VARCHAR(100) NOT NULL,
     Marca VARCHAR(100) NOT NULL,
+    Patente VARCHAR(50) DEFAULT 'Sin Patente',
     Foto MEDIUMTEXT
 );
 
