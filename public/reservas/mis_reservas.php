@@ -44,9 +44,11 @@ $reservas = $stmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="utf-8">
     <title>Mis Reservas</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
 </head>
 <body>
 
