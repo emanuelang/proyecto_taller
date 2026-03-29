@@ -136,3 +136,102 @@ label {
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 20px;
 }
+
+/* --- Sidebar Styles --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 280px;
+    height: 100vh;
+    background-color: #F8FAFC; /* Fondo distinto pero natural (gris muy claro / azulado) */
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+}
+
+.sidebar.active {
+    left: 0;
+}
+
+.sidebar-header {
+    padding: 0 20px 20px;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-main);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background-color: var(--border-color);
+}
+
+.sidebar-link {
+    display: block;
+    padding: 12px 20px;
+    color: var(--text-main);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background-color: white;
+    color: var(--primary);
+    text-decoration: none;
+    border-left: 4px solid var(--primary);
+    padding-left: 16px;
+}
+
+.sidebar-separator {
+    margin: 10px 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.sidebar-logout {
+    margin-top: auto;
+    color: #ef4444; /* Conserva el color de salir */
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+.sidebar-logout:hover {
+    color: #dc2626;
+    border-left-color: #ef4444;
+}
+
+/* Backdrop para oscurecer la pantalla cuando está abierto el sidebar (opcional pero lo usamos para mejor UX) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
