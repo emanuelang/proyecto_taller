@@ -45,11 +45,13 @@ $sql = "
            p.HoraSalida AS fecha,
            p.Precio AS precio,
            p.ID_publicacion AS id,
-           c.ID_conductor AS conductor_id
+           c.ID_conductor AS conductor_id,
+           (v.CantidadAsientos - (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'activa')) AS asientos_disp
     FROM Publicaciones p
     JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
     JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
     WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'
 ";
 
@@ -77,6 +79,9 @@ switch ($orden) {
         break;
     case 'fecha_asc':
         $sql .= " ORDER BY p.HoraSalida ASC";
+        break;
+    case 'asientos_desc':
+        $sql .= " ORDER BY asientos_disp DESC";
         break;
     default:
         $sql .= " ORDER BY p.HoraSalida ASC";
@@ -219,6 +224,7 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
             <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
             <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
+            <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Más asientos disponibles</option>
         </select>
 
         <button type="submit" class="btn" style="border-radius: 30px; padding: 10px 25px; margin: 0; white-space: nowrap; font-size: 1rem;">
@@ -246,6 +252,7 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <p><strong>Fecha:</strong> <?= date('d/m/Y H:i', strtotime($v['fecha'])) ?></p>
         <p><strong>Precio:</strong> $<?= number_format($v['precio'], 2) ?></p>
         <p><strong>Conductor:</strong> <?= htmlspecialchars($v['conductor_nombre']) ?></p>
+        <p><strong>Asientos:</strong> <?= max(0, $v['asientos_disp']) ?> disponibles</p>
 
         <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn" style="display: block; text-align: center; margin-top: 15px;">Ver Detalle</a>
     </div>
