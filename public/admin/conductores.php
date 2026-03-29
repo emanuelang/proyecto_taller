@@ -80,12 +80,6 @@ $sql1 = "
 ";
 $stmt = $pdo->prepare($sql1);
 $stmt->execute($params_pendientes);
-    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
-    LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
-    LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
-    WHERE c.Estado = 'Esperando'
-    ORDER BY c.FechaRegistro DESC
-");
 $pendientes = $stmt->fetchAll();
 
 // Obtener la lista de conductores aceptados
@@ -104,12 +98,6 @@ $sql2 = "
 ";
 $stmt2 = $pdo->prepare($sql2);
 $stmt2->execute($params_aceptados);
-    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
-    LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
-    LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
-    WHERE c.Estado = 'Aceptada'
-    ORDER BY c.FechaRegistro DESC
-");
 $aceptados = $stmt2->fetchAll();
 ?>
 <!DOCTYPE html>
