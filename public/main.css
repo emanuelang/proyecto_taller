@@ -136,3 +136,102 @@ label {
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 20px;
 }
+
+/* --- Sidebar Styles --- */
+.sidebar-main-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 2000;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 6px;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: background-color 0.3s ease;
+}
+
+.sidebar-main-toggle:hover {
+    background-color: var(--primary-hover);
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 250px;
+    height: 100vh;
+    background-color: #F8FAFC; 
+    border-right: 1px solid var(--border-color);
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.05);
+    transition: left 0.3s ease;
+    z-index: 1500;
+    display: flex;
+    flex-direction: column;
+    padding-top: 80px; /* Espacio para el boton flotante */
+    padding-bottom: 20px;
+}
+
+.sidebar.active {
+    left: 0;
+}
+
+.sidebar-link {
+    display: block;
+    padding: 15px 25px;
+    color: var(--primary); /* Consolidado como pidio */
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background-color: white;
+    text-decoration: none;
+    border-left: 4px solid var(--primary);
+    padding-left: 21px;
+}
+
+.sidebar-separator {
+    margin: 10px 25px;
+    border-top: 1px dashed var(--primary); /* Similar a la imagen */
+    opacity: 0.5;
+}
+
+.sidebar-logout {
+    margin-top: auto;
+    color: #ef4444; 
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
+}
+
+.sidebar-logout:hover {
+    color: #dc2626;
+    border-left-color: #ef4444;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 1400;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}

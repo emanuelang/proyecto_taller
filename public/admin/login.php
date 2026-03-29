@@ -31,8 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['nombre'] = $user['Nombre'];
         $_SESSION['is_admin'] = true; 
         
-        $_SESSION['is_conductor'] = false;
-        unset($_SESSION['conductor_id']);
+        // Cargar también si es conductor para no pisar el panel de conductor:
+        $stmt2 = $pdo->prepare("SELECT ID_conductor, BaneadoHasta FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");
+        $stmt2->execute([$user['ID_usuario']]);
+        $cond = $stmt2->fetch();
+
+        if ($cond) {
+            if ($cond['BaneadoHasta'] && strtotime($cond['BaneadoHasta']) > time()) {
+                $_SESSION['is_conductor'] = false;
+                unset($_SESSION['conductor_id']);
+            } else {
+                $_SESSION['is_conductor'] = true;
+                $_SESSION['conductor_id'] = $cond['ID_conductor'];
+            }
+        } else {
+            $_SESSION['is_conductor'] = false;
+            unset($_SESSION['conductor_id']);
+        }
 
         header('Location: dashboard.php');
         exit;

@@ -9,7 +9,7 @@ if (!isset($_GET['id'])) {
 $viaje_id = (int) $_GET['id'];
 
 $sql = "
-    SELECT p.ID_publicacion AS id, p.CiudadOrigen AS origen_nombre, p.CiudadDestino AS destino_nombre, p.HoraSalida AS fecha, p.Precio AS precio, 
+    SELECT p.ID_publicacion AS id, p.CiudadOrigen AS origen_nombre, p.CiudadDestino AS destino_nombre, p.CalleSalida AS calle_salida, p.HoraSalida AS fecha, p.Precio AS precio, 
            p.Estado AS estado,
            u.Nombre AS conductor_nombre, NULL AS foto_perfil,
            veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.Foto AS vehiculo_foto, veh.CantidadAsientos AS asientos,
@@ -57,6 +57,9 @@ $asientos_disponibles = $viaje['asientos'] - $viaje['ocupados'];
             <h3 style="margin-top:0; color:var(--primary);">Ruta y Horario</h3>
             <p><strong>Origen:</strong> <?= htmlspecialchars($viaje['origen_nombre']) ?></p>
             <p><strong>Destino:</strong> <?= htmlspecialchars($viaje['destino_nombre']) ?></p>
+            <?php if (!empty($viaje['calle_salida'])): ?>
+                <p><strong>📍 Calle de Salida:</strong> <span style="color: var(--primary); font-weight: 500;"><?= htmlspecialchars($viaje['calle_salida']) ?></span></p>
+            <?php endif; ?>
             <p><strong>Fecha y Hora:</strong> <?= date('d/m/Y H:i', strtotime($viaje['fecha'])) ?></p>
             <?php if (isset($viaje['distancia_km']) && $viaje['distancia_km'] > 0): ?>
                 <p><strong>Distancia:</strong> <?= $viaje['distancia_km'] ?> km</p>

@@ -39,6 +39,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($_SESSION['conductor_id']);
             }
 
+            $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM Administradores WHERE ID_usuario = ?");
+            $stmt_admin->execute([$user['ID_usuario']]);
+            if ($stmt_admin->fetch()) {
+                $_SESSION['is_admin'] = true;
+            } else {
+                $_SESSION['is_admin'] = false;
+            }
+
             header('Location: ' . BASE_URL . 'index.php');
             exit;
         }
