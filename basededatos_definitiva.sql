@@ -28,6 +28,12 @@ CREATE TABLE Conductores (
     Estado VARCHAR(50) DEFAULT 'Pendiente',
     FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
     BaneadoHasta DATETIME NULL DEFAULT NULL,
+    -- Datos de contacto y pago del conductor
+    TelefonoContacto VARCHAR(50) NULL,
+    AliasMP VARCHAR(100) NULL,
+    -- Fotos de identidad del conductor (almacenadas en Base64)
+    FotoCarnet MEDIUMTEXT NULL,
+    FotoCara MEDIUMTEXT NULL,
     ID_usuario INT NOT NULL,
     FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 );
@@ -46,13 +52,22 @@ CREATE TABLE Vehiculos (
     Modelo VARCHAR(100) NOT NULL,
     Marca VARCHAR(100) NOT NULL,
     Patente VARCHAR(50) DEFAULT 'Sin Patente',
-    Foto MEDIUMTEXT
+    -- Foto general (legacy/compatibilidad)
+    Foto MEDIUMTEXT,
+    -- Documentación del vehículo (almacenadas en Base64)
+    PapelesAuto MEDIUMTEXT NULL,
+    -- Fotos 360° del vehículo (almacenadas en Base64)
+    FotoFrente MEDIUMTEXT NULL,
+    FotoCostado MEDIUMTEXT NULL,
+    FotoAtras MEDIUMTEXT NULL
 );
 
 CREATE TABLE Publicaciones (
     ID_publicacion INT AUTO_INCREMENT PRIMARY KEY,
     CiudadOrigen VARCHAR(100) NOT NULL,
     CiudadDestino VARCHAR(100) NOT NULL,
+    -- Calle/dirección exacta de salida (visible para los pasajeros)
+    CalleSalida VARCHAR(200) NULL,
     HoraSalida DATETIME NOT NULL,
     Precio DECIMAL(10,2) NOT NULL,
     Estado VARCHAR(50) NOT NULL DEFAULT 'Activa',

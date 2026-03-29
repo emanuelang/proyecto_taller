@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $origen = $_POST['origen'];
     $destino = $_POST['destino'];
+    $calle_salida = trim($_POST['calle_salida']);
     $fecha = $_POST['fecha'];
     $precio = $_POST['precio'];
     $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehículo seleccionado
@@ -56,13 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("
         INSERT INTO Publicaciones 
-        (CiudadOrigen, CiudadDestino, HoraSalida, Precio, Estado, ID_vehiculo)
-        VALUES (?, ?, ?, ?, 'Activa', ?)
+        (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, ID_vehiculo)
+        VALUES (?, ?, ?, ?, ?, 'Activa', ?)
     ");
 
     $stmt->execute([
         $origen,
         $destino,
+        $calle_salida,
         $fecha,
         $precio,
         $vehiculo_id
@@ -127,6 +129,9 @@ $obs_def = $_GET['observaciones'] ?? '';
                 </option>
             <?php endforeach; ?>
         </select><br><br>
+
+        <label>Calle de Salida:</label>
+        <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required>
 
         <label>Fecha y Hora:</label>
         <input type="datetime-local" name="fecha" required>
