@@ -35,15 +35,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
     }
 }
 
+// Filtro de búsqueda
+$search = $_GET['search'] ?? '';
+$search_sql = '';
+$params = [];
+
+if ($search !== '') {
+    $search_sql = " AND (u.Nombre LIKE ? OR u.DNI LIKE ? OR u.Correo LIKE ?) ";
+    $params = ["%$search%", "%$search%", "%$search%"];
+}
+
 // Obtener la lista de usuarios (que no sean administradores)
-$stmt = $pdo->query("
+$sql = "
 SELECT u.ID_usuario AS id, u.Nombre, u.Apellido, u.Correo, u.Telefono, u.DNI, u.BaneadoHasta,
        (SELECT COUNT(*) FROM Conductores WHERE ID_usuario = u.ID_usuario) AS es_conductor
 FROM Usuarios u
 LEFT JOIN Administradores a ON u.ID_usuario = a.ID_usuario
-WHERE a.ID_administrador IS NULL
+WHERE a.ID_administrador IS NULL $search_sql
 ORDER BY u.ID_usuario DESC
-");
+";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $usuarios = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -78,6 +91,14 @@ $usuarios = $stmt->fetchAll();
 <div style="padding: 20px;">
     <h2>Gestión de Usuarios</h2>
     <p>Lista de todos los usuarios estándar registrados (pasajeros/conductores). Desde aquí puedes expulsarlos del sistema.</p>
+    
+    <form method="GET" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 500px;">
+        <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Buscar por Nombre, DNI o Correo" style="flex:1; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+        <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Buscar</button>
+        <?php if($search): ?>
+            <a href="usuarios.php" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
+        <?php endif; ?>
+    </form>
     
     <?php if (isset($msg_exito)): ?>
         <p style="color: green; font-weight: bold; background: #e8f5e9; padding: 10px; border: 1px solid #c8e6c9;"><?= htmlspecialchars($msg_exito) ?></p>

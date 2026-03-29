@@ -52,12 +52,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
     }
 }
 
+// Filtro de búsqueda
+$search = $_GET['search'] ?? '';
+$search_sql = '';
+$params_pendientes = [];
+$params_aceptados = [];
+
+if ($search !== '') {
+    $search_sql = " AND (u.Nombre LIKE ? OR u.DNI LIKE ? OR u.Correo LIKE ?) ";
+    $params_pendientes = ["%$search%", "%$search%", "%$search%"];
+    $params_aceptados = ["%$search%", "%$search%", "%$search%"];
+}
+
 // Obtener la lista de conductores pendientes y sus vehículos
-$stmt = $pdo->query("
+$sql1 = "
     SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en,
-           u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email,
-           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Foto AS vehiculo_doc
+           c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
+           u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email, u.DNI,
+           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, 
+           v.Foto AS vehiculo_doc, v.PapelesAuto, v.FotoFrente, v.FotoCostado, v.FotoAtras
     FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
+    LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
+    WHERE c.Estado = 'Esperando' $search_sql
+    ORDER BY c.FechaRegistro DESC
+";
+$stmt = $pdo->prepare($sql1);
+$stmt->execute($params_pendientes);
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
     LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
@@ -67,11 +89,21 @@ $stmt = $pdo->query("
 $pendientes = $stmt->fetchAll();
 
 // Obtener la lista de conductores aceptados
-$stmt2 = $pdo->query("
+$sql2 = "
     SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en, c.BaneadoHasta,
-           u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email,
-           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Foto AS vehiculo_doc
+           c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
+           u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email, u.DNI,
+           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, 
+           v.Foto AS vehiculo_doc, v.PapelesAuto, v.FotoFrente, v.FotoCostado, v.FotoAtras
     FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
+    LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
+    WHERE c.Estado = 'Aceptada' $search_sql
+    ORDER BY c.FechaRegistro DESC
+";
+$stmt2 = $pdo->prepare($sql2);
+$stmt2->execute($params_aceptados);
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
     LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
@@ -112,9 +144,17 @@ $aceptados = $stmt2->fetchAll();
 </div>
 
 <div style="padding: 20px;">
-    <h2>Aprobación de Conductores</h2>
-    <p>Aquí puedes revisar las solicitudes completas de los usuarios que quieren ser conductores.</p>
+    <h2>Conductores</h2>
+    <p>Aquí puedes buscar y revisar las solicitudes u conductores activos.</p>
     
+    <form method="GET" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 500px;">
+        <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Buscar por Nombre, DNI o Correo" style="flex:1; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+        <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Buscar</button>
+        <?php if($search): ?>
+            <a href="conductores.php" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
+        <?php endif; ?>
+    </form>
+
     <?php if (isset($msg)): ?>
         <p style="color: green; font-weight: bold;"><?= htmlspecialchars($msg) ?></p>
     <?php endif; ?>
@@ -141,9 +181,18 @@ $aceptados = $stmt2->fetchAll();
                     </td>
                     <td>
                         <ul class="details-list">
-                            <li><strong>Licencia:</strong> <?= htmlspecialchars($c['LicenciaConducir']) ?></li>
-                            <li><strong>Seguro:</strong> <?= htmlspecialchars($c['SeguroVehiculo']) ?></li>
-                            <li><strong>Cta Bancaria:</strong> <?= htmlspecialchars($c['CuentaBancaria']) ?></li>
+                            <li><strong>Tel:</strong> <?= htmlspecialchars($c['TelefonoContacto'] ?? '---') ?></li>
+                            <li><strong>Licencia N°:</strong> <?= htmlspecialchars($c['LicenciaConducir']) ?></li>
+                            <li><strong>Seguro policial:</strong> <?= htmlspecialchars($c['SeguroVehiculo']) ?></li>
+                            <li><strong>CBU Bancario:</strong> <?= htmlspecialchars($c['CuentaBancaria']) ?></li>
+                            <li><strong>Alias MP:</strong> <?= htmlspecialchars($c['AliasMP'] ?? '---') ?></li>
+                            
+                            <?php if($c['FotoCara']): ?>
+                                <li style="margin-top: 5px;"><strong>Foto Cara:</strong><br><img src="<?= $c['FotoCara'] ?>" style="max-height: 80px; border-radius: 4px; border: 1px solid #ccc;"></li>
+                            <?php endif; ?>
+                            <?php if($c['FotoCarnet']): ?>
+                                <li style="margin-top: 5px;"><strong>Carnet Conducir:</strong><br><img src="<?= $c['FotoCarnet'] ?>" style="max-height: 80px; border-radius: 4px; border: 1px solid #ccc;"></li>
+                            <?php endif; ?>
                         </ul>
                     </td>
                     <td>
@@ -151,15 +200,20 @@ $aceptados = $stmt2->fetchAll();
                             <ul class="details-list">
                                 <li><strong>Auto:</strong> <?= htmlspecialchars($c['marca'] . ' ' . $c['modelo']) ?></li>
                                 <li><strong>Color:</strong> <?= htmlspecialchars($c['color']) ?></li>
-                                <li><strong>Asientos:</strong> <?= $c['asientos'] ?></li>
-                                <li>
-                                    <?php if($c['vehiculo_doc']): ?>
-                                        <div style="margin-top: 5px;">
-                                            <strong>Foto del Vehículo:</strong><br>
-                                            <img src="<?= $c['vehiculo_doc'] ?>" style="max-width: 150px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;" alt="Foto del Vehículo">
-                                        </div>
-                                    <?php else: ?>
-                                        <em>Sin documento</em>
+                                <li><strong>Asientos disp:</strong> <?= $c['asientos'] ?></li>
+                                
+                                <li style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;">
+                                    <?php if($c['PapelesAuto']): ?>
+                                        <div><small>Papeles</small><br><img src="<?= $c['PapelesAuto'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($c['FotoFrente']): ?>
+                                        <div><small>Frente</small><br><img src="<?= $c['FotoFrente'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($c['FotoCostado']): ?>
+                                        <div><small>Costado</small><br><img src="<?= $c['FotoCostado'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($c['FotoAtras']): ?>
+                                        <div><small>Atrás</small><br><img src="<?= $c['FotoAtras'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
                                     <?php endif; ?>
                                 </li>
                             </ul>
@@ -212,13 +266,22 @@ $aceptados = $stmt2->fetchAll();
                     </td>
                     <td>
                         <ul class="details-list">
-                            <li><strong>Licencia:</strong> <?= htmlspecialchars($a['LicenciaConducir']) ?></li>
-                            <li><strong>Seguro:</strong> <?= htmlspecialchars($a['SeguroVehiculo']) ?></li>
-                            <li><strong>Cta Bancaria:</strong> <?= htmlspecialchars($a['CuentaBancaria']) ?></li>
+                            <li><strong>Tel:</strong> <?= htmlspecialchars($a['TelefonoContacto'] ?? '---') ?></li>
+                            <li><strong>Licencia N°:</strong> <?= htmlspecialchars($a['LicenciaConducir']) ?></li>
+                            <li><strong>Seguro policial:</strong> <?= htmlspecialchars($a['SeguroVehiculo']) ?></li>
+                            <li><strong>CBU Bancario:</strong> <?= htmlspecialchars($a['CuentaBancaria']) ?></li>
+                            <li><strong>Alias MP:</strong> <?= htmlspecialchars($a['AliasMP'] ?? '---') ?></li>
                             <li><strong>Registrado el:</strong> <?= htmlspecialchars($a['creado_en']) ?></li>
                             
                             <?php if ($a['BaneadoHasta'] && strtotime($a['BaneadoHasta']) > time()): ?>
                                 <li><strong style="color:red;">Baneado como Conductor hasta:</strong><br><span style="color:red;"><?= date('d/m/Y H:i', strtotime($a['BaneadoHasta'])) ?></span></li>
+                            <?php endif; ?>
+
+                            <?php if($a['FotoCara']): ?>
+                                <li style="margin-top: 5px;"><strong>Foto Cara:</strong><br><img src="<?= $a['FotoCara'] ?>" style="max-height: 80px; border-radius: 4px; border: 1px solid #ccc;"></li>
+                            <?php endif; ?>
+                            <?php if($a['FotoCarnet']): ?>
+                                <li style="margin-top: 5px;"><strong>Carnet Conducir:</strong><br><img src="<?= $a['FotoCarnet'] ?>" style="max-height: 80px; border-radius: 4px; border: 1px solid #ccc;"></li>
                             <?php endif; ?>
                         </ul>
                     </td>
@@ -227,15 +290,20 @@ $aceptados = $stmt2->fetchAll();
                             <ul class="details-list">
                                 <li><strong>Auto:</strong> <?= htmlspecialchars($a['marca'] . ' ' . $a['modelo']) ?></li>
                                 <li><strong>Color:</strong> <?= htmlspecialchars($a['color']) ?></li>
-                                <li><strong>Asientos:</strong> <?= $a['asientos'] ?></li>
-                                <li>
-                                    <?php if($a['vehiculo_doc']): ?>
-                                        <div style="margin-top: 5px;">
-                                            <strong>Foto del Vehículo:</strong><br>
-                                            <img src="<?= $a['vehiculo_doc'] ?>" style="max-width: 150px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;" alt="Foto del Vehículo">
-                                        </div>
-                                    <?php else: ?>
-                                        <em>Sin documento</em>
+                                <li><strong>Asientos disp:</strong> <?= $a['asientos'] ?></li>
+                                
+                                <li style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;">
+                                    <?php if($a['PapelesAuto']): ?>
+                                        <div><small>Papeles</small><br><img src="<?= $a['PapelesAuto'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($a['FotoFrente']): ?>
+                                        <div><small>Frente</small><br><img src="<?= $a['FotoFrente'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($a['FotoCostado']): ?>
+                                        <div><small>Costado</small><br><img src="<?= $a['FotoCostado'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                    <?php endif; ?>
+                                    <?php if($a['FotoAtras']): ?>
+                                        <div><small>Atrás</small><br><img src="<?= $a['FotoAtras'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
                                     <?php endif; ?>
                                 </li>
                             </ul>

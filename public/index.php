@@ -121,6 +121,8 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
         <?php endif; ?>
 
+        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link">Manual de Ayuda</a>
+
         <?php 
         $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
         $stmt_admin->execute([$_SESSION['user_id']]);

@@ -40,6 +40,8 @@
             <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
         <?php endif; ?>
 
+        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link">Manual de Ayuda</a>
+
         <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
             <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link">Panel de admin</a>
         <?php endif; ?>
