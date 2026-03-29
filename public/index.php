@@ -91,9 +91,64 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="utf-8">
     <title>Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
 </head>
 <body>
+
+<?php if (isset($_SESSION['user_id'])): ?>
+    <!-- Botón toggle flotante SIEMPRE visible en la esquina superior izquierda -->
+    <button id="sidebarMainToggle" class="sidebar-main-toggle">&#9776;</button>
+    
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- Sidebar Menu -->
+    <div id="sidebarMenu" class="sidebar">
+        <a href="#" class="sidebar-link">Perfil</a>
+        <div class="sidebar-separator"></div>
+        
+        <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
+        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
+
+        <?php if (!$_SESSION['is_conductor']): ?>
+            <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>
+        <?php else: ?>
+            <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
+        <?php endif; ?>
+
+        <?php 
+        $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
+        $stmt_admin->execute([$_SESSION['user_id']]);
+        $es_admin = $stmt_admin->fetch() !== false;
+        if ($es_admin): ?>
+            <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link" style="color: #10b981;">Panel de Admin</a>
+        <?php endif; ?>
+
+        <a href="<?= BASE_URL ?>logout.php" class="sidebar-link sidebar-logout">Salir</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebarMenu');
+            const overlay = document.getElementById('sidebarOverlay');
+            const btnToggle = document.getElementById('sidebarMainToggle');
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('active');
+                if (sidebar.classList.contains('active')) {
+                    overlay.style.display = 'block';
+                    setTimeout(() => overlay.style.opacity = '1', 10);
+                } else {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                }
+            }
+
+            btnToggle.addEventListener('click', toggleSidebar);
+            overlay.addEventListener('click', toggleSidebar);
+        });
+    </script>
+<?php endif; ?>
 
 <h1>Carpooling</h1>
 
@@ -107,25 +162,13 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $stmt_admin->execute([$_SESSION['user_id']]);
     $es_admin = $stmt_admin->fetch() !== false;
     ?>
-    <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong>
+    
+    <span style="font-size: 1.1em; margin-bottom: 20px;">
+        Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong>
         <?php if ($es_admin): ?>
             <span style="color: #10b981; font-weight: bold; margin-left: 5px;">(Estás como admin)</span>
         <?php endif; ?>
     </span>
-    <a href="<?= BASE_URL ?>index.php">Ver viajes</a>
-    <a href="<?= BASE_URL ?>reservas/mis_reservas.php">Mis reservas</a>
-
-    <?php if (!$_SESSION['is_conductor']): ?>
-        <a href="<?= BASE_URL ?>registro_conductor.php">Convertirme en conductor</a>
-    <?php else: ?>
-        <a href="<?= BASE_URL ?>conductor/dashboard.php">Panel conductor</a>
-    <?php endif; ?>
-
-    <?php if ($es_admin): ?>
-        <a href="<?= BASE_URL ?>admin/dashboard.php" style="color: #10b981; font-weight: bold;">Panel Admin</a>
-    <?php endif; ?>
-
-    <a href="<?= BASE_URL ?>logout.php" style="color: #ef4444; margin-left: auto;">Salir</a>
 <?php endif; ?>
 </div>
 
