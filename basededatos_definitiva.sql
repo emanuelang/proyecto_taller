@@ -62,6 +62,9 @@ CREATE TABLE Vehiculos (
     FotoAtras MEDIUMTEXT NULL
 );
 
+-- Nota: La disponibilidad de asientos se calcula en tiempo de consulta como:
+--   asientos_disponibles = Vehiculos.CantidadAsientos - COUNT(Reservas activas)
+--   donde Reservas activas son las que tienen Estado NOT IN ('Cancelada', 'Rechazada')
 CREATE TABLE Publicaciones (
     ID_publicacion INT AUTO_INCREMENT PRIMARY KEY,
     CiudadOrigen VARCHAR(100) NOT NULL,
