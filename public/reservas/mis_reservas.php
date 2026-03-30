@@ -86,12 +86,23 @@ $reservas = $stmt->fetchAll();
             
             <p>
                 <strong>Estado:</strong> 
-                <?php if ($r['estado'] === 'activa'): ?>
-                    <span style="color: var(--success); font-weight: bold;">Activa</span>
+                <?php if ($r['estado'] === 'Aceptada'): ?>
+                    <span style="color: var(--success); font-weight: bold;">✅ Aceptada</span>
+                <?php elseif ($r['estado'] === 'Pendiente'): ?>
+                    <span style="color: #f59e0b; font-weight: bold;">⏳ Pendiente de pago</span>
                 <?php else: ?>
-                    <span style="color: #ef4444; font-weight: bold;">Cancelada</span>
+                    <span style="color: #ef4444; font-weight: bold;">❌ Cancelada</span>
                 <?php endif; ?>
             </p>
+
+            <?php if ($r['estado'] === 'Pendiente'): ?>
+                <a href="<?= BASE_URL ?>reservas/pago_simulado.php"
+                   style="display:inline-block; margin-bottom:10px; padding: 8px 16px;
+                          background:#f59e0b; color:#fff; border-radius:6px;
+                          text-decoration:none; font-weight:600; font-size:.9em;">
+                    💳 Completar pago
+                </a><br>
+            <?php endif; ?>
 
             <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
                 <form method="POST" action="cancelar_reserva.php">
