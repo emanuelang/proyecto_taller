@@ -28,10 +28,7 @@ $viajes = $stmt->fetchAll();
 </head>
 <body>
 
-<div class="nav-menu">
-    <h2>Mis viajes</h2>
-    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver al Dashboard</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <?php if (empty($viajes)): ?>
     <div class="card" style="text-align: center; color: #64748b; padding: 40px;">
@@ -50,6 +47,9 @@ $viajes = $stmt->fetchAll();
             <p><strong>Precio:</strong> $<?= number_format($v['Precio'], 2) ?></p>
 
             <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                <a href="<?= BASE_URL ?>conductor/ver_reservas.php?id=<?= $v['ID_publicacion'] ?>" class="btn" style="text-align: center; background-color: var(--success); color: white;">
+                    👥 Ver Pasajeros / Validar
+                </a>
                 <a href="<?= BASE_URL ?>crear_viaje.php?origen=<?= urlencode($v['CiudadOrigen']) ?>&destino=<?= urlencode($v['CiudadDestino']) ?>&precio=<?= $v['Precio'] ?>" class="btn" style="text-align: center; background-color: var(--surface); color: var(--primary); border: 1px solid var(--primary);">
                     📋 Reutilizar como Plantilla
                 </a>

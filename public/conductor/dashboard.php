@@ -37,11 +37,7 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
 
-<div class="nav-menu">
-    <h2>Panel del conductor</h2>
-    <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">Volver al inicio</a>
-    <a href="<?= BASE_URL ?>logout.php" style="color: #ef4444; margin-left: 15px;">Salir</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="card">
     <h3 style="margin-top: 0; color: var(--primary);">Mi Perfil</h3>

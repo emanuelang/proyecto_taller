@@ -13,7 +13,7 @@ $sql = "
            p.Estado AS estado,
            u.Nombre AS conductor_nombre, NULL AS foto_perfil,
            veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.Foto AS vehiculo_foto, veh.CantidadAsientos AS asientos,
-           (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'activa') as ocupados,
+           (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') as ocupados,
            (SELECT AVG(Puntuacion) FROM Calificaciones calif WHERE calif.ID_conductor = c.ID_conductor) as promedio_calif,
            c.ID_conductor AS conductor_id,
            NULL AS observaciones
@@ -33,6 +33,19 @@ if (!$viaje) {
     die("El viaje no existe.");
 }
 $asientos_disponibles = $viaje['asientos'] - $viaje['ocupados'];
+
+// Controlar si el usuario actual ya tiene su asiento asegurado
+$ya_reservado = false;
+if (isset($_SESSION['user_id'])) {
+    $stmt_ya = $pdo->prepare("
+        SELECT COUNT(*) FROM Reservas r
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+        WHERE r.ID_publicacion = ? AND pas.ID_usuario = ? AND r.Estado = 'Completada'
+    ");
+    $stmt_ya->execute([$viaje_id, $_SESSION['user_id']]);
+    $ya_reservado = $stmt_ya->fetchColumn() > 0;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -92,6 +105,8 @@ $asientos_disponibles = $viaje['asientos'] - $viaje['ocupados'];
     <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
         <?php if (!isset($_SESSION['user_id'])): ?>
             <p><a href="<?= BASE_URL ?>login.php" class="btn">Iniciá sesión para reservar</a></p>
+        <?php elseif ($ya_reservado): ?>
+            <button disabled style="padding: 15px 35px; background-color: #ecfdf5; color: var(--success); border: 2px solid var(--success); font-size: 1.1em; font-weight: bold; border-radius: 6px; cursor: default;">✅ Ya tienes tu asiento asegurado en este viaje</button>
         <?php elseif ($asientos_disponibles <= 0): ?>
             <button disabled style="padding: 12px 25px;">El viaje está lleno</button>
         <?php elseif (isset($_SESSION['is_conductor']) && $_SESSION['is_conductor'] && isset($_SESSION['conductor_id']) && $_SESSION['conductor_id'] == $viaje['conductor_id']): ?>

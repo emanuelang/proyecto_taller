@@ -46,7 +46,7 @@ $sql = "
            p.Precio AS precio,
            p.ID_publicacion AS id,
            c.ID_conductor AS conductor_id,
-           (v.CantidadAsientos - (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'activa')) AS asientos_disp
+           (v.CantidadAsientos - (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada')) AS asientos_disp
     FROM Publicaciones p
     JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
     JOIN Conductores c ON cp.ID_conductor = c.ID_conductor

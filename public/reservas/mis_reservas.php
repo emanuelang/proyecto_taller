@@ -24,6 +24,7 @@ $sql = "SELECT
             r.ID_reserva AS reserva_id,
             r.FechaReserva AS fecha_reserva,
             r.Estado AS estado,
+            r.CodigoAcceso AS codigo_acceso,
             p.HoraSalida AS fecha,
             p.Precio AS precio,
             u.Nombre AS conductor_nombre,
@@ -35,7 +36,7 @@ $sql = "SELECT
         JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
         JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
-        WHERE pr.ID_pasajero = ?
+        WHERE pr.ID_pasajero = ? AND r.Estado = 'Completada'
         ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
@@ -81,35 +82,26 @@ $reservas = $stmt->fetchAll();
             
             <p><strong>Fecha del viaje:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha'])) ?></p>
             <p><strong>Precio:</strong> $<?= number_format($r['precio'], 2) ?></p>
-            <p><strong>Conductor:</strong> <?= htmlspecialchars($r['conductor_nombre']) ?></p>
             <p><strong>Fecha Reserva:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha_reserva'])) ?></p>
             
+            <?php if ($r['codigo_acceso']): ?>
+                <div style="margin: 15px 0; padding: 15px; background-color: #ecfdf5; border-left: 4px solid var(--success); border-radius: 4px;">
+                    <p style="margin: 0 0 5px 0; color: #065f46; font-size: 0.9em; font-weight: bold;">Tu código de acceso (Póstergaselo al conductor):</p>
+                    <p style="margin: 0; font-size: 1.4em; font-family: monospace; color: var(--success); letter-spacing: 2px; font-weight: bold;">
+                        <?= htmlspecialchars($r['codigo_acceso']) ?>
+                    </p>
+                </div>
+            <?php endif; ?>
+
             <p>
                 <strong>Estado:</strong> 
-                <?php if ($r['estado'] === 'Aceptada'): ?>
-                    <span style="color: var(--success); font-weight: bold;">✅ Aceptada</span>
-                <?php elseif ($r['estado'] === 'Pendiente'): ?>
-                    <span style="color: #f59e0b; font-weight: bold;">⏳ Pendiente de pago</span>
-                <?php else: ?>
-                    <span style="color: #ef4444; font-weight: bold;">❌ Cancelada</span>
-                <?php endif; ?>
+                <span style="color: var(--success); font-weight: bold;">✅ Confirmada y Pagada</span>
             </p>
 
-            <?php if ($r['estado'] === 'Pendiente'): ?>
-                <a href="<?= BASE_URL ?>reservas/pago_simulado.php"
-                   style="display:inline-block; margin-bottom:10px; padding: 8px 16px;
-                          background:#f59e0b; color:#fff; border-radius:6px;
-                          text-decoration:none; font-weight:600; font-size:.9em;">
-                    💳 Completar pago
-                </a><br>
-            <?php endif; ?>
-
-            <?php if ($r['estado'] === 'Pendiente' || $r['estado'] === 'Aceptada'): ?>
-                <form method="POST" action="cancelar_reserva.php">
-                    <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
-                    <button type="submit">Cancelar reserva</button>
-                </form>
-            <?php endif; ?>
+            <form method="POST" action="cancelar_reserva.php">
+                <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
+                <button type="submit" style="margin-top: 10px; width: 100%;" onclick="return confirm('¿Seguro quieres cancelar tu asiento? Se eliminará de tus reservas y dejará el lugar libre para otra persona.')">Cancelar reserva</button>
+            </form>
             </div>
         </div>
     <?php endforeach; ?>
