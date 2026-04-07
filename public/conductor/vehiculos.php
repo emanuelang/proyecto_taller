@@ -26,10 +26,7 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
 
-<div class="nav-menu">
-    <h2>Mis vehículos</h2>
-    <a href="dashboard.php" style="margin-left: auto;">← Volver al Dashboard</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <div style="margin-bottom: 20px;">
     <a href="crear_vehiculo.php" class="btn" style="background-color: var(--success);">Agregar vehículo</a>
