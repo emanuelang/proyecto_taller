@@ -26,7 +26,7 @@ $sql = "
                SELECT COUNT(*)
                FROM Reservas r
                WHERE r.ID_publicacion = p.ID_publicacion
-                 AND r.Estado NOT IN ('Cancelada', 'Rechazada')
+                 AND r.Estado = 'Completada'
            ) AS ocupados
     FROM Publicaciones p
     JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
@@ -52,64 +52,110 @@ if ($viaje['ID_usuario'] == $_SESSION['user_id']) {
     die("No podés reservar tu propio viaje.");
 }
 
-/* Obtener o crear ID Pasajero */
-$stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
-$stmt_pasajero->execute([$_SESSION['user_id']]);
-$pasajero = $stmt_pasajero->fetch();
-
-if (!$pasajero) {
-    $stmt_insert = $pdo->prepare("INSERT INTO Pasajeros (ID_usuario) VALUES (?)");
-    $stmt_insert->execute([$_SESSION['user_id']]);
-    $pasajero_id = $pdo->lastInsertId();
-} else {
-    $pasajero_id = $pasajero['ID_pasajero'];
-}
-
-/* Evitar duplicado: si ya tiene una reserva no cancelada para este viaje */
+/* Evitar duplicado: si ya tiene una reserva Completada para este viaje */
 $sql_dup = "
     SELECT COUNT(*)
     FROM Reservas r
     JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
     WHERE r.ID_publicacion = :viaje_id
-      AND pr.ID_pasajero   = :pasajero_id
-      AND r.Estado NOT IN ('Cancelada', 'Rechazada')
+      AND pas.ID_usuario   = :usuario_id
+      AND r.Estado = 'Completada'
 ";
 $stmt_dup = $pdo->prepare($sql_dup);
-$stmt_dup->execute([':viaje_id' => $viaje_id, ':pasajero_id' => $pasajero_id]);
+$stmt_dup->execute([':viaje_id' => $viaje_id, ':usuario_id' => $_SESSION['user_id']]);
 
 if ($stmt_dup->fetchColumn() > 0) {
-    die("Ya tenés una reserva activa para este viaje.");
+    die("Ya tenés una reserva confirmada para este viaje.");
 }
 
-/* Crear la reserva en estado Pendiente */
-try {
-    $pdo->beginTransaction();
+/* 
+ * IMPORTANTE: Ya no creamos la reserva "Pendiente" en la base de datos.
+ * Vamos a pasar el ID de viaje y de usuario por la externa_reference a MP.
+ * Solo guardaremos la reserva si el pago es exitoso.
+ */
+$external_reference = $viaje_id . '_' . $_SESSION['user_id'];
 
-    $stmt_res = $pdo->prepare("
-        INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva)
-        VALUES (:viaje_id, 'Pendiente', NOW())
-    ");
-    $stmt_res->execute([':viaje_id' => $viaje_id]);
-    $reserva_id = $pdo->lastInsertId();
+/* Generar la preferencia de Mercado Pago API REAL */
+$mp_access_token = 'APP_USR-6088138919766842-033021-cb005d5c6385fb2d1bb62e1583b4989a-3302874491';
 
-    $stmt_pr = $pdo->prepare("INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)");
-    $stmt_pr->execute([$pasajero_id, $reserva_id]);
+$preference_data = array(
+    "items" => array(
+        array(
+            "title" => "Reserva de Asiento: " . $viaje['CiudadOrigen'] . " a " . $viaje['CiudadDestino'],
+            "quantity" => 1,
+            "currency_id" => "ARS",
+            "unit_price" => (float)$viaje['Precio']
+        )
+    ),
+    "back_urls" => array(
+        "success" => BASE_URL . "reservas/mp_success.php",
+        "failure" => BASE_URL . "reservas/mp_failure.php",
+        "pending" => BASE_URL . "reservas/mp_pending.php"
+    ),
+    "external_reference" => $external_reference
+);
 
-    $pdo->commit();
-} catch (Exception $e) {
-    $pdo->rollBack();
-    die("Error al crear la reserva: " . $e->getMessage());
+$ch = curl_init('https://api.mercadopago.com/checkout/preferences');
+curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Authorization: Bearer ' . $mp_access_token,
+    'Content-Type: application/json'
+));
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($preference_data));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Permitir cURL en XAMPP
+
+$response = curl_exec($ch);
+$curl_error = curl_error($ch);
+$mp_result = json_decode($response, true);
+curl_close($ch);
+
+if (isset($mp_result['sandbox_init_point'])) {
+    $sandbox_url = $mp_result['sandbox_init_point'];
+    ?>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <title>Pagar Reserva</title>
+        <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    </head>
+    <body style="background-color: #f4f6f9; text-align: center; font-family: -apple-system, sans-serif;">
+        <div style="max-width: 500px; margin: 80px auto; padding: 40px; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+            <h2 style="color: #009ee3; margin-top:0;">Damos inicio a tu pago</h2>
+            <p style="color: #555; margin-bottom: 30px; font-size: 1.1em;">Por seguridad, la pasarela de Mercado Pago se abrirá de forma independiente.</p>
+            
+            <a href="<?= $sandbox_url ?>" target="_blank" onclick="this.style.display='none'; document.getElementById('post-pago').style.display='block';" style="display:inline-block; padding:15px 30px; background-color:#009ee3; color:white; font-size:1.2em; text-decoration:none; border-radius:5px; font-weight:bold; box-shadow: 0 2px 5px rgba(0,158,227,0.4); margin-bottom:15px;">
+                Pagar en Mercado Pago 🔒
+            </a>
+            
+            <div id="post-pago" style="display:none; margin-top: 40px; padding-top: 25px; border-top: 1px solid #eee;">
+                <h3 style="color:#28a745;">¿Completaste el pago exitosamente?</h3>
+                <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Suele tardar unos segundos en acreditarse en el entorno local. Si ya terminaste de pagar en la otra pestaña, DEBES confirmar aquí abajo para generar tu código de viaje:</p>
+                <a href="<?= BASE_URL ?>reservas/mp_success.php?collection_status=approved&external_reference=<?= $external_reference ?>" class="btn" style="background-color:#28a745; border-color:#28a745; width:100%; box-sizing:border-box; font-size:1.1em; color: white; display: inline-block; padding: 15px; border-radius: 5px; text-decoration: none;">
+                    ✅ Sí, ya pagué exitosamente
+                </a>
+            </div>
+            
+            <script>
+                // Abrimos el popup e inmediatamente bloqueamos intentos infinitos
+                setTimeout(function() {
+                    const btn = document.querySelector('a[href="<?= $sandbox_url ?>"]');
+                    if (btn && btn.style.display !== 'none') {
+                        window.open('<?= $sandbox_url ?>', '_blank');
+                        btn.style.display = 'none';
+                        document.getElementById('post-pago').style.display='block';
+                    }
+                }, 1000);
+            </script>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+} else {
+    // Si falla MP, no hay reserva que borrar de la base de datos, solo mostrar error
+    $request_body = json_encode($preference_data, JSON_UNESCAPED_UNICODE);
+    die("Error inesperado al conectar con Mercado Pago (Sandbox).<br>Error cURL: " . $curl_error . "<br>Respuesta MP: " . print_r($mp_result, true) . "<br>JSON Enviado: " . $request_body);
 }
-
-/* Guardar en sesión los datos necesarios para el pago */
-$_SESSION['pago_pendiente'] = [
-    'reserva_id'  => $reserva_id,
-    'viaje_id'    => $viaje_id,
-    'origen'      => $viaje['CiudadOrigen'],
-    'destino'     => $viaje['CiudadDestino'],
-    'precio'      => $viaje['Precio'],
-];
-
-/* Redirigir al pago simulado */
-header("Location: " . BASE_URL . "reservas/pago_simulado.php");
-exit;

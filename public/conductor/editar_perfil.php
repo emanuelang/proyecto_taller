@@ -32,27 +32,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<h2>Editar Perfil del Conductor</h2>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Editar Perfil</title>
+    <link rel="stylesheet" href="<?= BASE_URL ?? '../../main.css' ?>">
+</head>
+<body>
 
-<form method="POST">
+<?php include __DIR__ . '/_nav.php'; ?>
 
-    <label>Vehículo activo:</label>
-    <select name="vehiculo_activo_id" required>
-        <option value="">Seleccionar vehículo</option>
+<div class="form-container" style="max-width: 600px; margin: 0 auto;">
+    <h2 style="color: var(--primary);">Configurar Vehículo Activo</h2>
 
-        <?php foreach ($vehiculos as $v): ?>
-            <option value="<?= $v['id'] ?>">
-                <?= htmlspecialchars($v['marca']) ?> 
-                <?= htmlspecialchars($v['modelo']) ?> 
-                (<?= htmlspecialchars($v['patente']) ?>)
-            </option>
-        <?php endforeach; ?>
-    </select>
+    <form method="POST" style="box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <label>Vehículo que vas a usar:</label>
+        <select name="vehiculo_activo_id" required>
+            <option value="">Seleccionar vehículo...</option>
+            <?php foreach ($vehiculos as $v): ?>
+                <option value="<?= $v['id'] ?>">
+                    <?= htmlspecialchars($v['marca']) ?> 
+                    <?= htmlspecialchars($v['modelo']) ?> 
+                    (<?= htmlspecialchars($v['patente']) ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
 
-    <br><br>
+        <button type="submit" class="btn" style="width: 100%; margin-top: 15px;">Guardar cambios</button>
+    </form>
+</div>
 
-    <button type="submit">Guardar cambios</button>
-</form>
-
-<br>
-<a href="dashboard.php">Volver</a>
+</body>
+</html>
