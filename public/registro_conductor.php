@@ -89,17 +89,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $conductor_id = $pdo->lastInsertId();
 
+        $patente = trim($_POST['patente']); // NUEVO CAMPO
+
         /* Crear vehículo inicial */
         $stmt = $pdo->prepare("
             INSERT INTO Vehiculos
-            (CantidadAsientos, Color, Modelo, Marca, Foto, PapelesAuto, FotoFrente, FotoCostado, FotoAtras)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (CantidadAsientos, Color, Modelo, Marca, Patente, Foto, PapelesAuto, FotoFrente, FotoCostado, FotoAtras)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $asientos,
             $color,
             $modelo,
             $marca,
+            $patente,
             $foto_vehiculo,
             $papeles_auto,
             $foto_frente,
@@ -157,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input name="marca" placeholder="Marca" required><br>
     <input name="modelo" placeholder="Modelo" required><br>
     <input name="color" placeholder="Color" required><br>
+    <input name="patente" placeholder="Patente (Ej: AB123CD)" required><br>
     <input type="number" name="asientos" min="1" required placeholder="Cantidad de Asientos disponibles"><br><br>
 
     <label>Póliza del Seguro Vehicular</label><br>

@@ -10,6 +10,9 @@ CREATE TABLE Usuarios (
     Correo VARCHAR(150) UNIQUE NOT NULL,
     Telefono VARCHAR(20),
     Contraseña VARCHAR(255) NOT NULL,
+    FotoPerfil MEDIUMTEXT NULL,
+    Descripcion TEXT NULL,
+    Preferencias TEXT NULL,
     BaneadoHasta DATETIME NULL DEFAULT NULL
 );
 

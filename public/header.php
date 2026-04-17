@@ -28,7 +28,7 @@
             <button id="sidebarClose" class="sidebar-toggle">&#9776;</button>
         </div>
         
-        <a href="#" class="sidebar-link">Perfil</a>
+        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
         <div class="sidebar-separator"></div>
         
         <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
@@ -56,21 +56,31 @@
             const btnOpen = document.getElementById('sidebarOpen');
             const btnClose = document.getElementById('sidebarClose');
 
-            function toggleSidebar() {
-                sidebar.classList.toggle('active');
-                if (sidebar.classList.contains('active')) {
+            function updateSidebarState(isOpen) {
+                if (isOpen) {
+                    sidebar.classList.add('active');
                     overlay.style.display = 'block';
-                    // Pequeño timeout para permitir la transición de opacidad
                     setTimeout(() => overlay.style.opacity = '1', 10);
+                    localStorage.setItem('sidebar_open', 'true');
                 } else {
+                    sidebar.classList.remove('active');
                     overlay.style.opacity = '0';
                     setTimeout(() => overlay.style.display = 'none', 300);
+                    localStorage.setItem('sidebar_open', 'false');
                 }
             }
 
-            btnOpen.addEventListener('click', toggleSidebar);
-            btnClose.addEventListener('click', toggleSidebar);
-            overlay.addEventListener('click', toggleSidebar);
+            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            updateSidebarState(isSidebarOpen);
+
+            function toggleSidebar() {
+                const isCurrentlyOpen = sidebar.classList.contains('active');
+                updateSidebarState(!isCurrentlyOpen);
+            }
+
+            if(btnOpen) btnOpen.addEventListener('click', toggleSidebar);
+            if(btnClose) btnClose.addEventListener('click', toggleSidebar);
+            if(overlay) overlay.addEventListener('click', toggleSidebar);
         });
     </script>
 <?php endif; ?>

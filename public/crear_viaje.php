@@ -134,10 +134,10 @@ $obs_def = $_GET['observaciones'] ?? '';
         <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required>
 
         <label>Fecha y Hora:</label>
-        <input type="datetime-local" name="fecha" required>
+        <input type="datetime-local" name="fecha" required min="<?= date('Y-m-d\TH:i') ?>">
 
         <label>Precio por persona ($):</label>
-        <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required>
+        <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required min="0" step="0.01">
 
         <label>Observaciones:</label>
         <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4"><?= htmlspecialchars($obs_def) ?></textarea>

@@ -16,5 +16,10 @@ try { $pdo->exec("ALTER TABLE Vehiculos ADD FotoAtras MEDIUMTEXT NULL"); echo "O
 // NUEVO: Calle de salida en Publicaciones
 try { $pdo->exec("ALTER TABLE Publicaciones ADD CalleSalida VARCHAR(200) NULL AFTER CiudadDestino"); echo "OK: Publicaciones.CalleSalida\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
 
+// NUEVO: Perfil Funcional en Usuarios
+try { $pdo->exec("ALTER TABLE Usuarios ADD FotoPerfil MEDIUMTEXT NULL"); echo "OK: Usuarios.FotoPerfil\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+try { $pdo->exec("ALTER TABLE Usuarios ADD Descripcion TEXT NULL"); echo "OK: Usuarios.Descripcion\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+try { $pdo->exec("ALTER TABLE Usuarios ADD Preferencias TEXT NULL"); echo "OK: Usuarios.Preferencias\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+
 echo "\nBase de datos actualizada.\n";
 ?>
