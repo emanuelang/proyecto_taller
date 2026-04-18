@@ -3,6 +3,39 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
+$unread_count = 0;
+if (isset($_SESSION['user_id'])) {
+    // Inyectar alertas 24hs
+    $stmt_res = $pdo->prepare("
+        SELECT r.ID_reserva, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino 
+        FROM Reservas r
+        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+        WHERE pas.ID_usuario = ? AND r.Estado NOT IN ('Cancelada', 'Rechazada')
+    ");
+    $stmt_res->execute([$_SESSION['user_id']]);
+    $mis_viajes_notif = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($mis_viajes_notif as $v_notif) {
+        $hs_restantes = (strtotime($v_notif['HoraSalida']) - time()) / 3600;
+        if ($hs_restantes > 0 && $hs_restantes <= 24) {
+            $msg_notif = "Recordatorio: Tu viaje de {$v_notif['CiudadOrigen']} a {$v_notif['CiudadDestino']} sale en menos de 24 horas.";
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Mensaje = ?");
+            $stmt_check->execute([$_SESSION['user_id'], $msg_notif]);
+            if ($stmt_check->fetchColumn() == 0) {
+                $stmt_ins = $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)");
+                $stmt_ins->execute([$_SESSION['user_id'], $msg_notif]);
+            }
+        }
+    }
+
+    // Contar no leídas
+    $stmt_notif = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Leida = FALSE");
+    $stmt_notif->execute([$_SESSION['user_id']]);
+    $unread_count = $stmt_notif->fetchColumn();
+}
+
 /* ============================
    TRAER CIUDADES...
 ============================ */
@@ -83,6 +116,9 @@ switch ($orden) {
     case 'asientos_desc':
         $sql .= " ORDER BY asientos_disp DESC";
         break;
+    case 'asientos_asc':
+        $sql .= " ORDER BY asientos_disp ASC";
+        break;
     default:
         $sql .= " ORDER BY p.HoraSalida ASC";
 }
@@ -109,11 +145,18 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Sidebar Menu -->
     <div id="sidebarMenu" class="sidebar">
-        <a href="#" class="sidebar-link">Perfil</a>
+        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
         <div class="sidebar-separator"></div>
         
         <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
         <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
+
+        <a href="<?= BASE_URL ?>notificaciones.php" class="sidebar-link">
+            Notificaciones
+            <?php if ($unread_count > 0): ?>
+                <span style="color: #ef4444; font-weight: bold; margin-left: 5px;">(!)</span>
+            <?php endif; ?>
+        </a>
 
         <?php if (!$_SESSION['is_conductor']): ?>
             <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>
@@ -140,15 +183,27 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const overlay = document.getElementById('sidebarOverlay');
             const btnToggle = document.getElementById('sidebarMainToggle');
 
-            function toggleSidebar() {
-                sidebar.classList.toggle('active');
-                if (sidebar.classList.contains('active')) {
+            function updateSidebarState(isOpen) {
+                if (isOpen) {
+                    sidebar.classList.add('active');
                     overlay.style.display = 'block';
                     setTimeout(() => overlay.style.opacity = '1', 10);
+                    localStorage.setItem('sidebar_open', 'true');
                 } else {
+                    sidebar.classList.remove('active');
                     overlay.style.opacity = '0';
                     setTimeout(() => overlay.style.display = 'none', 300);
+                    localStorage.setItem('sidebar_open', 'false');
                 }
+            }
+
+            // Inicializamos: desplegado por defecto a menos que lo hayan cerrado
+            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            updateSidebarState(isSidebarOpen);
+
+            function toggleSidebar() {
+                const isCurrentlyOpen = sidebar.classList.contains('active');
+                updateSidebarState(!isCurrentlyOpen);
             }
 
             btnToggle.addEventListener('click', toggleSidebar);
@@ -198,25 +253,17 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <div style="display: flex; justify-content: center; margin-bottom: 40px; padding: 0 10px;">
     <form method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 8px 12px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 850px; border: 1px solid #e2e8f0; justify-content: center;">
 
-        <select name="origen" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
-            <option value="">Salida</option>
+        <datalist id="ciudades_list">
             <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen == $c['nombre']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['nombre']) ?>
-                </option>
+                <option value="<?= htmlspecialchars($c['nombre']) ?>"></option>
             <?php endforeach; ?>
-        </select>
+        </datalist>
+
+        <input type="text" name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; color: #475569;" value="<?= htmlspecialchars($origen) ?>" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
-        <select name="destino" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
-            <option value="">Llegada</option>
-            <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino == $c['nombre']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['nombre']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+        <input type="text" name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; color: #475569;" value="<?= htmlspecialchars($destino) ?>" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
@@ -227,6 +274,7 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
             <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
             <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Más asientos disponibles</option>
+            <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Menos asientos disponibles</option>
         </select>
 
         <button type="submit" class="btn" style="border-radius: 30px; padding: 10px 25px; margin: 0; white-space: nowrap; font-size: 1rem;">

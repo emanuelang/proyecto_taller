@@ -106,7 +106,7 @@ require_once __DIR__ . '/../config/app.php';
 
     <div class="manual-section">
         <h3>3. ¿Cómo pagar mi reserva?</h3>
-        <p>Para asegurar tu asiento, nuestra plataforma utiliza un proceso de simulación de pagos integrada tras la reserva. El saldo real se suele acomodar cara a cara, pero si necesitas utilizar dinero electrónico, la plataforma te acercará el Alias o CBU del Conductor una vez completada y aceptada la reserva.</p>
+        <p>Para asegurar tu asiento, debes abonar la reserva a través del sistema integrado en la plataforma. Una vez confirmada tu reserva y realizado el pago, la plataforma te otorgará un Código de Validación. Recuerda llevar este código el día del viaje para presentárselo al Conductor.</p>
     </div>
 
     <div class="manual-section">

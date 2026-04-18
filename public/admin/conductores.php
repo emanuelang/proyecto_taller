@@ -321,5 +321,27 @@ $aceptados = $stmt2->fetchAll();
     <?php endif; ?>
 </div>
 
+<!-- Modal para ver imágenes en tamaño completo -->
+<div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.8); align-items:center; justify-content:center;">
+    <span onclick="document.getElementById('imageModal').style.display='none'" style="position:absolute; top:20px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
+    <img id="modalImage" style="max-width:90%; max-height:90%; object-fit:contain; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+</div>
+<script>
+function openModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').style.display = 'flex';
+}
+document.querySelectorAll('.details-list img').forEach(img => {
+    img.style.cursor = 'pointer';
+    img.onclick = () => openModal(img.src);
+});
+// Cerrar modal al clickear fuera de la imagen
+document.getElementById('imageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.style.display = 'none';
+    }
+});
+</script>
+
 </body>
 </html>

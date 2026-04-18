@@ -66,9 +66,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $modelo = trim($_POST['modelo']);
     $color = trim($_POST['color']);
     $asientos = (int)$_POST['asientos'];
+    $patente = trim($_POST['patente']); // NUEVO CAMPO
 
-    try {
-        $pdo->beginTransaction();
+    // Validaciones PHP
+    $errores = [];
+    if (!preg_match('/^[0-9]{8,15}$/', $telefono)) $errores[] = "El teléfono debe tener entre 8 y 15 dígitos numéricos.";
+    if (strlen($licencia) > 100) $errores[] = "La licencia de conducir es muy larga.";
+    if (strlen($banco) > 100) $errores[] = "La cuenta bancaria es muy larga.";
+    if (strlen($alias_mp) > 100) $errores[] = "El alias es muy largo.";
+    if (strlen($marca) > 100) $errores[] = "La marca es muy larga.";
+    if (strlen($modelo) > 100) $errores[] = "El modelo es muy largo.";
+    if (strlen($color) > 50) $errores[] = "El color es muy largo.";
+    if (!preg_match('/^[A-Za-z0-9]{6,7}$/', $patente)) $errores[] = "La patente debe tener 6 o 7 caracteres alfanuméricos.";
+    
+    if (empty($errores)) {
+        try {
+            $pdo->beginTransaction();
 
         /* Crear conductor */
         $stmt = $pdo->prepare("
@@ -92,14 +105,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         /* Crear vehículo inicial */
         $stmt = $pdo->prepare("
             INSERT INTO Vehiculos
-            (CantidadAsientos, Color, Modelo, Marca, Foto, PapelesAuto, FotoFrente, FotoCostado, FotoAtras)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (CantidadAsientos, Color, Modelo, Marca, Patente, Foto, PapelesAuto, FotoFrente, FotoCostado, FotoAtras)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $asientos,
             $color,
             $modelo,
             $marca,
+            $patente,
             $foto_vehiculo,
             $papeles_auto,
             $foto_frente,
@@ -128,51 +142,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<h2>Convertirme en conductor</h2>
+<div class="card" style="max-width: 600px; margin: 40px auto; padding: 30px;">
+    <h2 style="margin-top: 0; color: var(--primary); text-align: center;">Convertirme en conductor</h2>
 
-<form method="post" enctype="multipart/form-data">
-    <h3>Tus Datos de Conductor</h3>
-    <label>Licencia de Conducir (Número)</label><br>
-    <input type="text" name="licencia_conducir" required><br><br>
+    <?php if (!empty($errores)): ?>
+        <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <ul style="margin: 0; padding-left: 20px;">
+                <?php foreach ($errores as $err): ?>
+                    <li><?= htmlspecialchars($err) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
-    <label>Número de Contacto</label><br>
-    <input type="text" name="telefono_contacto" placeholder="Tu número de celular" required><br><br>
+    <form method="post" enctype="multipart/form-data">
+        <h3 style="color: var(--primary);">Tus Datos de Conductor</h3>
+        
+        <label>Licencia de Conducir (Número)</label>
+        <input type="text" name="licencia_conducir" required maxlength="100">
 
-    <label>Cuenta Bancaria (CBU para cobros)</label><br>
-    <input type="text" name="cuenta_bancaria" required><br><br>
+        <label>Número de Contacto</label>
+        <input type="text" name="telefono_contacto" placeholder="Tu número de celular" required pattern="[0-9]{8,15}" title="Debe contener entre 8 y 15 números">
 
-    <label>Alias de MercadoPago</label><br>
-    <input type="text" name="alias_mp" placeholder="tu.alias.mp" required><br><br>
+        <label>Cuenta Bancaria (CBU para cobros)</label>
+        <input type="text" name="cuenta_bancaria" required maxlength="100">
 
-    <label>Foto de tu Carnet de Conducir (frente y dorso en una imagen o collage)</label><br>
-    <input type="file" name="foto_carnet" accept="image/*" required><br><br>
+        <label>Alias de MercadoPago</label>
+        <input type="text" name="alias_mp" placeholder="tu.alias.mp" required maxlength="100">
 
-    <label>Foto Cara (Selfie clara y visible)</label><br>
-    <input type="file" name="foto_cara" accept="image/*" required><br><br>
+        <label>Foto de tu Carnet de Conducir (frente y dorso en una imagen o collage)</label>
+        <input type="file" name="foto_carnet" accept="image/*" required>
 
-    <hr>
+        <label>Foto Cara (Selfie clara y visible)</label>
+        <input type="file" name="foto_cara" accept="image/*" required>
 
-    <h3>Vehículo principal</h3>
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid var(--border-color);">
 
-    <input name="marca" placeholder="Marca" required><br>
-    <input name="modelo" placeholder="Modelo" required><br>
-    <input name="color" placeholder="Color" required><br>
-    <input type="number" name="asientos" min="1" required placeholder="Cantidad de Asientos disponibles"><br><br>
+        <h3 style="color: var(--primary);">Vehículo principal</h3>
 
-    <label>Póliza del Seguro Vehicular</label><br>
-    <input type="text" name="seguro_vehiculo" required><br><br>
+        <label>Marca:</label>
+        <input type="text" name="marca" placeholder="Ej: Toyota" required maxlength="100">
+        
+        <label>Modelo:</label>
+        <input type="text" name="modelo" placeholder="Ej: Corolla" required maxlength="100">
+        
+        <label>Color:</label>
+        <input type="text" name="color" placeholder="Ej: Blanco" required maxlength="50">
+        
+        <label>Patente:</label>
+        <input type="text" name="patente" placeholder="Ej: AB123CD" required minlength="6" maxlength="7" pattern="[A-Za-z0-9]{6,7}" title="Debe contener 6 o 7 caracteres alfanuméricos">
+        
+        <label>Cantidad de Asientos disponibles:</label>
+        <input type="number" name="asientos" min="1" max="10" required>
 
-    <label>Papeles del Auto (cédula verde/azul)</label><br>
-    <input type="file" name="papeles_auto" accept="image/*" required><br><br>
+        <label>Póliza del Seguro Vehicular</label>
+        <input type="text" name="seguro_vehiculo" required maxlength="100">
 
-    <label>Foto Frente del auto (donde se vea la patente si es posible)</label><br>
-    <input type="file" name="foto_frente" accept="image/*" required><br><br>
+        <label>Papeles del Auto (cédula verde/azul)</label>
+        <input type="file" name="papeles_auto" accept="image/*" required>
 
-    <label>Foto Costado del auto</label><br>
-    <input type="file" name="foto_costado" accept="image/*" required><br><br>
+        <label>Foto Frente del auto (donde se vea la patente si es posible)</label>
+        <input type="file" name="foto_frente" accept="image/*" required>
 
-    <label>Foto Atrás del auto</label><br>
-    <input type="file" name="foto_atras" accept="image/*" required><br><br>
+        <label>Foto Costado del auto</label>
+        <input type="file" name="foto_costado" accept="image/*" required>
 
-    <button style="width: 100%; font-size: 1.1em; padding: 15px;">Enviar solicitud de revisión</button>
-</form>
+        <label>Foto Atrás del auto</label>
+        <input type="file" name="foto_atras" accept="image/*" required>
+
+        <button type="submit" style="width: 100%; font-size: 1.1em; padding: 15px; margin-top: 20px; background-color: var(--success);">Enviar solicitud de revisión</button>
+    </form>
+</div>
