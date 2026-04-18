@@ -89,11 +89,13 @@ if (isset($_SESSION['user_id'])) {
             <p><strong>Calificación:</strong> 
                 <?= $viaje['promedio_calif'] ? number_format($viaje['promedio_calif'], 1) . ' ⭐' : 'Sin calificaciones aún' ?>
             </p>
-            <p style="margin-top: 15px;">
-                <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $viaje['conductor_id'] ?>" style="color:#d32f2f; text-decoration: underline; font-size: 0.95em;">
-                    ⚠️ Reportar problema con este conductor
-                </a>
-            </p>
+            <?php if (!isset($_SESSION['conductor_id']) || $_SESSION['conductor_id'] != $viaje['conductor_id']): ?>
+                <p style="margin-top: 15px;">
+                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $viaje['conductor_id'] ?>" style="color:#d32f2f; text-decoration: underline; font-size: 0.95em;">
+                        ⚠️ Reportar problema con este conductor
+                    </a>
+                </p>
+            <?php endif; ?>
             <hr>
             <h3 style="color:var(--primary);">Vehículo asignado</h3>
             <p><strong>Modelo:</strong> <?= htmlspecialchars($viaje['marca'] . ' ' . $viaje['modelo']) ?></p>

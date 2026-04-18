@@ -44,6 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehículo seleccionado
     $observaciones = $_POST['observaciones'] ?? '';
 
+    $errores = [];
+    if (strlen($calle_salida) > 200) {
+        $errores[] = "La calle de salida es muy larga.";
+    }
+
+    if (strtotime($fecha) < strtotime('+23 hours 50 minutes')) { // Permitimos un margen de 10 min por demoras
+        $errores[] = "El viaje debe programarse con al menos 24 horas de anticipación.";
+    }
+
     // Get the first vehicle for this conductor to attach the trip to
     $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ? LIMIT 1");
     $stmt_vehiculo->execute([$_SESSION['conductor_id']]);
@@ -55,7 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $vehiculo_id = $vehiculo['ID_vehiculo'];
 
-    $stmt = $pdo->prepare("
+    if (empty($errores)) {
+        $stmt = $pdo->prepare("
         INSERT INTO Publicaciones 
         (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, ID_vehiculo)
         VALUES (?, ?, ?, ?, ?, 'Activa', ?)
@@ -72,11 +82,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $publicacion_id = $pdo->lastInsertId();
 
-    $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
-    $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
+        $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
+        $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
 
-    header("Location: " . BASE_URL . "conductor/viajes.php");
-    exit;
+        header("Location: " . BASE_URL . "conductor/viajes.php");
+        exit;
+    }
 }
 ?>
 
@@ -103,6 +114,16 @@ $obs_def = $_GET['observaciones'] ?? '';
 
 <div class="card" style="max-width: 600px; margin: 0 auto;">
     <form method="POST">
+
+        <?php if (!empty($errores)): ?>
+            <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    <?php foreach ($errores as $err): ?>
+                        <li><?= htmlspecialchars($err) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <label>Origen:</label>
         <select name="origen" required>
@@ -131,10 +152,10 @@ $obs_def = $_GET['observaciones'] ?? '';
         </select><br><br>
 
         <label>Calle de Salida:</label>
-        <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required>
+        <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required maxlength="200">
 
         <label>Fecha y Hora:</label>
-        <input type="datetime-local" name="fecha" required min="<?= date('Y-m-d\TH:i') ?>">
+        <input type="datetime-local" name="fecha" required min="<?= date('Y-m-d\TH:i', strtotime('+24 hours')) ?>">
 
         <label>Precio por persona ($):</label>
         <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required min="0" step="0.01">

@@ -104,8 +104,11 @@ CREATE TABLE Calificaciones (
     Puntuacion INT CHECK(Puntuacion >= 1 AND Puntuacion <= 5),
     ID_pasajero INT NOT NULL,
     ID_conductor INT NOT NULL,
+    ID_reserva INT NOT NULL,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ID_pasajero) REFERENCES Pasajeros(ID_pasajero) ON DELETE CASCADE,
-    FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE
+    FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE,
+    FOREIGN KEY (ID_reserva) REFERENCES Reservas(ID_reserva) ON DELETE CASCADE
 );
 
 CREATE TABLE Reportes (
@@ -115,6 +118,15 @@ CREATE TABLE Reportes (
     Descripcion TEXT NOT NULL,
     ID_conductor INT NOT NULL,
     FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE
+);
+
+CREATE TABLE Notificaciones (
+    ID_notificacion INT AUTO_INCREMENT PRIMARY KEY,
+    ID_usuario INT NOT NULL,
+    Mensaje TEXT NOT NULL,
+    Leida BOOLEAN DEFAULT FALSE,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 );
 
 -- 4. Tablas Intermedias (Relaciones N:M)

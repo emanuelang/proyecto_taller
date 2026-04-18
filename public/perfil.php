@@ -47,6 +47,11 @@ if ($conductor) {
     $stmt_res = $pdo->prepare("SELECT Puntuacion, Comentario FROM Calificaciones WHERE ID_conductor = ? ORDER BY ID_calificacion DESC");
     $stmt_res->execute([$c_id]);
     $reseñas = $stmt_res->fetchAll();
+
+    // Extraer reportes anónimos (quejas)
+    $stmt_rep = $pdo->prepare("SELECT Descripcion, Fecha, Hora FROM Reportes WHERE ID_conductor = ? ORDER BY ID_reporte DESC");
+    $stmt_rep->execute([$c_id]);
+    $reportes = $stmt_rep->fetchAll();
 }
 
 $mensaje = "";
@@ -189,6 +194,14 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <button type="submit" class="btn" style="background-color: var(--primary);">Guardar Perfil</button>
             </form>
+
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <h3 style="color: #ef4444; margin-top: 0;">Zona de Riesgo</h3>
+                <p style="color: #64748b;">Eliminar tu cuenta borrará permanentemente todos tus datos, vehículos, viajes creados, reservas y reseñas. Esta acción no se puede deshacer.</p>
+                <form method="POST" action="eliminar_perfil.php" style="padding:0; border:none; box-shadow:none;" onsubmit="return confirm('¿Estás seguro que deseas eliminar tu perfil de forma permanente?');">
+                    <button type="submit" class="btn" style="background-color: #ef4444; color: white; width: 100%;">Eliminar mi Perfil</button>
+                </form>
+            </div>
         <?php else: ?>
             <h3 style="margin-top:0;">Sobre Mí</h3>
             <p style="white-space: pre-line; color: #334155;"><?= htmlspecialchars($perfil['Descripcion'] ?? 'Este usuario aún no ha escrito nada sobre sí mismo.') ?></p>
@@ -214,6 +227,22 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <p style="margin:0; color:#334155; font-style:italic;">
                         "<?= htmlspecialchars($res['Comentario'] ?? 'Sin comentario') ?>"
+                    </p>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+        <h3 style="margin-top: 40px; color: #ef4444;">Reportes y Quejas</h3>
+        <?php if (empty($reportes)): ?>
+            <p style="color: #64748B;">Este conductor no tiene reportes negativos.</p>
+        <?php else: ?>
+            <?php foreach ($reportes as $rep): ?>
+                <div class="resena-caja" style="border-left-color: #ef4444; background: #fef2f2;">
+                    <div style="color: #ef4444; font-size: 0.9em; font-weight:bold; margin-bottom: 5px;">
+                        ⚠️ Reporte Anónimo del <?= date('d/m/Y', strtotime($rep['Fecha'])) ?>
+                    </div>
+                    <p style="margin:0; color:#334155; font-style:italic;">
+                        "<?= nl2br(htmlspecialchars($rep['Descripcion'])) ?>"
                     </p>
                 </div>
             <?php endforeach; ?>

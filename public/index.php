@@ -3,6 +3,39 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
+$unread_count = 0;
+if (isset($_SESSION['user_id'])) {
+    // Inyectar alertas 24hs
+    $stmt_res = $pdo->prepare("
+        SELECT r.ID_reserva, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino 
+        FROM Reservas r
+        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+        WHERE pas.ID_usuario = ? AND r.Estado NOT IN ('Cancelada', 'Rechazada')
+    ");
+    $stmt_res->execute([$_SESSION['user_id']]);
+    $mis_viajes_notif = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($mis_viajes_notif as $v_notif) {
+        $hs_restantes = (strtotime($v_notif['HoraSalida']) - time()) / 3600;
+        if ($hs_restantes > 0 && $hs_restantes <= 24) {
+            $msg_notif = "Recordatorio: Tu viaje de {$v_notif['CiudadOrigen']} a {$v_notif['CiudadDestino']} sale en menos de 24 horas.";
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Mensaje = ?");
+            $stmt_check->execute([$_SESSION['user_id'], $msg_notif]);
+            if ($stmt_check->fetchColumn() == 0) {
+                $stmt_ins = $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)");
+                $stmt_ins->execute([$_SESSION['user_id'], $msg_notif]);
+            }
+        }
+    }
+
+    // Contar no leídas
+    $stmt_notif = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Leida = FALSE");
+    $stmt_notif->execute([$_SESSION['user_id']]);
+    $unread_count = $stmt_notif->fetchColumn();
+}
+
 /* ============================
    TRAER CIUDADES...
 ============================ */
@@ -117,6 +150,13 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
         <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
+
+        <a href="<?= BASE_URL ?>notificaciones.php" class="sidebar-link">
+            Notificaciones
+            <?php if ($unread_count > 0): ?>
+                <span style="color: #ef4444; font-weight: bold; margin-left: 5px;">(!)</span>
+            <?php endif; ?>
+        </a>
 
         <?php if (!$_SESSION['is_conductor']): ?>
             <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>

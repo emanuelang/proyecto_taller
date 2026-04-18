@@ -16,12 +16,15 @@ $usuario_id = $_SESSION['user_id'];
 
 // Verificar que la reserva pertenece al usuario y que no está calificada ya
 $sql = "
-    SELECT r.*, v.conductor_id, v.fecha, u.nombre as conductor_nombre 
-    FROM reservas r
-    JOIN viajes v ON r.viaje_id = v.id
-    JOIN conductores c ON v.conductor_id = c.id
-    JOIN usuarios u ON c.usuario_id = u.id
-    WHERE r.id = :reserva_id AND r.usuario_id = :usuario_id
+    SELECT r.ID_reserva, p.HoraSalida, cp.ID_conductor, u.Nombre as conductor_nombre, pr.ID_pasajero 
+    FROM Reservas r
+    JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+    JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE r.ID_reserva = :reserva_id AND pas.ID_usuario = :usuario_id
 ";
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':reserva_id' => $reserva_id, ':usuario_id' => $usuario_id]);
@@ -32,12 +35,12 @@ if (!$reserva) {
 }
 
 // Verificar que ya pasó la fecha del viaje
-if (strtotime($reserva['fecha']) > time()) {
+if (strtotime($reserva['HoraSalida']) > time()) {
     die("Sólo podés calificar un viaje después de su fecha de inicio.");
 }
 
 // Verificar si ya qualificó
-$sql_check = "SELECT COUNT(*) FROM calificaciones WHERE reserva_id = ?";
+$sql_check = "SELECT COUNT(*) FROM Calificaciones WHERE ID_reserva = ?";
 $stmt_check = $pdo->prepare($sql_check);
 $stmt_check->execute([$reserva_id]);
 if ($stmt_check->fetchColumn() > 0) {
@@ -52,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($puntaje >= 1 && $puntaje <= 5) {
         $sql_insert = "
-            INSERT INTO calificaciones (reserva_id, conductor_id, pasajero_id, puntaje, comentario, fecha)
+            INSERT INTO Calificaciones (ID_reserva, ID_conductor, ID_pasajero, Puntuacion, Comentario, Fecha)
             VALUES (?, ?, ?, ?, ?, NOW())
         ";
         $stmt_i = $pdo->prepare($sql_insert);
         $stmt_i->execute([
             $reserva_id, 
-            $reserva['conductor_id'], 
-            $usuario_id, 
+            $reserva['ID_conductor'], 
+            $reserva['ID_pasajero'], 
             $puntaje, 
             $comentario
         ]);
