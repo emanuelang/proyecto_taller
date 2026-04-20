@@ -235,3 +235,54 @@ label {
     display: block;
     opacity: 1;
 }
+
+/* Dashboard KPI Cards styling */
+.kpi-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+.kpi-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+    transition: transform 0.2s;
+    border-top: 4px solid var(--primary);
+}
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+.kpi-title {
+    font-size: 0.9em;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+.kpi-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}
+.kpi-card.success { border-top-color: #28a745; }
+.kpi-card.warning { border-top-color: #f0ad4e; }
+.kpi-card.danger { border-top-color: #dc3545; }
+
+/* Admin Tables and utils */
+.table-admin { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.table-admin th, .table-admin td { border: 1px solid var(--border-color); padding: 12px 15px; text-align: left; vertical-align: top; }
+.table-admin th { background-color: #F8FAFC; color: var(--text-main); font-weight: 600; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }
+.table-admin tr:hover { background-color: #f8fafc; }
+.btn-aprobar { background-color: var(--success); color: white; padding: 6px 12px; border: none; cursor: pointer; margin-bottom: 5px; width: 100%; border-radius: 4px; font-weight: 500; }
+.btn-aprobar:hover { background-color: var(--success-hover); }
+.btn-rechazar { background-color: #ef4444; color: white; padding: 6px 12px; border: none; cursor: pointer; width: 100%; border-radius: 4px; font-weight: 500;}
+.btn-rechazar:hover { background-color: #dc2626; }
+.btn-sancionar { background-color: #f0ad4e; color: white; padding: 6px 12px; border: none; cursor: pointer; border-radius: 4px; font-weight: 500; }
+.btn-sancionar:hover { background-color: #e0a040; }
+.details-list { margin: 0; padding-left: 15px; font-size: 0.9em; color: #475569; }

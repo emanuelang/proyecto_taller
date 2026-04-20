@@ -16,16 +16,6 @@ $stmt = $pdo->prepare("
 $stmt->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Mis Vehículos</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-</head>
-<body>
-
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div style="margin-bottom: 20px;">
@@ -56,5 +46,3 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 <?php endif; ?>
 
-</body>
-</html>

@@ -3,39 +3,6 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
-$unread_count = 0;
-if (isset($_SESSION['user_id'])) {
-    // Inyectar alertas 24hs
-    $stmt_res = $pdo->prepare("
-        SELECT r.ID_reserva, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino 
-        FROM Reservas r
-        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
-        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
-        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
-        WHERE pas.ID_usuario = ? AND r.Estado NOT IN ('Cancelada', 'Rechazada')
-    ");
-    $stmt_res->execute([$_SESSION['user_id']]);
-    $mis_viajes_notif = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($mis_viajes_notif as $v_notif) {
-        $hs_restantes = (strtotime($v_notif['HoraSalida']) - time()) / 3600;
-        if ($hs_restantes > 0 && $hs_restantes <= 24) {
-            $msg_notif = "Recordatorio: Tu viaje de {$v_notif['CiudadOrigen']} a {$v_notif['CiudadDestino']} sale en menos de 24 horas.";
-            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Mensaje = ?");
-            $stmt_check->execute([$_SESSION['user_id'], $msg_notif]);
-            if ($stmt_check->fetchColumn() == 0) {
-                $stmt_ins = $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)");
-                $stmt_ins->execute([$_SESSION['user_id'], $msg_notif]);
-            }
-        }
-    }
-
-    // Contar no leídas
-    $stmt_notif = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Leida = FALSE");
-    $stmt_notif->execute([$_SESSION['user_id']]);
-    $unread_count = $stmt_notif->fetchColumn();
-}
-
 /* ============================
    TRAER CIUDADES...
 ============================ */
@@ -126,115 +93,10 @@ switch ($orden) {
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+require_once __DIR__ . '/header.php';
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
-</head>
-<body>
 
-<?php if (isset($_SESSION['user_id'])): ?>
-    <!-- Botón toggle flotante SIEMPRE visible en la esquina superior izquierda -->
-    <button id="sidebarMainToggle" class="sidebar-main-toggle">&#9776;</button>
-    
-    <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-
-    <!-- Sidebar Menu -->
-    <div id="sidebarMenu" class="sidebar">
-        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
-        <div class="sidebar-separator"></div>
-        
-        <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
-        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
-
-        <a href="<?= BASE_URL ?>notificaciones.php" class="sidebar-link">
-            Notificaciones
-            <?php if ($unread_count > 0): ?>
-                <span style="color: #ef4444; font-weight: bold; margin-left: 5px;">(!)</span>
-            <?php endif; ?>
-        </a>
-
-        <?php if (!$_SESSION['is_conductor']): ?>
-            <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>
-        <?php else: ?>
-            <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
-        <?php endif; ?>
-
-        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link">Manual de Ayuda</a>
-
-        <?php 
-        $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
-        $stmt_admin->execute([$_SESSION['user_id']]);
-        $es_admin = $stmt_admin->fetch() !== false;
-        if ($es_admin): ?>
-            <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link" style="color: #10b981;">Panel de Admin</a>
-        <?php endif; ?>
-
-        <a href="<?= BASE_URL ?>logout.php" class="sidebar-link sidebar-logout">Salir</a>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('sidebarOverlay');
-            const btnToggle = document.getElementById('sidebarMainToggle');
-
-            function updateSidebarState(isOpen) {
-                if (isOpen) {
-                    sidebar.classList.add('active');
-                    overlay.style.display = 'block';
-                    setTimeout(() => overlay.style.opacity = '1', 10);
-                    localStorage.setItem('sidebar_open', 'true');
-                } else {
-                    sidebar.classList.remove('active');
-                    overlay.style.opacity = '0';
-                    setTimeout(() => overlay.style.display = 'none', 300);
-                    localStorage.setItem('sidebar_open', 'false');
-                }
-            }
-
-            // Inicializamos: desplegado por defecto a menos que lo hayan cerrado
-            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
-            updateSidebarState(isSidebarOpen);
-
-            function toggleSidebar() {
-                const isCurrentlyOpen = sidebar.classList.contains('active');
-                updateSidebarState(!isCurrentlyOpen);
-            }
-
-            btnToggle.addEventListener('click', toggleSidebar);
-            overlay.addEventListener('click', toggleSidebar);
-        });
-    </script>
-<?php endif; ?>
-
-<h1>Carpooling</h1>
-
-<div class="nav-menu">
-<?php if (!isset($_SESSION['user_id'])): ?>
-    <a href="<?= BASE_URL ?>login.php" class="btn">Iniciar sesión</a>
-    <a href="<?= BASE_URL ?>registro_usuario.php">Registrarse</a>
-<?php else: ?>
-    <?php
-    $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
-    $stmt_admin->execute([$_SESSION['user_id']]);
-    $es_admin = $stmt_admin->fetch() !== false;
-    ?>
-    
-    <span style="font-size: 1.1em; margin-bottom: 20px;">
-        Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong>
-        <?php if ($es_admin): ?>
-            <span style="color: #10b981; font-weight: bold; margin-left: 5px;">(Estás como admin)</span>
-        <?php endif; ?>
-    </span>
-<?php endif; ?>
-</div>
-
-<hr>
 
 <?php if (isset($_GET['msg'])): ?>
     <?php if ($_GET['msg'] === 'solicitud_enviada'): ?>

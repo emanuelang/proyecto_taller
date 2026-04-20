@@ -65,8 +65,9 @@
         <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong></span>
     </div>
 
-    <!-- Botón para abrir sidebar izquierdo -->
-    <button id="sidebarOpen" class="sidebar-toggle" style="margin-left: 15px;">&#9776;</button>
+    <!-- Botón flotante para abrir sidebar izquierdo -->
+    <button id="sidebarOpen" class="sidebar-main-toggle">&#9776;</button>
+
     
     <!-- Sidebar Overlay -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -166,7 +167,7 @@
                 }
             }
 
-            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            const isSidebarOpen = localStorage.getItem('sidebar_open') === 'true';
             updateSidebarState(isSidebarOpen);
 
             function toggleSidebar() {

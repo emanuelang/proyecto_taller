@@ -18,16 +18,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$_SESSION['conductor_id']]);
 $viajes = $stmt->fetchAll();
 ?>
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Mis Viajes</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-</head>
-<body>
-
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <?php if (empty($viajes)): ?>
@@ -62,5 +52,3 @@ $viajes = $stmt->fetchAll();
     </div>
 <?php endif; ?>
 
-</body>
-</html>

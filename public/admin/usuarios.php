@@ -59,33 +59,17 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $usuarios = $stmt->fetchAll();
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Gestión de Usuarios - Admin</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-    <style>
-        .admin-nav { background-color: #333; color: white; padding: 10px; }
-        .admin-nav a { color: white; margin-right: 15px; text-decoration: none; }
-        .admin-nav a:hover { text-decoration: underline; }
-        .table-admin { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .table-admin th, .table-admin td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: top; }
-        .table-admin th { background-color: #f2f2f2; }
-        .btn-rechazar { background-color: #dc3545; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 3px; }
-    </style>
-</head>
-<body>
+require_once __DIR__ . '/../header.php';
+?>
 
-<div class="admin-nav">
-    <strong>Admin Panel</strong> |
-    <a href="dashboard.php">Dashboard</a>
-    <a href="conductores.php">Conductores</a>
-    <a href="usuarios.php">Usuarios</a>
-    <a href="viajes.php">Viajes</a>
-    <a href="reportes.php">Reportes</a>
-    <a href="pagos.php">Pagos</a>
-    <a style="float: right;" href="../logout.php">Cerrar Sesión</a>
+<div class="nav-menu" style="background-color: var(--border-color); padding: 10px; justify-content: center; margin-top: -20px; margin-bottom: 20px; border-radius: 8px;">
+    <strong style="color: var(--primary);">Admin Panel</strong>
+    <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
+    <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
+    <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
+    <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
+    <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
+    <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
 </div>
 
 <div style="padding: 20px;">
