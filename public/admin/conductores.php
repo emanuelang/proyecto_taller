@@ -99,7 +99,6 @@ $sql2 = "
 $stmt2 = $pdo->prepare($sql2);
 $stmt2->execute($params_aceptados);
 $aceptados = $stmt2->fetchAll();
-?>
 require_once __DIR__ . '/../header.php';
 ?>
 

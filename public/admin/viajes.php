@@ -27,7 +27,6 @@ $stmt = $pdo->query("
     ORDER BY p.HoraSalida DESC
 ");
 $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
 require_once __DIR__ . '/../header.php';
 ?>
 

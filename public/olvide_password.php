@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "Te hemos enviado un correo con las instrucciones.";
             $msg_type = "success";
         } else {
-            $msg = "Hubo un problema al enviar el correo. Intenta más tarde.";
+            $msg = "Aún no has configurado tus credenciales de Gmail en core/mailer.php. <br><br><b>MODO DE PRUEBA:</b> Aquí tienes el enlace secreto generado que se habría enviado al correo:<br> <a href='{$enlace}'>Restablecer Contraseña</a>";
             $msg_type = "error";
         }
     } else {
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php if ($msg): ?>
         <p style="color:<?= $msg_type === 'success' ? '#166534' : '#ef4444' ?>; background:<?= $msg_type === 'success' ? '#dcfce7' : '#fef2f2' ?>; border:1px solid <?= $msg_type === 'success' ? '#bbf7d0' : '#ef4444' ?>; padding:10px; border-radius:6px; text-align:center;">
-            <?= htmlspecialchars($msg) ?>
+            <?= $msg ?>
         </p>
     <?php endif; ?>
 

@@ -58,7 +58,6 @@ ORDER BY u.ID_usuario DESC
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $usuarios = $stmt->fetchAll();
-?>
 require_once __DIR__ . '/../header.php';
 ?>
 
