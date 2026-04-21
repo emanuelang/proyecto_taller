@@ -28,15 +28,6 @@ $stmt->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Panel Conductor</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-</head>
-<body>
-
 <?php include __DIR__ . '/_nav.php'; ?>
 
 <div class="card">

@@ -6,6 +6,10 @@ require_once __DIR__ . '/../config/app.php';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("Token CSRF inválido.");
+    }
+
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
@@ -19,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user['BaneadoHasta'] && strtotime($user['BaneadoHasta']) > time()) {
             $error = 'Tu cuenta está suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
         } else {
+            session_regenerate_id(true); // Previene session fixation
             $_SESSION['user_id'] = $user['ID_usuario'];
             $_SESSION['nombre'] = $user['Nombre'];
 
@@ -54,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Credenciales incorrectas';
     }
 }
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -82,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <label>Contraseña:</label>
         <input name="password" type="password" required placeholder="••••••••">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+        
+        <div style="text-align: right; margin-top: 5px;">
+            <a href="<?= BASE_URL ?>olvide_password.php" style="font-size: 0.9em; color: #64748b;">¿Olvidaste tu contraseña?</a>
+        </div>
         
         <button type="submit" style="width: 100%; margin-top: 15px;">Ingresar</button>
         

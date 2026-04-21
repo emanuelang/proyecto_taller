@@ -65,17 +65,17 @@
         <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong></span>
     </div>
 
-    <!-- Botón para abrir sidebar izquierdo -->
-    <button id="sidebarOpen" class="sidebar-toggle" style="margin-left: 15px;">&#9776;</button>
+    <!-- Botón flotante para abrir sidebar izquierdo -->
+    <button id="sidebarOpen" class="sidebar-main-toggle">&#9776;</button>
+
     
     <!-- Sidebar Overlay -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
     <!-- Sidebar Menu -->
     <div id="sidebarMenu" class="sidebar">
-        <div class="sidebar-header">
-            <!-- Arriba a la izquierda las 3 lineas para cerrar -->
-            <button id="sidebarClose" class="sidebar-toggle">&#9776;</button>
+        <div class="sidebar-header" style="text-align: right; padding-right: 15px; padding-bottom: 10px;">
+            <button id="sidebarClose" style="background: none; border: none; color: var(--text-main); font-size: 28px; padding: 0; cursor: pointer; box-shadow: none;">&times;</button>
         </div>
         
         <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
@@ -134,12 +134,14 @@
                     sidebar.classList.add('active');
                     sidebar.style.transform = 'translateX(0)';
                     overlay.style.display = 'block';
+                    if (btnOpen) btnOpen.style.display = 'none';
                     setTimeout(() => overlay.style.opacity = '1', 10);
                     localStorage.setItem('sidebar_open', 'true');
                 } else {
                     sidebar.classList.remove('active');
                     sidebar.style.transform = 'translateX(-100%)';
                     overlay.style.opacity = '0';
+                    if (btnOpen) btnOpen.style.display = 'flex';
                     setTimeout(() => overlay.style.display = 'none', 300);
                     localStorage.setItem('sidebar_open', 'false');
                 }
@@ -166,7 +168,7 @@
                 }
             }
 
-            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            const isSidebarOpen = localStorage.getItem('sidebar_open') === 'true';
             updateSidebarState(isSidebarOpen);
 
             function toggleSidebar() {

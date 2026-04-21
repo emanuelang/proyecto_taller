@@ -1,10 +1,11 @@
 <?php
 // Función auxiliar para saber qué página está activa
 $current_page = basename($_SERVER['PHP_SELF']);
+require_once __DIR__ . '/../../public/header.php';
 ?>
-<div class="nav-menu" style="justify-content: space-between; align-items: center;">
+<div class="nav-menu" style="background-color: var(--border-color); padding: 10px 15px; justify-content: space-between; align-items: center; margin-top: -20px; border-radius: 8px;">
     <div>
-        <h2 style="margin: 0;">Panel de Conductor</h2>
+        <h2 style="margin: 0; color: var(--primary);">Panel de Conductor</h2>
     </div>
     
     <!-- Pestañas de navegación interna -->

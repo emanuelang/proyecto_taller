@@ -29,87 +29,27 @@ $total_pagos = $stmt_rentabilidad->fetchColumn() ?: 0.00;
 $rentabilidad_plataforma = $total_pagos * 0.10;
 
 // Próximamente: Ganancias del mes actual, reservas activas, etc.
+require_once __DIR__ . '/../header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Panel de Administración</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-    <style>
-        .admin-nav {
-            background-color: #333;
-            color: white;
-            padding: 10px;
-        }
-        .admin-nav a {
-            color: white;
-            margin-right: 15px;
-            text-decoration: none;
-        }
-        .admin-nav a:hover {
-            text-decoration: underline;
-        }
-        
-        /* Dashboard KPI Cards styling */
-        .kpi-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .kpi-card {
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-            transition: transform 0.2s;
-            border-top: 4px solid var(--primary, #333);
-        }
-        .kpi-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-        }
-        .kpi-title {
-            font-size: 0.9em;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        .kpi-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #2c3e50;
-            margin: 0;
-        }
-        .kpi-card.success { border-top-color: #28a745; }
-        .kpi-card.warning { border-top-color: #f0ad4e; }
-        .kpi-card.danger { border-top-color: #dc3545; }
-    </style>
-</head>
-<body>
 
-<div class="admin-nav">
-    <strong>Admin Panel</strong> |
-    <a href="dashboard.php">Dashboard</a>
-    <!-- Enlaces futuros que vamos a armar -->
-    <a href="conductores.php">Conductores</a>
-    <a href="usuarios.php">Usuarios</a>
-    <a href="viajes.php">Viajes</a>
-    <a href="reportes.php">Reportes</a>
-    <a href="pagos.php">Pagos</a>
-    <a style="float: right;" href="../logout.php">Cerrar Sesión</a>
+<div class="nav-menu" style="background-color: var(--border-color); padding: 10px; justify-content: center; margin-top: -20px; margin-bottom: 20px; border-radius: 8px;">
+    <strong style="color: var(--primary);">Admin Panel</strong>
+    <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
+    <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
+    <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
+    <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
+    <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
+    <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
 </div>
 
 <div style="padding: 20px;">
     <h2>Bienvenido, <?= htmlspecialchars($_SESSION['nombre']) ?></h2>
     <p>Has ingresado al panel de administración del sistema.</p>
     
-    <hr>
-    <h3>Visión General del Sistema</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">Visión General del Sistema</h3>
+        <a href="backup.php" class="btn" style="background-color: var(--success);" target="_blank">⬇️ Exportar Backup de DB</a>
+    </div>
     
     <div class="kpi-container">
         <!-- Usuarios Activos -->
