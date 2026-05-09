@@ -65,10 +65,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehiculo_id = $vehiculo['ID_vehiculo'];
 
     if (empty($errores)) {
+        $distancia_km = null;
+        $duracion_min = null;
+
+        try {
+            $context = stream_context_create([
+                "http" => [
+                    "header" => "User-Agent: CarpoolingTallerApp/1.0\r\n"
+                ]
+            ]);
+
+            $url_origen = "https://nominatim.openstreetmap.org/search?q=" . urlencode($origen . ", Entre Ríos, Argentina") . "&format=json&limit=1";
+            $res_orig = @file_get_contents($url_origen, false, $context);
+            $data_orig = json_decode($res_orig, true);
+
+            // Pausa breve para respetar las políticas de nominatim (1 request por segundo)
+            usleep(1000000); 
+
+            $url_destino = "https://nominatim.openstreetmap.org/search?q=" . urlencode($destino . ", Entre Ríos, Argentina") . "&format=json&limit=1";
+            $res_dest = @file_get_contents($url_destino, false, $context);
+            $data_dest = json_decode($res_dest, true);
+
+            if (!empty($data_orig) && !empty($data_dest)) {
+                $lon1 = $data_orig[0]['lon'];
+                $lat1 = $data_orig[0]['lat'];
+                $lon2 = $data_dest[0]['lon'];
+                $lat2 = $data_dest[0]['lat'];
+
+                $url_osrm = "http://router.project-osrm.org/route/v1/driving/{$lon1},{$lat1};{$lon2},{$lat2}?overview=false";
+                $res_osrm = @file_get_contents($url_osrm);
+                $routeData = json_decode($res_osrm, true);
+
+                if (isset($routeData['routes'][0])) {
+                    $distancia_km = ceil($routeData['routes'][0]['distance'] / 1000); // Redondeado para arriba en KM
+                    $duracion_min = ceil($routeData['routes'][0]['duration'] / 60); // Duración en minutos
+                }
+            }
+        } catch (Exception $e) {
+            // Falla silenciosa si las APIs no responden
+        }
+
         $stmt = $pdo->prepare("
         INSERT INTO Publicaciones 
-        (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, ID_vehiculo)
-        VALUES (?, ?, ?, ?, ?, 'Activa', ?)
+        (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, DistanciaKM, DuracionMinutos, ID_vehiculo)
+        VALUES (?, ?, ?, ?, ?, 'Activa', ?, ?, ?)
     ");
 
     $stmt->execute([
@@ -77,6 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $calle_salida,
         $fecha,
         $precio,
+        $distancia_km,
+        $duracion_min,
         $vehiculo_id
     ]);
 

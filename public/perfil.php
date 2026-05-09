@@ -17,7 +17,7 @@ if (isset($_GET['id']) && (int)$_GET['id'] !== $user_id) {
     $es_propio = false;
 }
 
-$stmt = $pdo->prepare("SELECT Nombre, Apellido, Correo, Telefono, FotoPerfil, Descripcion, Preferencias FROM Usuarios WHERE ID_usuario = ?");
+$stmt = $pdo->prepare("SELECT Nombre, Apellido, Correo, Telefono, FotoPerfil, Descripcion, Preferencias, Saldo FROM Usuarios WHERE ID_usuario = ?");
 $stmt->execute([$user_id]);
 $perfil = $stmt->fetch();
 
@@ -40,7 +40,7 @@ if ($conductor) {
     $stmt_prom->execute([$c_id]);
     $prom = $stmt_prom->fetch();
     if ($prom && $prom['avg_p']) {
-        $promedio = round($prom['avg_p'], 1);
+        $promedio = number_format(floor($prom['avg_p'] * 10) / 10, 1, ',', '.');
     }
     
     // Extraer reseñas anónimas
@@ -180,6 +180,17 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <div class="col-der">
         <?php if ($es_propio): ?>
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 30px; text-align: center;">
+                <h3 style="margin-top:0; color: #166534;">Mi Billetera</h3>
+                <div style="font-size: 2.5em; font-weight: bold; color: #15803d; margin: 10px 0;">
+                    $<?= number_format($perfil['Saldo'] ?? 0, 2, ',', '.') ?>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                    <a href="ingresar_dinero.php" class="btn" style="background-color: #22c55e; color: white; border: none; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Ingresar Dinero</a>
+                    <a href="retirar_dinero.php" class="btn" style="background-color: #3b82f6; color: white; border: none; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Retirar Dinero</a>
+                </div>
+            </div>
+
             <form method="POST" enctype="multipart/form-data" style="padding:0; border:none; box-shadow:none; max-width:100%;">
                 
                 <h3 style="margin-top:0;">Mi Información</h3>

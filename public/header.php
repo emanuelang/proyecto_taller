@@ -65,38 +65,39 @@
         <span>Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong></span>
     </div>
 
-    <!-- Botón para abrir sidebar izquierdo -->
-    <button id="sidebarOpen" class="sidebar-toggle" style="margin-left: 15px;">&#9776;</button>
+    <!-- Botón flotante para abrir sidebar izquierdo -->
+    <button id="sidebarOpen" class="sidebar-main-toggle">&#9776;</button>
+
     
     <!-- Sidebar Overlay -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
     <!-- Sidebar Menu -->
     <div id="sidebarMenu" class="sidebar">
-        <div class="sidebar-header">
-            <!-- Arriba a la izquierda las 3 lineas para cerrar -->
-            <button id="sidebarClose" class="sidebar-toggle">&#9776;</button>
+        <div class="sidebar-header" style="text-align: right; padding-right: 15px; padding-bottom: 10px;">
+            <button id="sidebarClose" style="background: none; border: none; color: var(--text-main); font-size: 28px; padding: 0; cursor: pointer; box-shadow: none;">&times;</button>
         </div>
         
-        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
+        <?php $current_page = basename($_SERVER['PHP_SELF']); ?>
+        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link <?= $current_page == 'perfil.php' ? 'active' : '' ?>">👤 Perfil</a>
         <div class="sidebar-separator"></div>
         
-        <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
-        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
+        <a href="<?= BASE_URL ?>index.php" class="sidebar-link <?= $current_page == 'index.php' ? 'active' : '' ?>">🚗 Buscar viajes</a>
+        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link <?= $current_page == 'mis_reservas.php' ? 'active' : '' ?>">🎫 Mis reservas</a>
 
         <?php if (!$_SESSION['is_conductor']): ?>
-            <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>
+            <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link <?= $current_page == 'registro_conductor.php' ? 'active' : '' ?>">🚕 Convertirme en conductor</a>
         <?php else: ?>
-            <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
+            <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link <?= strpos($_SERVER['PHP_SELF'], 'conductor/') !== false ? 'active' : '' ?>">⚙️ Panel conductor</a>
         <?php endif; ?>
 
-        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link">Manual de Ayuda</a>
+        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link <?= $current_page == 'manual.php' ? 'active' : '' ?>">📖 Manual de Ayuda</a>
 
         <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true): ?>
-            <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link">Panel de admin</a>
+            <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link <?= strpos($_SERVER['PHP_SELF'], 'admin/') !== false ? 'active' : '' ?>">🛡️ Panel de admin</a>
         <?php endif; ?>
 
-        <a href="<?= BASE_URL ?>logout.php" class="sidebar-link sidebar-logout">Salir</a>
+        <a href="<?= BASE_URL ?>logout.php" class="sidebar-link sidebar-logout">🚪 Salir de tu cuenta</a>
     </div>
 
     <!-- Notif Sidebar Menu -->
@@ -134,12 +135,14 @@
                     sidebar.classList.add('active');
                     sidebar.style.transform = 'translateX(0)';
                     overlay.style.display = 'block';
+                    if (btnOpen) btnOpen.style.display = 'none';
                     setTimeout(() => overlay.style.opacity = '1', 10);
                     localStorage.setItem('sidebar_open', 'true');
                 } else {
                     sidebar.classList.remove('active');
                     sidebar.style.transform = 'translateX(-100%)';
                     overlay.style.opacity = '0';
+                    if (btnOpen) btnOpen.style.display = 'flex';
                     setTimeout(() => overlay.style.display = 'none', 300);
                     localStorage.setItem('sidebar_open', 'false');
                 }
@@ -166,7 +169,7 @@
                 }
             }
 
-            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
+            const isSidebarOpen = localStorage.getItem('sidebar_open') === 'true';
             updateSidebarState(isSidebarOpen);
 
             function toggleSidebar() {

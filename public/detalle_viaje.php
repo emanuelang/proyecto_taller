@@ -10,8 +10,8 @@ $viaje_id = (int) $_GET['id'];
 
 $sql = "
     SELECT p.ID_publicacion AS id, p.CiudadOrigen AS origen_nombre, p.CiudadDestino AS destino_nombre, p.CalleSalida AS calle_salida, p.HoraSalida AS fecha, p.Precio AS precio, 
-           p.Estado AS estado,
-           u.Nombre AS conductor_nombre, NULL AS foto_perfil,
+           p.Estado AS estado, p.DistanciaKM as distancia_km, p.DuracionMinutos as duracion_minutos,
+           u.Nombre AS conductor_nombre, u.FotoPerfil AS foto_perfil,
            veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.Foto AS vehiculo_foto, veh.CantidadAsientos AS asientos,
            (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') as ocupados,
            (SELECT AVG(Puntuacion) FROM Calificaciones calif WHERE calif.ID_conductor = c.ID_conductor) as promedio_calif,
@@ -66,55 +66,139 @@ if (isset($_SESSION['user_id'])) {
     </div>
 
     <div class="flex-container">
-        <div class="col detail-box">
-            <h3 style="margin-top:0; color:var(--primary);">Ruta y Horario</h3>
-            <p><strong>Origen:</strong> <?= htmlspecialchars($viaje['origen_nombre']) ?></p>
-            <p><strong>Destino:</strong> <?= htmlspecialchars($viaje['destino_nombre']) ?></p>
+        <div class="col detail-box" style="padding: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E2E8F0; padding-bottom: 20px; margin-bottom: 20px;">
+                <h3 style="margin:0; color:var(--text-main); font-size: 1.5em; gap: 10px; display: flex; align-items: center;">📍 Ruta y Horario</h3>
+                <span class="badge badge-success" style="font-size: 1em; padding: 8px 15px;">$<?= number_format($viaje['precio'], 2) ?></span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <span class="text-muted">Origen</span>
+                    <div style="font-size: 1.1em; font-weight: 500;"><?= htmlspecialchars($viaje['origen_nombre']) ?></div>
+                </div>
+                <div>
+                    <span class="text-muted">Destino</span>
+                    <div style="font-size: 1.1em; font-weight: 500;"><?= htmlspecialchars($viaje['destino_nombre']) ?></div>
+                </div>
+            </div>
+
             <?php if (!empty($viaje['calle_salida'])): ?>
-                <p><strong>📍 Calle de Salida:</strong> <span style="color: var(--primary); font-weight: 500;"><?= htmlspecialchars($viaje['calle_salida']) ?></span></p>
+                <div style="margin-bottom: 15px;">
+                    <span class="text-muted">Punto de encuentro</span>
+                    <div style="color: var(--primary); font-weight: 500;">📌 <?= htmlspecialchars($viaje['calle_salida']) ?></div>
+                </div>
             <?php endif; ?>
-            <p><strong>Fecha y Hora:</strong> <?= date('d/m/Y H:i', strtotime($viaje['fecha'])) ?></p>
-            <?php if (isset($viaje['distancia_km']) && $viaje['distancia_km'] > 0): ?>
-                <p><strong>Distancia:</strong> <?= $viaje['distancia_km'] ?> km</p>
-                <p><strong>Duración Estimada:</strong> <?= htmlspecialchars($viaje['duracion_estimada'] ?? 'N/A') ?></p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; background-color: #F8FAFC; padding: 15px; border-radius: 8px;">
+                <div>
+                    <span class="text-muted">🗓️ Fecha de salida</span>
+                    <div style="font-weight: 500; margin-top: 5px;"><?= date('d/m/Y H:i', strtotime($viaje['fecha'])) ?> hs</div>
+                </div>
+                <div>
+                    <span class="text-muted">🏁 Llegada estimada</span>
+                    <?php if (isset($viaje['distancia_km']) && $viaje['distancia_km'] > 0): ?>
+                        <div style="font-weight: 500; margin-top: 5px;"><?= date('d/m/Y H:i', strtotime($viaje['fecha']) + ($viaje['duracion_minutos'] * 60)) ?> hs</div>
+                        <div style="font-size: 0.85em; color: #94A3B8; margin-top: 5px;">Distancia: <?= ceil($viaje['distancia_km']) ?> km</div>
+                    <?php else: ?>
+                        <div style="font-weight: 500; margin-top: 5px; color:#94A3B8;">No disponible por el momento</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div>
+                <span class="text-muted">💺 Disponibilidad</span>
+                <div style="font-weight: 500;">Quedan <?= max(0, $asientos_disponibles) ?> de <?= $viaje['asientos'] ?> asientos</div>
+            </div>
+
+            <?php if (!empty($viaje['observaciones'])): ?>
+                <div style="margin-top: 20px; border-top: 1px dashed #E2E8F0; padding-top: 15px;">
+                    <span class="text-muted">📝 Observaciones del conductor</span>
+                    <p style="margin-top: 5px; font-style: italic; color: #475569;">"<?= nl2br(htmlspecialchars($viaje['observaciones'])) ?>"</p>
+                </div>
             <?php endif; ?>
-            <p style="font-size: 1.1em;"><strong>Precio:</strong> <span style="color:var(--success); font-weight:bold;">$<?= number_format($viaje['precio'], 2) ?></span></p>
-            <p><strong>Asientos disponibles:</strong> <?= max(0, $asientos_disponibles) ?> de <?= $viaje['asientos'] ?></p>
-            <p><strong>Observaciones:</strong> <em><?= nl2br(htmlspecialchars($viaje['observaciones'] ?? 'Sin observaciones')) ?></em></p>
         </div>
 
-        <div class="col detail-box">
-            <h3 style="margin-top:0; color:var(--primary);">Conductor</h3>
-            <p><strong>Nombre:</strong> <?= htmlspecialchars($viaje['conductor_nombre']) ?></p>
-            <p><strong>Calificación:</strong> 
-                <?= $viaje['promedio_calif'] ? number_format($viaje['promedio_calif'], 1) . ' ⭐' : 'Sin calificaciones aún' ?>
-            </p>
-            <?php if (!isset($_SESSION['conductor_id']) || $_SESSION['conductor_id'] != $viaje['conductor_id']): ?>
-                <p style="margin-top: 15px;">
-                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $viaje['conductor_id'] ?>" style="color:#d32f2f; text-decoration: underline; font-size: 0.95em;">
-                        ⚠️ Reportar problema con este conductor
-                    </a>
-                </p>
-            <?php endif; ?>
-            <hr>
-            <h3 style="color:var(--primary);">Vehículo asignado</h3>
-            <p><strong>Modelo:</strong> <?= htmlspecialchars($viaje['marca'] . ' ' . $viaje['modelo']) ?></p>
-            <p><strong>Color:</strong> <?= htmlspecialchars($viaje['color']) ?></p>
-            <p><strong>Patente:</strong> <?= htmlspecialchars($viaje['patente']) ?></p>
+        <div class="col" style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Box Conductor -->
+            <div class="detail-box" style="margin-bottom: 0;">
+                <h3 style="margin-top:0; color:var(--text-main); font-size: 1.3em; display:flex; align-items: center; gap: 8px; border-bottom: 1px solid #E2E8F0; padding-bottom: 15px;">👤 Información del Conductor</h3>
+                
+                <div style="display: flex; align-items: center; gap: 20px; margin-top: 15px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; width: 80px;">
+                        <?php if ($viaje['foto_perfil']): ?>
+                            <img src="<?= $viaje['foto_perfil'] ?>" alt="Conductor" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <?php else: ?>
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background-color: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 2em; color: #94a3b8;">👤</div>
+                        <?php endif; ?>
+                        
+                        <?php if ($viaje['promedio_calif']): ?>
+                            <div style="background-color: black; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.8em; font-weight: bold; margin-top: -10px; z-index: 1;">
+                                ⭐ <?= number_format(floor($viaje['promedio_calif'] * 10) / 10, 1, ',', '.') ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <div style="font-size: 1.3em; font-weight: 600; color: #1e293b;"><?= htmlspecialchars($viaje['conductor_nombre']) ?></div>
+                        <?php if (!$viaje['promedio_calif']): ?>
+                            <div style="color: #f59e0b; font-size: 0.95em; margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+                                ⭐ Nuevo conductor
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box Vehículo -->
+            <div class="detail-box" style="margin-bottom: 0;">
+                <h3 style="margin-top:0; color:var(--text-main); font-size: 1.3em; display:flex; align-items: center; gap: 8px; border-bottom: 1px solid #E2E8F0; padding-bottom: 15px;">🚗 Vehículo Asignado</h3>
+                
+                <div style="margin-top: 15px; display: flex; gap: 15px; align-items: center;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="text-muted">Modelo</span>
+                            <span style="font-weight: 500;"><?= htmlspecialchars($viaje['marca'] . ' ' . $viaje['modelo']) ?></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="text-muted">Color</span>
+                            <span style="font-weight: 500; font-style: italic;"><?= htmlspecialchars($viaje['color']) ?></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F1F5F9; padding: 8px 12px; border-radius: 6px; margin-top: 5px;">
+                            <span style="font-size: 0.85em; font-weight: bold; color: #64748B;">MATRÍCULA</span>
+                            <span style="font-family: monospace; font-size: 1.2em; font-weight: bold; letter-spacing: 2px; color: #0F172A;"><?= htmlspecialchars($viaje['patente']) ?></span>
+                        </div>
+                    </div>
+                    
+                    <div style="width: 120px; display: flex; align-items: center; justify-content: center;">
+                        <?php if ($viaje['vehiculo_foto']): ?>
+                            <img src="<?= $viaje['vehiculo_foto'] ?>" alt="Vehículo" style="max-width: 100%; max-height: 100px; object-fit: contain;">
+                        <?php else: ?>
+                            <div style="font-size: 3em; opacity: 0.2;">🚗</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
         <?php if (!isset($_SESSION['user_id'])): ?>
-            <p><a href="<?= BASE_URL ?>login.php" class="btn">Iniciá sesión para reservar</a></p>
+            <a href="<?= BASE_URL ?>login.php" class="btn">Iniciá sesión para reservar</a>
         <?php elseif ($ya_reservado): ?>
-            <button disabled style="padding: 15px 35px; background-color: #ecfdf5; color: var(--success); border: 2px solid var(--success); font-size: 1.1em; font-weight: bold; border-radius: 6px; cursor: default;">✅ Ya tienes tu asiento asegurado en este viaje</button>
+            <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; padding: 20px 35px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.1);">
+                <div style="font-size: 1.5em; margin-bottom: 5px;">✅</div>
+                <div style="font-size: 1.2em; font-weight: bold;">Asiento Confirmado</div>
+                <div style="font-size: 0.95em; margin-top: 5px; opacity: 0.9;">¡Ya formas parte de este viaje! Revisa tu Panel para ver más detalles.</div>
+            </div>
         <?php elseif ($asientos_disponibles <= 0): ?>
-            <button disabled style="padding: 12px 25px;">El viaje está lleno</button>
+            <button disabled style="padding: 15px 35px; background-color: #F1F5F9; color: #94A3B8; border: none; font-size: 1.1em; border-radius: 8px;">Viaje Agotado</button>
         <?php elseif (isset($_SESSION['is_conductor']) && $_SESSION['is_conductor'] && isset($_SESSION['conductor_id']) && $_SESSION['conductor_id'] == $viaje['conductor_id']): ?>
-            <p style="color: #64748b;"><em>⚠️ Este es tu viaje publicado.</em></p>
+            <div style="padding: 15px 35px; background-color: #F8FAFC; color: #475569; border: 1px dashed #CBD5E1; font-size: 1.1em; border-radius: 8px; display: inline-block;">
+                🚗 Este es un viaje publicado por ti.
+            </div>
         <?php else: ?>
-            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $viaje['id'] ?>" class="btn success-bg" style="padding: 12px 25px; font-size: 1.1em; display: inline-block;">Comenzar Reserva</a>
+            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= $viaje['id'] ?>" class="btn success-bg" style="padding: 15px 40px; font-size: 1.2em; border-radius: 8px; display: inline-block; box-shadow: 0 4px 15px -3px rgba(132, 204, 22, 0.4);">💳 Continuar a la Reserva</a>
         <?php endif; ?>
     </div>
 </body>

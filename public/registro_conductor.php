@@ -139,7 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->rollBack();
         echo "<p style='color:red'>Error al enviar la solicitud.</p>";
     }
-}
+} // CIERRA if (empty($errores))
+} // CIERRA if ($_SERVER['REQUEST_METHOD'] === 'POST')
 ?>
 
 <div class="card" style="max-width: 600px; margin: 40px auto; padding: 30px;">

@@ -3,39 +3,6 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
-$unread_count = 0;
-if (isset($_SESSION['user_id'])) {
-    // Inyectar alertas 24hs
-    $stmt_res = $pdo->prepare("
-        SELECT r.ID_reserva, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino 
-        FROM Reservas r
-        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
-        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
-        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
-        WHERE pas.ID_usuario = ? AND r.Estado NOT IN ('Cancelada', 'Rechazada')
-    ");
-    $stmt_res->execute([$_SESSION['user_id']]);
-    $mis_viajes_notif = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($mis_viajes_notif as $v_notif) {
-        $hs_restantes = (strtotime($v_notif['HoraSalida']) - time()) / 3600;
-        if ($hs_restantes > 0 && $hs_restantes <= 24) {
-            $msg_notif = "Recordatorio: Tu viaje de {$v_notif['CiudadOrigen']} a {$v_notif['CiudadDestino']} sale en menos de 24 horas.";
-            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Mensaje = ?");
-            $stmt_check->execute([$_SESSION['user_id'], $msg_notif]);
-            if ($stmt_check->fetchColumn() == 0) {
-                $stmt_ins = $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)");
-                $stmt_ins->execute([$_SESSION['user_id'], $msg_notif]);
-            }
-        }
-    }
-
-    // Contar no leídas
-    $stmt_notif = $pdo->prepare("SELECT COUNT(*) FROM Notificaciones WHERE ID_usuario = ? AND Leida = FALSE");
-    $stmt_notif->execute([$_SESSION['user_id']]);
-    $unread_count = $stmt_notif->fetchColumn();
-}
-
 /* ============================
    TRAER CIUDADES...
 ============================ */
@@ -61,11 +28,54 @@ foreach ($todas_las_ciudades as $c) {
 }
 
 /* ============================
-   CAPTURAR FILTROS ...
+   CAPTURAR FILTROS Y PAGINACIÓN...
 ============================ */
 $origen = $_GET['origen'] ?? '';
 $destino = $_GET['destino'] ?? '';
 $orden = $_GET['orden'] ?? '';
+$pagina_actual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+if ($pagina_actual < 1) $pagina_actual = 1;
+
+$limite = 30;
+$offset = ($pagina_actual - 1) * $limite;
+
+/* ============================
+   CONDICIONES BASE
+============================ */
+$where_sql = "WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'";
+$params = [];
+
+if ($origen !== '') {
+    $where_sql .= " AND p.CiudadOrigen = ?";
+    $params[] = $origen;
+}
+
+if ($destino !== '') {
+    $where_sql .= " AND p.CiudadDestino = ?";
+    $params[] = $destino;
+}
+
+/* ============================
+   CONTAR TOTAL DE VIAJES
+============================ */
+$sql_count = "
+    SELECT COUNT(*) 
+    FROM Publicaciones p
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
+    $where_sql
+";
+$stmt_count = $pdo->prepare($sql_count);
+$stmt_count->execute($params);
+$total_viajes = $stmt_count->fetchColumn();
+$total_paginas = ceil($total_viajes / $limite);
+
+if ($pagina_actual > $total_paginas && $total_paginas > 0) {
+    $pagina_actual = $total_paginas;
+    $offset = ($pagina_actual - 1) * $limite;
+}
 
 /* ============================
    QUERY DINÁMICA DE VIAJES
@@ -85,20 +95,8 @@ $sql = "
     JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
-    WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'
+    $where_sql
 ";
-
-$params = [];
-
-if ($origen !== '') {
-    $sql .= " AND p.CiudadOrigen = ?";
-    $params[] = $origen;
-}
-
-if ($destino !== '') {
-    $sql .= " AND p.CiudadDestino = ?";
-    $params[] = $destino;
-}
 
 switch ($orden) {
     case 'precio_asc':
@@ -123,118 +121,33 @@ switch ($orden) {
         $sql .= " ORDER BY p.HoraSalida ASC";
 }
 
+$sql .= " LIMIT $limite OFFSET $offset";
+
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* ============================
+   CÁLCULO RANGO DE PÁGINAS VISIBLES
+============================ */
+$max_paginas_visibles = 6;
+if ($pagina_actual <= $max_paginas_visibles) {
+    $start_page = 1;
+    $end_page = min($max_paginas_visibles, $total_paginas);
+} else {
+    $start_page = $pagina_actual - $max_paginas_visibles + 1;
+    $end_page = $pagina_actual;
+}
+
+// Preparar base URL para los botones de paginación manteniendo los filtros
+$base_url_params = $_GET;
+unset($base_url_params['pagina']);
+$query_string = http_build_query($base_url_params);
+$query_separator = empty($query_string) ? '?' : '?' . $query_string . '&';
+
+require_once __DIR__ . '/header.php';
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
-</head>
-<body>
 
-<?php if (isset($_SESSION['user_id'])): ?>
-    <!-- Botón toggle flotante SIEMPRE visible en la esquina superior izquierda -->
-    <button id="sidebarMainToggle" class="sidebar-main-toggle">&#9776;</button>
-    
-    <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-
-    <!-- Sidebar Menu -->
-    <div id="sidebarMenu" class="sidebar">
-        <a href="<?= BASE_URL ?>perfil.php" class="sidebar-link">Perfil</a>
-        <div class="sidebar-separator"></div>
-        
-        <a href="<?= BASE_URL ?>index.php" class="sidebar-link">Ver viajes</a>
-        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="sidebar-link">Mis reservas</a>
-
-        <a href="<?= BASE_URL ?>notificaciones.php" class="sidebar-link">
-            Notificaciones
-            <?php if ($unread_count > 0): ?>
-                <span style="color: #ef4444; font-weight: bold; margin-left: 5px;">(!)</span>
-            <?php endif; ?>
-        </a>
-
-        <?php if (!$_SESSION['is_conductor']): ?>
-            <a href="<?= BASE_URL ?>registro_conductor.php" class="sidebar-link">Convertirme en conductor</a>
-        <?php else: ?>
-            <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link">Panel conductor</a>
-        <?php endif; ?>
-
-        <a href="<?= BASE_URL ?>manual.php" class="sidebar-link">Manual de Ayuda</a>
-
-        <?php 
-        $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
-        $stmt_admin->execute([$_SESSION['user_id']]);
-        $es_admin = $stmt_admin->fetch() !== false;
-        if ($es_admin): ?>
-            <a href="<?= BASE_URL ?>admin/dashboard.php" class="sidebar-link" style="color: #10b981;">Panel de Admin</a>
-        <?php endif; ?>
-
-        <a href="<?= BASE_URL ?>logout.php" class="sidebar-link sidebar-logout">Salir</a>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('sidebarOverlay');
-            const btnToggle = document.getElementById('sidebarMainToggle');
-
-            function updateSidebarState(isOpen) {
-                if (isOpen) {
-                    sidebar.classList.add('active');
-                    overlay.style.display = 'block';
-                    setTimeout(() => overlay.style.opacity = '1', 10);
-                    localStorage.setItem('sidebar_open', 'true');
-                } else {
-                    sidebar.classList.remove('active');
-                    overlay.style.opacity = '0';
-                    setTimeout(() => overlay.style.display = 'none', 300);
-                    localStorage.setItem('sidebar_open', 'false');
-                }
-            }
-
-            // Inicializamos: desplegado por defecto a menos que lo hayan cerrado
-            const isSidebarOpen = localStorage.getItem('sidebar_open') !== 'false';
-            updateSidebarState(isSidebarOpen);
-
-            function toggleSidebar() {
-                const isCurrentlyOpen = sidebar.classList.contains('active');
-                updateSidebarState(!isCurrentlyOpen);
-            }
-
-            btnToggle.addEventListener('click', toggleSidebar);
-            overlay.addEventListener('click', toggleSidebar);
-        });
-    </script>
-<?php endif; ?>
-
-<h1>Carpooling</h1>
-
-<div class="nav-menu">
-<?php if (!isset($_SESSION['user_id'])): ?>
-    <a href="<?= BASE_URL ?>login.php" class="btn">Iniciar sesión</a>
-    <a href="<?= BASE_URL ?>registro_usuario.php">Registrarse</a>
-<?php else: ?>
-    <?php
-    $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM administradores WHERE ID_usuario = ?");
-    $stmt_admin->execute([$_SESSION['user_id']]);
-    $es_admin = $stmt_admin->fetch() !== false;
-    ?>
-    
-    <span style="font-size: 1.1em; margin-bottom: 20px;">
-        Hola <strong><?= htmlspecialchars($_SESSION['nombre']) ?></strong>
-        <?php if ($es_admin): ?>
-            <span style="color: #10b981; font-weight: bold; margin-left: 5px;">(Estás como admin)</span>
-        <?php endif; ?>
-    </span>
-<?php endif; ?>
-</div>
-
-<hr>
 
 <?php if (isset($_GET['msg'])): ?>
     <?php if ($_GET['msg'] === 'solicitud_enviada'): ?>
@@ -251,7 +164,7 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <h2 style="text-align: center; margin-top: 20px; margin-bottom: 15px;">Buscar viajes</h2>
 
 <div style="display: flex; justify-content: center; margin-bottom: 40px; padding: 0 10px;">
-    <form method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 8px 12px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 850px; border: 1px solid #e2e8f0; justify-content: center;">
+    <form method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 10px 15px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); width: 100%; max-width: 850px; border: 1px solid #e2e8f0; justify-content: center;">
 
         <datalist id="ciudades_list">
             <?php foreach ($ciudades as $c): ?>
@@ -259,15 +172,17 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php endforeach; ?>
         </datalist>
 
-        <input type="text" name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; color: #475569;" value="<?= htmlspecialchars($origen) ?>" autocomplete="off">
+        <span style="color: #94A3B8; margin-left: 10px;">📍</span>
+        <input type="text" name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($origen) ?>" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
-        <input type="text" name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 140px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; color: #475569;" value="<?= htmlspecialchars($destino) ?>" autocomplete="off">
+        <span style="color: #94A3B8; margin-left: 5px;">🏁</span>
+        <input type="text" name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($destino) ?>" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
-        <select name="orden" style="flex: 1; min-width: 160px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569;">
+        <select name="orden" style="flex: 1; min-width: 160px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569; margin:0;">
             <option value="">Ordenar</option>
             <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
             <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
@@ -277,8 +192,8 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Menos asientos disponibles</option>
         </select>
 
-        <button type="submit" class="btn" style="border-radius: 30px; padding: 10px 25px; margin: 0; white-space: nowrap; font-size: 1rem;">
-            Buscar
+        <button type="submit" class="btn success-bg" style="border-radius: 30px; padding: 12px 30px; margin: 0; white-space: nowrap; font-size: 1rem;">
+            🔍 Buscar
         </button>
     </form>
 </div>
@@ -293,21 +208,61 @@ $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php endif; ?>
 
 <?php foreach ($viajes as $v): ?>
-    <div class="viaje card" style="margin-bottom: 0;">
-        <h3 style="margin-top: 0; color: var(--primary);">
-            <?= htmlspecialchars($v['origen_nombre']) ?> →
-            <?= htmlspecialchars($v['destino_nombre']) ?>
-        </h3>
+    <div class="viaje card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <span class="badge badge-primary">Sale el <?= date('d/m/Y', strtotime($v['fecha'])) ?></span>
+                <span style="font-size: 1.25em; font-weight: bold; color: var(--success);">$<?= number_format($v['precio'], 2) ?></span>
+            </div>
 
-        <p><strong>Fecha:</strong> <?= date('d/m/Y H:i', strtotime($v['fecha'])) ?></p>
-        <p><strong>Precio:</strong> $<?= number_format($v['precio'], 2) ?></p>
-        <p><strong>Conductor:</strong> <?= htmlspecialchars($v['conductor_nombre']) ?></p>
-        <p><strong>Asientos:</strong> <?= max(0, $v['asientos_disp']) ?> disponibles</p>
+            <h3 style="margin: 5px 0 15px 0; font-size: 1.3em; color: var(--text-main); display:flex; align-items: center; gap: 8px;">
+                <?= htmlspecialchars($v['origen_nombre']) ?>
+                <span style="color: #CBD5E1; font-weight: 300;">→</span> 
+                <?= htmlspecialchars($v['destino_nombre']) ?>
+            </h3>
 
-        <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn" style="display: block; text-align: center; margin-top: 15px;">Ver Detalle</a>
+            <div style="display: flex; flex-direction: column; gap: 8px; color: #475569; font-size: 0.95em; margin-bottom: 20px;">
+                <div>🕒 <?= date('H:i', strtotime($v['fecha'])) ?> hs</div>
+                <div>👤 <?= htmlspecialchars($v['conductor_nombre']) ?></div>
+                <div>💺 <?= max(0, $v['asientos_disp']) ?> asientos disponibles</div>
+            </div>
+        </div>
+
+        <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline" style="display: block; text-align: center; width: 100%;">Ver Detalle</a>
     </div>
 <?php endforeach; ?>
 </div>
+
+<?php if ($total_paginas > 1): ?>
+    <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 40px; margin-bottom: 40px; flex-wrap: wrap;">
+        <!-- Primera página y Anterior -->
+        <?php if ($pagina_actual > 1): ?>
+            <a href="<?= htmlspecialchars($query_separator . 'pagina=1') ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Primera página">&lt;&lt;</a>
+            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual - 1)) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Página anterior">&lt;</a>
+        <?php else: ?>
+            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&lt;&lt;</span>
+            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&lt;</span>
+        <?php endif; ?>
+
+        <!-- Números de página -->
+        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+            <?php if ($i == $pagina_actual): ?>
+                <span style="background: var(--primary); color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; border: 1px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><?= $i ?></span>
+            <?php else: ?>
+                <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $i) ?>" class="btn" style="background: #ffffff; color: #475569; padding: 8px 14px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none; transition: all 0.2s;"><?= $i ?></a>
+            <?php endif; ?>
+        <?php endfor; ?>
+
+        <!-- Siguiente y Última -->
+        <?php if ($pagina_actual < $total_paginas): ?>
+            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual + 1)) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Página siguiente">&gt;</a>
+            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $total_paginas) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Última página">&gt;&gt;</a>
+        <?php else: ?>
+            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&gt;</span>
+            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&gt;&gt;</span>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 </body>
 </html>
