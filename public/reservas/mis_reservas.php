@@ -36,7 +36,7 @@ $sql = "SELECT
         JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
         JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
-        WHERE pr.ID_pasajero = ? AND r.Estado = 'Completada'
+        WHERE pr.ID_pasajero = ? AND r.Estado = 'Completada' AND p.HoraSalida >= NOW()
         ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
@@ -55,7 +55,10 @@ $reservas = $stmt->fetchAll();
 
 <div class="nav-menu">
     <h2>Mis reservas</h2>
-    <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al Dashboard</a>
+    <div style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+        <a href="<?= BASE_URL ?>reservas/historial_viajes.php" class="btn" style="background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 8px 15px;">📜 Ver Historial</a>
+        <a href="<?= BASE_URL ?>index.php">← Volver al Dashboard</a>
+    </div>
 </div>
 
 <?php if (isset($_SESSION['mensaje_exito'])): ?>

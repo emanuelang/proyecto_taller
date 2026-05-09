@@ -16,6 +16,13 @@ try { $pdo->exec("ALTER TABLE Vehiculos ADD FotoAtras MEDIUMTEXT NULL"); echo "O
 // NUEVO: Calle de salida en Publicaciones
 try { $pdo->exec("ALTER TABLE Publicaciones ADD CalleSalida VARCHAR(200) NULL AFTER CiudadDestino"); echo "OK: Publicaciones.CalleSalida\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
 
+// NUEVO: Distancia y Duración en Publicaciones
+try { $pdo->exec("ALTER TABLE Publicaciones ADD DistanciaKM INT NULL"); echo "OK: Publicaciones.DistanciaKM\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+try { $pdo->exec("ALTER TABLE Publicaciones ADD DuracionMinutos INT NULL"); echo "OK: Publicaciones.DuracionMinutos\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+
+// NUEVO: Saldo en Usuarios
+try { $pdo->exec("ALTER TABLE Usuarios ADD Saldo DECIMAL(10,2) DEFAULT 0.00"); echo "OK: Usuarios.Saldo\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
+
 // NUEVO: Perfil Funcional en Usuarios
 try { $pdo->exec("ALTER TABLE Usuarios ADD FotoPerfil MEDIUMTEXT NULL"); echo "OK: Usuarios.FotoPerfil\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }
 try { $pdo->exec("ALTER TABLE Usuarios ADD Descripcion TEXT NULL"); echo "OK: Usuarios.Descripcion\n"; } catch (PDOException $e) { echo "SKIP: " . $e->getMessage() . "\n"; }

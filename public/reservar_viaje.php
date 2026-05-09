@@ -69,6 +69,82 @@ if ($stmt_dup->fetchColumn() > 0) {
     die("Ya tenés una reserva confirmada para este viaje.");
 }
 
+/* Verificar Saldo del Usuario */
+$stmt_saldo = $pdo->prepare("SELECT Saldo FROM Usuarios WHERE ID_usuario = ?");
+$stmt_saldo->execute([$_SESSION['user_id']]);
+$saldo_usuario = (float)$stmt_saldo->fetchColumn();
+
+if ($saldo_usuario >= $viaje['Precio']) {
+    // Pago automático con Saldo
+    try {
+        $pdo->beginTransaction();
+        
+        // 1. Descontar saldo
+        $stmt_desc = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ?");
+        $stmt_desc->execute([$viaje['Precio'], $_SESSION['user_id']]);
+        
+        // 2. Obtener o crear ID Pasajero
+        $stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
+        $stmt_pasajero->execute([$_SESSION['user_id']]);
+        $pasajero = $stmt_pasajero->fetch();
+        
+        if (!$pasajero) {
+            $pdo->prepare("INSERT INTO Pasajeros (ID_usuario) VALUES (?)")->execute([$_SESSION['user_id']]);
+            $pasajero_id = $pdo->lastInsertId();
+        } else {
+            $pasajero_id = $pasajero['ID_pasajero'];
+        }
+        
+        // 3. Generar código de acceso único
+        $codigo_acceso = "CA-" . strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+        
+        // 4. Crear Reserva Completada
+        $stmt_res = $pdo->prepare("INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva, CodigoAcceso) VALUES (?, 'Completada', NOW(), ?)");
+        $stmt_res->execute([$viaje_id, $codigo_acceso]);
+        $reserva_id = $pdo->lastInsertId();
+        
+        // 5. Vincular Pasajero a Reserva
+        $pdo->prepare("INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)")->execute([$pasajero_id, $reserva_id]);
+        
+        // 6. Registrar pago
+        $stmt_pago = $pdo->prepare("INSERT INTO Pagos (Monto, Estado, ID_reserva) VALUES (?, 'Completado', ?)");
+        $stmt_pago->execute([$viaje['Precio'], $reserva_id]);
+        
+        $pdo->commit();
+        
+        // Mostrar éxito
+        ?>
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <title>Pago Exitoso con Saldo - Carpooling</title>
+            <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+        </head>
+        <body>
+            <div style="max-width: 500px; margin: 50px auto; padding: 30px; border: 1px solid #c3e6cb; border-radius: 8px; background-color: #d4edda; text-align: center;">
+                <h2 style="color: #155724;">¡Reserva y Pago Exitosos!</h2>
+                <p style="color: #155724; font-size: 1.1em;">Tu lugar ha sido asegurado usando el saldo de tu billetera virtual.</p>
+                
+                <div style="background-color: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                    <p style="margin:0; color:#6c757d;">Tu código secreto de acceso al auto es:</p>
+                    <h1 style="margin: 10px 0; color: #007bff; letter-spacing: 2px;"><?= htmlspecialchars($codigo_acceso) ?></h1>
+                    <p style="margin:0; font-size: 0.9em; color:#6c757d;">Muéstraselo al conductor antes de iniciar el viaje.</p>
+                </div>
+                
+                <p>Monto descontado: <strong>$<?= number_format($viaje['Precio'], 2, ',', '.') ?></strong></p>
+                <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="btn" style="display:inline-block; margin-top:20px;">Ver mis reservas activas</a>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die("Error pagando con saldo: " . $e->getMessage());
+    }
+}
+
 /* 
  * IMPORTANTE: Ya no creamos la reserva "Pendiente" en la base de datos.
  * Vamos a pasar el ID de viaje y de usuario por la externa_reference a MP.
