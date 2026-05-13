@@ -138,6 +138,12 @@ require_once __DIR__ . '/../config/app.php';
             <p>Sí. Nuestro equipo de Administración revisa uno por uno el carnet, rostro, patente y seguro de cada persona antes de darle el rol de Conductor. ¡Tu seguridad es nuestra prioridad!</p>
         </div>
     </div>
+
+    <div class="manual-section" style="text-align: center; background: #e0f2fe; padding: 30px; border-radius: 8px; border: none; margin-top: 40px;">
+        <h3 style="color: #0284c7; margin-top: 0;">¿Aún tienes problemas?</h3>
+        <p style="color: #0369a1; margin-bottom: 20px;">Si no encontraste la solución aquí, nuestro equipo técnico está para ayudarte.</p>
+        <a href="<?= BASE_URL ?>soporte.php" class="btn" style="background-color: #0284c7; font-size: 1.1em; padding: 12px 25px;">Contactar a Soporte</a>
+    </div>
 </div>
 
 </body>

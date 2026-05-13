@@ -82,6 +82,21 @@ $stmt = $pdo->prepare($sql1);
 $stmt->execute($params_pendientes);
 $pendientes = $stmt->fetchAll();
 
+// Paginación para Aceptados
+$pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+if ($pagina < 1) $pagina = 1;
+$limite = 10;
+$offset = ($pagina - 1) * $limite;
+
+$count_sql = "
+    SELECT COUNT(*) FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE c.Estado = 'Aceptada' $search_sql
+";
+$stmt_count = $pdo->prepare($count_sql);
+$stmt_count->execute($params_aceptados);
+$total_paginas = ceil($stmt_count->fetchColumn() / $limite);
+
 // Obtener la lista de conductores aceptados
 $sql2 = "
     SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en, c.BaneadoHasta,
@@ -95,6 +110,7 @@ $sql2 = "
     LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
     WHERE c.Estado = 'Aceptada' $search_sql
     ORDER BY c.FechaRegistro DESC
+    LIMIT $limite OFFSET $offset
 ";
 $stmt2 = $pdo->prepare($sql2);
 $stmt2->execute($params_aceptados);
@@ -106,9 +122,11 @@ require_once __DIR__ . '/../header.php';
     <strong style="color: var(--primary);">Admin Panel</strong>
     <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
     <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
+    <a href="vehiculos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Vehículos</a>
     <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
     <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
     <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
+    <a href="soporte.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Soporte</a>
     <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
 </div>
 
@@ -299,6 +317,22 @@ require_once __DIR__ . '/../header.php';
                 <?php endforeach; ?>
             </tbody>
         </table>
+    <?php endif; ?>
+
+    <?php if (isset($total_paginas) && $total_paginas > 1): ?>
+    <div class="pagination">
+        <?php if ($pagina > 1): ?>
+            <a href="?pagina=<?= $pagina - 1 ?>&search=<?= urlencode($search) ?>">&laquo; Anterior</a>
+        <?php endif; ?>
+
+        <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
+            <a href="?pagina=<?= $i ?>&search=<?= urlencode($search) ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+        <?php endfor; ?>
+
+        <?php if ($pagina < $total_paginas): ?>
+            <a href="?pagina=<?= $pagina + 1 ?>&search=<?= urlencode($search) ?>">Siguiente &raquo;</a>
+        <?php endif; ?>
+    </div>
     <?php endif; ?>
 </div>
 

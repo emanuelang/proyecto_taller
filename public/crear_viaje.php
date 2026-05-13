@@ -29,8 +29,8 @@ foreach ($todas_las_ciudades as $c) {
     }
 }
 
-// NUEVO: Obtenemos los vehículos del conductor logueado
-$stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ?");
+// NUEVO: Obtenemos los vehículos del conductor logueado que estén aprobados
+$stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.Estado = 'Aceptado'");
 $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
 
@@ -53,16 +53,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = "El viaje debe programarse con al menos 24 horas de anticipación.";
     }
 
-    // Get the first vehicle for this conductor to attach the trip to
-    $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ? LIMIT 1");
-    $stmt_vehiculo->execute([$_SESSION['conductor_id']]);
+    // Validar que el vehículo seleccionado pertenezca al conductor y esté aceptado
+    $stmt_vehiculo = $pdo->prepare("SELECT v.ID_vehiculo FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.ID_vehiculo = ? AND v.Estado = 'Aceptado'");
+    $stmt_vehiculo->execute([$_SESSION['conductor_id'], $vehiculo_id]);
     $vehiculo = $stmt_vehiculo->fetch();
     
     if (!$vehiculo) {
-        die("Error: No tienes un vehículo asignado para publicar el viaje.");
+        $errores[] = "Error: El vehículo seleccionado no es válido o no ha sido aprobado.";
     }
-    
-    $vehiculo_id = $vehiculo['ID_vehiculo'];
 
     if (empty($errores)) {
         $distancia_km = null;
@@ -179,8 +177,16 @@ $obs_def = $_GET['observaciones'] ?? '';
 
         <?php if (empty($vehiculos)): ?>
             <div style="padding: 10px; margin-bottom: 15px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px;">
-                ⚠️ No tienes vehículos registrados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a>.
+                ⚠️ No tienes vehículos aprobados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a> o espera a que un administrador lo apruebe.
             </div>
+        <?php else: ?>
+            <label>Vehículo a utilizar:</label>
+            <select name="vehiculo_id" required>
+                <option value="">Selecciona tu vehículo</option>
+                <?php foreach ($vehiculos as $v): ?>
+                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['marca'] . ' ' . $v['modelo'] . ' (' . $v['patente'] . ')') ?></option>
+                <?php endforeach; ?>
+            </select><br><br>
         <?php endif; ?>
 
         <label>Destino:</label>

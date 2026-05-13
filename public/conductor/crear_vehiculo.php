@@ -9,7 +9,10 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    /* Convertir foto a Base64 */
+    /* Convertir y comprimir foto a Base64.
+     * Usa la extensión GD si está disponible para comprimir la imagen.
+     * Si GD no está habilitado, usa el archivo tal cual pero rechaza imágenes > 3MB.
+     */
     function procesarFotoBase64($campo) {
         if (!isset($_FILES[$campo]) || $_FILES[$campo]['error'] !== UPLOAD_ERR_OK) {
             return null;
@@ -18,15 +21,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tmpName = $_FILES[$campo]['tmp_name'];
         $tipoMime = mime_content_type($tmpName);
 
-        // Validar que sea realmente una imagen
         if (strpos($tipoMime, 'image/') !== 0) {
             return null;
         }
 
-        $contenidoBinario = file_get_contents($tmpName);
-        $base64 = base64_encode($contenidoBinario);
-        
-        return "data:" . $tipoMime . ";base64," . $base64;
+        // Si GD está disponible, comprimir y redimensionar
+        if (function_exists('imagecreatetruecolor')) {
+            list($ancho_orig, $alto_orig) = getimagesize($tmpName);
+            $max_resolucion = 1000;
+            
+            $ratio = $ancho_orig / $alto_orig;
+            if ($ancho_orig > $max_resolucion || $alto_orig > $max_resolucion) {
+                $nuevo_ancho = ($ratio > 1) ? $max_resolucion : (int)round($max_resolucion * $ratio);
+                $nuevo_alto  = ($ratio > 1) ? (int)round($max_resolucion / $ratio) : $max_resolucion;
+            } else {
+                $nuevo_ancho = $ancho_orig;
+                $nuevo_alto  = $alto_orig;
+            }
+
+            $imagen_redimensionada = imagecreatetruecolor($nuevo_ancho, $nuevo_alto);
+            
+            // Fondo blanco para transparencias PNG
+            $blanco = imagecolorallocate($imagen_redimensionada, 255, 255, 255);
+            imagefilledrectangle($imagen_redimensionada, 0, 0, $nuevo_ancho, $nuevo_alto, $blanco);
+
+            if ($tipoMime === 'image/png') {
+                $imagen_orig = imagecreatefrompng($tmpName);
+            } elseif ($tipoMime === 'image/jpeg') {
+                $imagen_orig = imagecreatefromjpeg($tmpName);
+            } elseif ($tipoMime === 'image/webp') {
+                $imagen_orig = imagecreatefromwebp($tmpName);
+            } else {
+                imagedestroy($imagen_redimensionada);
+                // Tipo no soportado por GD — fallback directo
+                return "data:{$tipoMime};base64," . base64_encode(file_get_contents($tmpName));
+            }
+
+            imagecopyresampled($imagen_redimensionada, $imagen_orig, 0, 0, 0, 0,
+                               $nuevo_ancho, $nuevo_alto, $ancho_orig, $alto_orig);
+
+            ob_start();
+            imagejpeg($imagen_redimensionada, null, 75); // calidad 75
+            $contenido_comprimido = ob_get_clean();
+
+            imagedestroy($imagen_redimensionada);
+            imagedestroy($imagen_orig);
+
+            return "data:image/jpeg;base64," . base64_encode($contenido_comprimido);
+        }
+
+        // ── Fallback sin GD: rechazar archivos > 3 MB ──────────────────────
+        $max_bytes = 3 * 1024 * 1024; // 3 MB
+        if ($_FILES[$campo]['size'] > $max_bytes) {
+            // Devolvemos un indicador especial para mostrar error al usuario
+            return '__TOO_LARGE__';
+        }
+
+        return "data:{$tipoMime};base64," . base64_encode(file_get_contents($tmpName));
     }
 
     $papeles_auto = procesarFotoBase64('papeles_auto');
@@ -49,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errores)) {
         $stmt = $pdo->prepare("
         INSERT INTO Vehiculos
-        (Marca, Modelo, Color, Patente, CantidadAsientos, PapelesAuto, FotoFrente, FotoCostado, FotoAtras)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (Marca, Modelo, Color, Patente, CantidadAsientos, PapelesAuto, FotoFrente, FotoCostado, FotoAtras, Estado)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente')
     ");
 
     $stmt->execute([
