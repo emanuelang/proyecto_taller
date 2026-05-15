@@ -1,0 +1,41 @@
+# 1. Desactivar el listado de directorios (Index of) en todo el proyecto
+Options -Indexes
+
+# 2. Motor de reescritura para protección de carpetas
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+ 
+    # Bloquear acceso web directo a carpetas sensibles por seguridad
+    # El código PHP seguirá pudiendo acceder a ellas internamente.
+    RewriteCond %{REQUEST_URI} !^/proyecto_taller/public/ [NC]
+    RewriteRule ^(config|core|database|docs|BackUp|.git) - [F,L]
+
+
+
+
+
+
+    # Bloquear acceso directo a archivos sensibles en la raíz
+    <FilesMatch "\.(sql|txt|json|lock|git)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# 3. Configuración de PHP para este proyecto (sobrescribe php.ini global en XAMPP)
+# Permite subir imágenes de hasta 16 MB sin modificar archivos externos al proyecto.
+
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 16M
+    php_value post_max_size 64M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+</IfModule>
+
+<IfModule mod_php.c>
+    php_value upload_max_filesize 16M
+    php_value post_max_size 64M
+    php_value memory_limit 256M
+    php_value max_execution_time 120
+</IfModule>
+

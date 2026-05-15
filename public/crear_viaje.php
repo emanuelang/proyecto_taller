@@ -29,8 +29,8 @@ foreach ($todas_las_ciudades as $c) {
     }
 }
 
-// NUEVO: Obtenemos los vehículos del conductor logueado
-$stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ?");
+// NUEVO: Obtenemos los vehículos del conductor logueado que estén aprobados
+$stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.Estado = 'Aceptado'");
 $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
 
@@ -49,20 +49,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = "La calle de salida es muy larga.";
     }
 
+    if ($origen === $destino) {
+        $errores[] = "El origen y el destino no pueden ser la misma ciudad.";
+    }
+
     if (strtotime($fecha) < strtotime('+23 hours 50 minutes')) { // Permitimos un margen de 10 min por demoras
         $errores[] = "El viaje debe programarse con al menos 24 horas de anticipación.";
     }
 
-    // Get the first vehicle for this conductor to attach the trip to
-    $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ? LIMIT 1");
-    $stmt_vehiculo->execute([$_SESSION['conductor_id']]);
+    // Validar que el vehículo seleccionado pertenezca al conductor y esté aceptado
+    $stmt_vehiculo = $pdo->prepare("SELECT v.ID_vehiculo FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.ID_vehiculo = ? AND v.Estado = 'Aceptado'");
+    $stmt_vehiculo->execute([$_SESSION['conductor_id'], $vehiculo_id]);
     $vehiculo = $stmt_vehiculo->fetch();
     
     if (!$vehiculo) {
-        die("Error: No tienes un vehículo asignado para publicar el viaje.");
+        $errores[] = "Error: El vehículo seleccionado no es válido o no ha sido aprobado.";
     }
-    
-    $vehiculo_id = $vehiculo['ID_vehiculo'];
 
     if (empty($errores)) {
         $distancia_km = null;
@@ -105,30 +107,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Falla silenciosa si las APIs no responden
         }
 
-        $stmt = $pdo->prepare("
-        INSERT INTO Publicaciones 
-        (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, DistanciaKM, DuracionMinutos, ID_vehiculo)
-        VALUES (?, ?, ?, ?, ?, 'Activa', ?, ?, ?)
-    ");
+        // --- VALIDACIÓN DE SUPERPOSICIÓN DE HORARIOS ---
+        if ($duracion_min !== null) {
+            $new_start = $fecha;
+            $new_end = date('Y-m-d H:i:s', strtotime($fecha . " + $duracion_min minutes"));
 
-    $stmt->execute([
-        $origen,
-        $destino,
-        $calle_salida,
-        $fecha,
-        $precio,
-        $distancia_km,
-        $duracion_min,
-        $vehiculo_id
-    ]);
+            $stmt_overlap = $pdo->prepare("
+                SELECT p.HoraSalida, p.DuracionMinutos, p.CiudadOrigen, p.CiudadDestino 
+                FROM Publicaciones p
+                JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+                WHERE cp.ID_conductor = ? 
+                AND p.Estado = 'Activa'
+                AND p.HoraSalida < ? 
+                AND DATE_ADD(p.HoraSalida, INTERVAL p.DuracionMinutos MINUTE) > ?
+            ");
+            $stmt_overlap->execute([$_SESSION['conductor_id'], $new_end, $new_start]);
+            $overlap = $stmt_overlap->fetch();
 
-    $publicacion_id = $pdo->lastInsertId();
+            if ($overlap) {
+                $h_salida = date('H:i', strtotime($overlap['HoraSalida']));
+                $h_llegada = date('H:i', strtotime($overlap['HoraSalida'] . " + {$overlap['DuracionMinutos']} minutes"));
+                $errores[] = "Ya tienes un viaje programado que se superpone con este horario: " . 
+                             "{$overlap['CiudadOrigen']} a {$overlap['CiudadDestino']} (Sale $h_salida, llega aprox. $h_llegada).";
+            }
+        }
 
-        $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
-        $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
+        if (empty($errores)) {
+            $stmt = $pdo->prepare("
+                INSERT INTO Publicaciones 
+                (CiudadOrigen, CiudadDestino, CalleSalida, HoraSalida, Precio, Estado, DistanciaKM, DuracionMinutos, ID_vehiculo)
+                VALUES (?, ?, ?, ?, ?, 'Activa', ?, ?, ?)
+            ");
 
-        header("Location: " . BASE_URL . "conductor/viajes.php");
-        exit;
+            $stmt->execute([
+                $origen,
+                $destino,
+                $calle_salida,
+                $fecha,
+                $precio,
+                $distancia_km,
+                $duracion_min,
+                $vehiculo_id
+            ]);
+
+            $publicacion_id = $pdo->lastInsertId();
+
+            $stmt2 = $pdo->prepare("INSERT INTO ConductorPublicacion (ID_conductor, ID_publicacion) VALUES (?, ?)");
+            $stmt2->execute([$_SESSION['conductor_id'], $publicacion_id]);
+
+            header("Location: " . BASE_URL . "conductor/viajes.php");
+            exit;
+        }
     }
 }
 ?>
@@ -177,12 +206,6 @@ $obs_def = $_GET['observaciones'] ?? '';
             <?php endforeach; ?>
         </select>
 
-        <?php if (empty($vehiculos)): ?>
-            <div style="padding: 10px; margin-bottom: 15px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px;">
-                ⚠️ No tienes vehículos registrados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a>.
-            </div>
-        <?php endif; ?>
-
         <label>Destino:</label>
         <select name="destino" required>
             <option value="">Destino</option>
@@ -192,6 +215,20 @@ $obs_def = $_GET['observaciones'] ?? '';
                 </option>
             <?php endforeach; ?>
         </select><br><br>
+
+        <?php if (empty($vehiculos)): ?>
+            <div style="padding: 10px; margin-bottom: 15px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px;">
+                ⚠️ No tienes vehículos aprobados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a> o espera a que un administrador lo apruebe.
+            </div>
+        <?php else: ?>
+            <label>Vehículo a utilizar:</label>
+            <select name="vehiculo_id" required>
+                <option value="">Selecciona tu vehículo</option>
+                <?php foreach ($vehiculos as $v): ?>
+                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['marca'] . ' ' . $v['modelo'] . ' (' . $v['patente'] . ')') ?></option>
+                <?php endforeach; ?>
+            </select><br><br>
+        <?php endif; ?>
 
         <label>Calle de Salida:</label>
         <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required maxlength="200">

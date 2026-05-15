@@ -79,6 +79,25 @@ if ($saldo_usuario >= $viaje['Precio']) {
     try {
         $pdo->beginTransaction();
         
+        // --- PREVENCIÓN DE RACE CONDITION ---
+        // Bloqueamos la fila de la publicación para que nadie más pueda consultar el cupo simultáneamente
+        $stmt_lock = $pdo->prepare("
+            SELECT v.CantidadAsientos AS total,
+                   (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') AS ocupados
+            FROM Publicaciones p
+            JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
+            WHERE p.ID_publicacion = ?
+            FOR UPDATE
+        ");
+        $stmt_lock->execute([$viaje_id]);
+        $check = $stmt_lock->fetch(PDO::FETCH_ASSOC);
+
+        if (!$check || $check['ocupados'] >= $check['total']) {
+            $pdo->rollBack();
+            die("Lo sentimos, los asientos se agotaron justo ahora. Intenta con otro viaje.");
+        }
+        // ------------------------------------
+
         // 1. Descontar saldo
         $stmt_desc = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ?");
         $stmt_desc->execute([$viaje['Precio'], $_SESSION['user_id']]);
@@ -111,6 +130,7 @@ if ($saldo_usuario >= $viaje['Precio']) {
         $stmt_pago->execute([$viaje['Precio'], $reserva_id]);
         
         $pdo->commit();
+
         
         // Mostrar éxito
         ?>

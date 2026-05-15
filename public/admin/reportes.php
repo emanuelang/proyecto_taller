@@ -42,6 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     }
 }
 
+// Paginación
+$pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+if ($pagina < 1) $pagina = 1;
+$limite = 10;
+$offset = ($pagina - 1) * $limite;
+
+$total_registros = $pdo->query("SELECT COUNT(*) FROM Reportes")->fetchColumn();
+$total_paginas = ceil($total_registros / $limite);
+
 // Obtener la lista de quejas (Reportes)
 $stmt = $pdo->query("
     SELECT r.ID_reporte AS id, r.Fecha, r.Hora, r.Descripcion,
@@ -51,20 +60,13 @@ $stmt = $pdo->query("
     JOIN Conductores c ON r.ID_conductor = c.ID_conductor
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     ORDER BY r.Fecha DESC, r.Hora DESC
+    LIMIT $limite OFFSET $offset
 ");
 $reportes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 require_once __DIR__ . '/../header.php';
 ?>
 
-<div class="nav-menu" style="background-color: var(--border-color); padding: 10px; justify-content: center; margin-top: -20px; margin-bottom: 20px; border-radius: 8px;">
-    <strong style="color: var(--primary);">Admin Panel</strong>
-    <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
-    <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
-    <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
-    <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
-    <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
-    <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <div style="padding: 20px;">
     <h2>Buzón de Quejas Anónimas</h2>
@@ -125,6 +127,22 @@ require_once __DIR__ . '/../header.php';
                 <?php endforeach; ?>
             </tbody>
         </table>
+    <?php endif; ?>
+
+    <?php if (isset($total_paginas) && $total_paginas > 1): ?>
+    <div class="pagination">
+        <?php if ($pagina > 1): ?>
+            <a href="?pagina=<?= $pagina - 1 ?>">&laquo; Anterior</a>
+        <?php endif; ?>
+
+        <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
+            <a href="?pagina=<?= $i ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+        <?php endfor; ?>
+
+        <?php if ($pagina < $total_paginas): ?>
+            <a href="?pagina=<?= $pagina + 1 ?>">Siguiente &raquo;</a>
+        <?php endif; ?>
+    </div>
     <?php endif; ?>
 </div>
 
