@@ -19,10 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
         
+        // Verificar estado de la cuenta (Soft Delete)
+        if (isset($user['Estado']) && $user['Estado'] === 'Inactivo') {
+            $error = 'Esta cuenta ha sido desactivada.';
+        }
         // Check User global ban
-        if ($user['BaneadoHasta'] && strtotime($user['BaneadoHasta']) > time()) {
+        elseif ($user['BaneadoHasta'] && strtotime($user['BaneadoHasta']) > time()) {
             $error = 'Tu cuenta está suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
         } else {
+
             session_regenerate_id(true); // Previene session fixation
             $_SESSION['user_id'] = $user['ID_usuario'];
             $_SESSION['nombre'] = $user['Nombre'];

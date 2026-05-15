@@ -115,6 +115,25 @@ button:disabled {
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .btn-outline:hover { background-color: #f0f9ff; color: var(--primary-hover); }
 
+.card-pending {
+    border: 3px solid #f59e0b !important;
+    background-color: #fffbeb !important;
+    position: relative !important;
+}
+
+.badge-orange {
+    display: inline-block !important;
+    background-color: #f59e0b !important;
+    color: white !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    font-size: 0.85em !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4) !important;
+}
+
 /* Badges y Textos auxiliares */
 .text-muted { color: #64748B; font-size: 0.9em; }
 .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.75em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -297,9 +316,9 @@ label {
 .kpi-card.danger { border-top-color: #dc3545; }
 
 /* Admin Tables and utils */
-.table-admin { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.table-admin th, .table-admin td { border: 1px solid var(--border-color); padding: 12px 15px; text-align: left; vertical-align: top; }
-.table-admin th { background-color: #F8FAFC; color: var(--text-main); font-weight: 600; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }
+.table-admin { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #334155; }
+.table-admin th, .table-admin td { border: 1px solid #334155; padding: 12px 15px; text-align: left; vertical-align: top; }
+.table-admin th { background-color: #F8FAFC; color: var(--text-main); font-weight: 600; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; border-bottom: 2px solid #334155; }
 .table-admin tr:hover { background-color: #f8fafc; }
 .btn-aprobar { background-color: var(--success); color: white; padding: 6px 12px; border: none; cursor: pointer; margin-bottom: 5px; width: 100%; border-radius: 4px; font-weight: 500; }
 .btn-aprobar:hover { background-color: var(--success-hover); }

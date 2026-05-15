@@ -13,43 +13,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
         $stmt->execute([$conductor_id]);
         $msg = "Conductor aprobado con éxito.";
     } elseif ($accion === 'rechazar' || $accion === 'eliminar') {
-        // Obtenemos publicaciones vinculadas para borrarlas y evitar fallo en foreign key de Vehiculos
-        $stmt_pub = $pdo->prepare("SELECT ID_publicacion FROM ConductorPublicacion WHERE ID_conductor = ?");
-        $stmt_pub->execute([$conductor_id]);
-        $publicaciones = $stmt_pub->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $pdo->beginTransaction();
 
-        foreach ($publicaciones as $p) {
-            $stmt_del_pub = $pdo->prepare("DELETE FROM Publicaciones WHERE ID_publicacion = ?");
-            $stmt_del_pub->execute([$p['ID_publicacion']]);
+            // 1. Buscar viajes vinculados para reembolsar
+            $stmt_pub = $pdo->prepare("SELECT p.ID_publicacion, p.Precio, p.CiudadOrigen, p.CiudadDestino FROM Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion WHERE cp.ID_conductor = ?");
+            $stmt_pub->execute([$conductor_id]);
+            $publicaciones = $stmt_pub->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($publicaciones as $pub) {
+                // Reembolsar a pasajeros
+                $stmt_res = $pdo->prepare("
+                    SELECT u.ID_usuario
+                    FROM Reservas r
+                    JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+                    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+                    JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+                    WHERE r.ID_publicacion = ? AND r.Estado = 'Completada'
+                ");
+                $stmt_res->execute([$pub['ID_publicacion']]);
+                $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($reservas as $res) {
+                    $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$pub['Precio'], $res['ID_usuario']]);
+                    $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " → " . $pub['CiudadDestino'] . ") ha sido eliminado por la administración. Se reembolsaron $" . number_format($pub['Precio'], 2) . ".";
+                    $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$res['ID_usuario'], $mensaje]);
+                }
+                
+                // Marcar publicación como cancelada
+                $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$pub['ID_publicacion']]);
+            }
+
+            // 2. Obtener vehículos para borrar después
+            $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ?");
+            $stmt_vehiculo->execute([$conductor_id]);
+            $vehiculos = $stmt_vehiculo->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Borrar el conductor (borrado físico del conductor según lo actual)
+            $pdo->prepare("DELETE FROM Conductores WHERE ID_conductor = ?")->execute([$conductor_id]);
+
+            // 4. Borrar vehículos
+            foreach ($vehiculos as $v) {
+                $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?")->execute([$v['ID_vehiculo']]);
+            }
+
+            $pdo->commit();
+            $msg = ($accion === 'rechazar') ? "Conductor rechazado y viajes cancelados." : "Conductor eliminado y viajes cancelados.";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $msg = "Error: " . $e->getMessage();
         }
-
-        // Al borrar el conductor, la BD borrará automáticamente su registro en ConductorVehiculo (ON DELETE CASCADE)
-        // pero necesitamos borrar el Vehiculo también para no dejar huérfanos.
-        $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ?");
-        $stmt_vehiculo->execute([$conductor_id]);
-        $vehiculos = $stmt_vehiculo->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmt_del_conductor = $pdo->prepare("DELETE FROM Conductores WHERE ID_conductor = ?");
-        $stmt_del_conductor->execute([$conductor_id]);
-
-        foreach ($vehiculos as $v) {
-            $stmt_del_veh = $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?");
-            $stmt_del_veh->execute([$v['ID_vehiculo']]);
-        }
-        
-        $msg = ($accion === 'rechazar') ? "Conductor rechazado (solicitud eliminada)." : "Conductor eliminado correctamente del sistema.";
     } elseif ($accion === 'banear_conductor') {
         $fecha_ban = $_POST['fecha_ban'] ?? '';
         if (!empty($fecha_ban)) {
-            $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
-            $stmt_ban->execute([$fecha_ban, $conductor_id]);
-            
-            $stmt_cancel = $pdo->prepare("UPDATE Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion SET p.Estado = 'Cancelada' WHERE cp.ID_conductor = ? AND p.Estado = 'Activa'");
-            $stmt_cancel->execute([$conductor_id]);
-            
-            $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Sus viajes han sido cancelados.";
+            try {
+                $pdo->beginTransaction();
+                
+                $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
+                $stmt_ban->execute([$fecha_ban, $conductor_id]);
+                
+                // Buscar viajes activos para cancelar y reembolsar
+                $stmt_viajes = $pdo->prepare("SELECT p.ID_publicacion, p.Precio, p.CiudadOrigen, p.CiudadDestino FROM Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion WHERE cp.ID_conductor = ? AND p.Estado = 'Activa'");
+                $stmt_viajes->execute([$conductor_id]);
+                $viajes_activos = $stmt_viajes->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($viajes_activos as $v) {
+                    $stmt_res = $pdo->prepare("
+                        SELECT u.ID_usuario
+                        FROM Reservas r
+                        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+                        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+                        JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+                        WHERE r.ID_publicacion = ? AND r.Estado = 'Completada'
+                    ");
+                    $stmt_res->execute([$v['ID_publicacion']]);
+                    $pasajeros = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($pasajeros as $pas) {
+                        $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$v['Precio'], $pas['ID_usuario']]);
+                        $mensaje = "El conductor de tu viaje (" . $v['CiudadOrigen'] . " → " . $v['CiudadDestino'] . ") ha sido suspendido temporalmente. Se han reembolsado $" . number_format($v['Precio'], 2) . ".";
+                        $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$pas['ID_usuario'], $mensaje]);
+                    }
+                    
+                    $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$v['ID_publicacion']]);
+                }
+
+                $pdo->commit();
+                $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Sus viajes han sido cancelados y reembolsados.";
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $msg = "Error: " . $e->getMessage();
+            }
         }
     }
+
 }
 
 // Filtro de búsqueda
@@ -118,17 +175,7 @@ $aceptados = $stmt2->fetchAll();
 require_once __DIR__ . '/../header.php';
 ?>
 
-<div class="nav-menu" style="background-color: var(--border-color); padding: 10px; justify-content: center; margin-top: -20px; margin-bottom: 20px; border-radius: 8px;">
-    <strong style="color: var(--primary);">Admin Panel</strong>
-    <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
-    <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
-    <a href="vehiculos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Vehículos</a>
-    <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
-    <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
-    <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
-    <a href="soporte.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Soporte</a>
-    <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <div style="padding: 20px;">
     <h2>Conductores</h2>

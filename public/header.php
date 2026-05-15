@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
 </head>
 <body>
 

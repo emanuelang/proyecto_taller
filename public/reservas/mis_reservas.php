@@ -28,6 +28,8 @@ $sql = "SELECT
             p.HoraSalida AS fecha,
             p.Precio AS precio,
             u.Nombre AS conductor_nombre,
+            u.Correo AS conductor_correo,
+            c.TelefonoContacto AS conductor_telefono,
             p.CiudadOrigen AS origen_nombre,
             p.CiudadDestino AS destino_nombre
         FROM Reservas r
@@ -78,34 +80,51 @@ $reservas = $stmt->fetchAll();
 <?php if (count($reservas) > 0): ?>
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
     <?php foreach ($reservas as $r): ?>
-        <div class="card" style="margin-bottom: 0;">
-            <h3 style="margin-top: 0; color: var(--primary);">
-                <?= htmlspecialchars($r['origen_nombre']) ?> → <?= htmlspecialchars($r['destino_nombre']) ?>
-            </h3>
-            
-            <p><strong>Fecha del viaje:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha'])) ?></p>
-            <p><strong>Precio:</strong> $<?= number_format($r['precio'], 2) ?></p>
-            <p><strong>Fecha Reserva:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha_reserva'])) ?></p>
-            
-            <?php if ($r['codigo_acceso']): ?>
-                <div style="margin: 15px 0; padding: 15px; background-color: #ecfdf5; border-left: 4px solid var(--success); border-radius: 4px;">
-                    <p style="margin: 0 0 5px 0; color: #065f46; font-size: 0.9em; font-weight: bold;">Tu código de acceso (Póstergaselo al conductor):</p>
-                    <p style="margin: 0; font-size: 1.4em; font-family: monospace; color: var(--success); letter-spacing: 2px; font-weight: bold;">
-                        <?= htmlspecialchars($r['codigo_acceso']) ?>
-                    </p>
-                </div>
-            <?php endif; ?>
+        <div class="card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h3 style="margin-top: 0; color: var(--primary);">
+                    <?= htmlspecialchars($r['origen_nombre']) ?> → <?= htmlspecialchars($r['destino_nombre']) ?>
+                </h3>
+                
+                <p style="margin: 8px 0;"><strong>Fecha del viaje:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha'])) ?></p>
+                <p style="margin: 8px 0;"><strong>Precio:</strong> $<?= number_format($r['precio'], 2) ?></p>
+                <p style="margin: 8px 0;"><strong>Fecha Reserva:</strong> <?= date('d/m/Y H:i', strtotime($r['fecha_reserva'])) ?></p>
+                
+                <?php if ($r['codigo_acceso']): ?>
+                    <div style="margin: 15px 0; padding: 15px; background-color: #ecfdf5; border-left: 4px solid var(--success); border-radius: 4px;">
+                        <p style="margin: 0 0 5px 0; color: #065f46; font-size: 0.9em; font-weight: bold;">Tu código de acceso (Póstergaselo al conductor):</p>
+                        <p style="margin: 0; font-size: 1.4em; font-family: monospace; color: var(--success); letter-spacing: 2px; font-weight: bold;">
+                            <?= htmlspecialchars($r['codigo_acceso']) ?>
+                        </p>
+                    </div>
+                <?php endif; ?>
 
-            <p>
-                <strong>Estado:</strong> 
-                <span style="color: var(--success); font-weight: bold;">✅ Confirmada y Pagada</span>
-            </p>
+                <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 8px 0; color: #64748b; font-size: 0.9em;"><strong>Conductor:</strong> <?= htmlspecialchars($r['conductor_nombre']) ?></p>
+                    <div style="display: flex; flex-direction: column; gap: 5px; font-size: 0.95em;">
+                        <?php if ($r['conductor_telefono']): ?>
+                            <a href="tel:<?= htmlspecialchars($r['conductor_telefono']) ?>" style="display: flex; align-items: center; gap: 8px; color: var(--text-main); font-weight: normal;">
+                                📞 <?= htmlspecialchars($r['conductor_telefono']) ?>
+                            </a>
+                        <?php endif; ?>
+                        <?php if ($r['conductor_correo']): ?>
+                            <a href="mailto:<?= htmlspecialchars($r['conductor_correo']) ?>" style="display: flex; align-items: center; gap: 8px; color: var(--text-main); font-weight: normal;">
+                                ✉️ <?= htmlspecialchars($r['conductor_correo']) ?>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <p>
+                    <strong>Estado:</strong> 
+                    <span style="color: var(--success); font-weight: bold;">✅ Confirmada y Pagada</span>
+                </p>
+            </div>
 
             <form method="POST" action="cancelar_reserva.php">
                 <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
-                <button type="submit" style="margin-top: 10px; width: 100%;" onclick="return confirm('¿Seguro quieres cancelar tu asiento? Se eliminará de tus reservas y dejará el lugar libre para otra persona.')">Cancelar reserva</button>
+                <button type="submit" class="btn-outline" style="margin-top: 15px; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold;" onclick="return confirm('¿Seguro quieres cancelar tu asiento? Se eliminará de tus reservas y dejará el lugar libre para otra persona.')">Cancelar reserva</button>
             </form>
-            </div>
         </div>
     <?php endforeach; ?>
     </div>

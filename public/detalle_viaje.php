@@ -12,7 +12,7 @@ $sql = "
     SELECT p.ID_publicacion AS id, p.CiudadOrigen AS origen_nombre, p.CiudadDestino AS destino_nombre, p.CalleSalida AS calle_salida, p.HoraSalida AS fecha, p.Precio AS precio, 
            p.Estado AS estado, p.DistanciaKM as distancia_km, p.DuracionMinutos as duracion_minutos,
            u.Nombre AS conductor_nombre, u.FotoPerfil AS foto_perfil,
-           veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.Foto AS vehiculo_foto, veh.CantidadAsientos AS asientos,
+           veh.Marca AS marca, veh.Modelo AS modelo, veh.Color AS color, veh.Patente AS patente, veh.FotoCostado AS vehiculo_foto, veh.CantidadAsientos AS asientos,
            (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') as ocupados,
            (SELECT AVG(Puntuacion) FROM Calificaciones calif WHERE calif.ID_conductor = c.ID_conductor) as promedio_calif,
            c.ID_conductor AS conductor_id,
@@ -142,8 +142,8 @@ if (isset($_SESSION['user_id'])) {
                     <div style="flex: 1;">
                         <div style="font-size: 1.3em; font-weight: 600; color: #1e293b;"><?= htmlspecialchars($viaje['conductor_nombre']) ?></div>
                         <?php if (!$viaje['promedio_calif']): ?>
-                            <div style="color: #f59e0b; font-size: 0.95em; margin-top: 4px; display: flex; align-items: center; gap: 5px;">
-                                ⭐ Nuevo conductor
+                            <div style="color: #16a34a; font-size: 0.95em; margin-top: 4px; display: flex; align-items: center; gap: 5px; font-weight: 600;">
+                                ✅ Conductor verificado
                             </div>
                         <?php endif; ?>
                     </div>

@@ -8,7 +8,7 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Patente AS patente
+    SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, v.Patente AS patente, v.Estado AS estado
     FROM Vehiculos v
     JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
     WHERE cv.ID_conductor = ?
@@ -28,8 +28,15 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 <?php else: ?>
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
-    <?php foreach ($vehiculos as $v): ?>
-        <div class="card" style="margin-bottom: 0;">
+    <?php foreach ($vehiculos as $v): 
+        $is_pending = ($v['estado'] === 'Pendiente');
+    ?>
+        <div class="card <?= $is_pending ? 'card-pending' : '' ?>" style="margin-bottom: 0;">
+            <?php if ($is_pending): ?>
+                <div style="position: absolute; top: 15px; right: 15px;">
+                    <span class="badge-orange">Pendiente</span>
+                </div>
+            <?php endif; ?>
             <h3 style="margin-top: 0; color: var(--primary);">
                 <?= htmlspecialchars($v['marca']) ?> <?= htmlspecialchars($v['modelo']) ?>
             </h3>
@@ -38,7 +45,7 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <p><strong>Asientos:</strong> <?= $v['asientos'] ?></p>
 
             <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <a href="editar_vehiculo.php?id=<?= $v['id'] ?>" class="btn" style="flex: 1; text-align: center;">Editar</a>
+                <a href="editar_vehiculo.php?id=<?= $v['id'] ?>" class="btn" style="flex: 1; text-align: center;">Visualizar</a>
                 <a href="eliminar_vehiculo.php?id=<?= $v['id'] ?>" class="btn" style="flex: 1; text-align: center; background-color: #ef4444;" onclick="return confirm('¿Eliminar vehículo?')">Eliminar</a>
             </div>
         </div>

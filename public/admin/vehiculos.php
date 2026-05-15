@@ -13,15 +13,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
         $stmt->execute([$vehiculo_id]);
         $msg = "Vehículo aprobado con éxito.";
     } elseif ($accion === 'rechazar' || $accion === 'eliminar') {
-        // Borramos publicaciones activas con este vehículo
-        $stmt_pub = $pdo->prepare("DELETE FROM Publicaciones WHERE ID_vehiculo = ?");
-        $stmt_pub->execute([$vehiculo_id]);
+        try {
+            $pdo->beginTransaction();
 
-        $stmt_del = $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?");
-        $stmt_del->execute([$vehiculo_id]);
-        
-        $msg = ($accion === 'rechazar') ? "Vehículo rechazado." : "Vehículo eliminado del sistema.";
+            // 1. Buscar publicaciones activas con este vehículo
+            $stmt_pub = $pdo->prepare("SELECT ID_publicacion, CiudadOrigen, CiudadDestino, HoraSalida, Precio FROM Publicaciones WHERE ID_vehiculo = ?");
+            $stmt_pub->execute([$vehiculo_id]);
+            $publicaciones = $stmt_pub->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($publicaciones as $pub) {
+                // 2. Reembolsar a pasajeros con reservas completadas
+                $stmt_res = $pdo->prepare("
+                    SELECT u.ID_usuario
+                    FROM Reservas r
+                    JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+                    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+                    JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+                    WHERE r.ID_publicacion = ? AND r.Estado = 'Completada'
+                ");
+                $stmt_res->execute([$pub['ID_publicacion']]);
+                $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($reservas as $res) {
+                    $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$pub['Precio'], $res['ID_usuario']]);
+                    $mensaje = "Tu viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " ha sido cancelado por el administrador. Se han reembolsado $" . number_format($pub['Precio'], 2) . " a tu saldo.";
+                    $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$res['ID_usuario'], $mensaje]);
+                }
+                
+                // Marcar publicación como cancelada (Soft cancel)
+                $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$pub['ID_publicacion']]);
+            }
+
+            // 3. Eliminar el vehículo físicamente
+            $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?")->execute([$vehiculo_id]);
+
+            $pdo->commit();
+            $msg = ($accion === 'rechazar') ? "Vehículo rechazado y viajes cancelados/reembolsados." : "Vehículo eliminado y viajes cancelados/reembolsados.";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $msg = "Error: " . $e->getMessage();
+        }
     }
+
 }
 
 // Filtro y paginación
@@ -89,17 +122,7 @@ $aceptados = $stmt2->fetchAll();
 require_once __DIR__ . '/../header.php';
 ?>
 
-<div class="nav-menu" style="background-color: var(--border-color); padding: 10px; justify-content: center; margin-top: -20px; margin-bottom: 20px; border-radius: 8px;">
-    <strong style="color: var(--primary);">Admin Panel</strong>
-    <a href="dashboard.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Dashboard</a>
-    <a href="conductores.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Conductores</a>
-    <a href="vehiculos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Vehículos</a>
-    <a href="usuarios.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Usuarios</a>
-    <a href="viajes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Viajes</a>
-    <a href="reportes.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Reportes</a>
-    <a href="soporte.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Soporte</a>
-    <a href="pagos.php" class="btn" style="background-color: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 15px;">Pagos</a>
-</div>
+<?php include __DIR__ . '/_nav.php'; ?>
 
 <div style="padding: 20px;">
     <h2>Vehículos Adicionales</h2>

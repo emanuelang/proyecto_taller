@@ -13,6 +13,9 @@ CREATE TABLE Usuarios (
     FotoPerfil MEDIUMTEXT NULL,
     Descripcion TEXT NULL,
     Preferencias TEXT NULL,
+    Saldo DECIMAL(10,2) DEFAULT 0.00,
+    TokenRecuperacion VARCHAR(255) NULL,
+    ExpiracionToken DATETIME NULL,
     BaneadoHasta DATETIME NULL DEFAULT NULL
 );
 
@@ -55,9 +58,10 @@ CREATE TABLE Vehiculos (
     Modelo VARCHAR(100) NOT NULL,
     Marca VARCHAR(100) NOT NULL,
     Patente VARCHAR(50) DEFAULT 'Sin Patente',
+    Estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
     -- Foto general (legacy/compatibilidad)
     Foto MEDIUMTEXT,
-    -- Documentación del vehículo (almacenadas en Base64)
+    -- Documentación del vehículo (almacenada en Base64)
     PapelesAuto MEDIUMTEXT NULL,
     -- Fotos 360° del vehículo (almacenadas en Base64)
     FotoFrente MEDIUMTEXT NULL,
@@ -130,6 +134,17 @@ CREATE TABLE Notificaciones (
     Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 );
+
+-- Tabla para tickets de soporte enviados por usuarios
+CREATE TABLE Soporte (
+    ID_soporte INT AUTO_INCREMENT PRIMARY KEY,
+    ID_usuario INT NOT NULL,
+    Asunto VARCHAR(150) NOT NULL,
+    Mensaje TEXT NOT NULL,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Tablas Intermedias (Relaciones N:M)
 CREATE TABLE ConductorVehiculo (
