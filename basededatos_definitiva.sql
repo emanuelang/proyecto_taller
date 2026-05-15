@@ -16,7 +16,8 @@ CREATE TABLE Usuarios (
     Saldo DECIMAL(10,2) DEFAULT 0.00,
     TokenRecuperacion VARCHAR(255) NULL,
     ExpiracionToken DATETIME NULL,
-    BaneadoHasta DATETIME NULL DEFAULT NULL
+    BaneadoHasta DATETIME NULL DEFAULT NULL,
+    Estado VARCHAR(50) DEFAULT 'Activo'
 );
 
 -- 2. Subtipos de usuarios
@@ -91,6 +92,7 @@ CREATE TABLE Reservas (
     ID_reserva INT AUTO_INCREMENT PRIMARY KEY,
     Estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
     FechaReserva DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CodigoAcceso VARCHAR(20) NULL,
     ID_publicacion INT NOT NULL,
     FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE CASCADE
 );
