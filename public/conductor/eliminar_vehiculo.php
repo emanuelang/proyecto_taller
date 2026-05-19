@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 
@@ -25,47 +25,67 @@ try {
         throw new Exception("El vehículo no te pertenece o no existe.");
     }
 
-    // 2. Buscar publicaciones (viajes) activas asociadas a este vehículo
-    $stmt_pub = $pdo->prepare("SELECT ID_publicacion, CiudadOrigen, CiudadDestino, HoraSalida, Precio FROM Publicaciones WHERE ID_vehiculo = ? AND Estado = 'Activa'");
+    // 2. Buscar TODAS las publicaciones asociadas a este vehículo (no solo las activas)
+    $stmt_pub = $pdo->prepare("
+        SELECT ID_publicacion, CiudadOrigen, CiudadDestino, HoraSalida, Precio, Estado
+        FROM Publicaciones
+        WHERE ID_vehiculo = ?
+    ");
     $stmt_pub->execute([$vehiculo_id]);
     $publicaciones = $stmt_pub->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($publicaciones as $pub) {
         $pub_id = $pub['ID_publicacion'];
-        
-        // 3. Buscar reservas pagadas (Completadas) para este viaje
-        $stmt_res = $pdo->prepare("
-            SELECT r.ID_reserva, u.ID_usuario, u.Saldo, u.Nombre
-            FROM Reservas r
-            JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
-            JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
-            JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
-            WHERE r.ID_publicacion = ? AND r.Estado = 'Completada'
-        ");
-        $stmt_res->execute([$pub_id]);
-        $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($reservas as $res) {
-            // 4. Procesar reembolso automático
-            $reembolso = (float)$pub['Precio'];
-            $stmt_reembolso = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?");
-            $stmt_reembolso->execute([$reembolso, $res['ID_usuario']]);
+        // Solo procesar reembolsos y notificaciones para publicaciones que no estaban ya canceladas/rechazadas
+        if (!in_array($pub['Estado'], ['Cancelada', 'Rechazada'])) {
 
-            // 5. Notificar al pasajero
-            $mensaje = "Tu viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") ha sido cancelado porque el conductor eliminó el vehículo. Se han reembolsado $" . number_format($reembolso, 2) . " a tu saldo.";
-            $stmt_notif = $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)");
-            $stmt_notif->execute([$res['ID_usuario'], $mensaje]);
+            // 3. Buscar reservas activas (no canceladas ni rechazadas) para este viaje
+            $stmt_res = $pdo->prepare("
+                SELECT r.ID_reserva, r.Estado, u.ID_usuario, u.Saldo, u.Nombre
+                FROM Reservas r
+                JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+                JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+                JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+                WHERE r.ID_publicacion = ? AND r.Estado NOT IN ('Cancelada', 'Rechazada')
+            ");
+            $stmt_res->execute([$pub_id]);
+            $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($reservas as $res) {
+                if ($res['Estado'] === 'Completada') {
+                    // 4a. Reembolso automático para reservas ya pagadas
+                    $reembolso = (float)$pub['Precio'];
+                    $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
+                        ->execute([$reembolso, $res['ID_usuario']]);
+                    $mensaje = "Tu viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") ha sido cancelado porque el conductor eliminó el vehículo. Se han reembolsado $" . number_format($reembolso, 2) . " a tu saldo.";
+                } else {
+                    // 4b. Notificar sin reembolso (Pendiente = aún no había pagado)
+                    $mensaje = "Tu reserva para el viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") fue cancelada porque el conductor eliminó el vehículo.";
+                }
+
+                // 5. Notificar al pasajero
+                $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")
+                    ->execute([$res['ID_usuario'], $mensaje]);
+            }
+
+            // 6. Cancelar todas las reservas activas de esta publicación
+            $pdo->prepare("UPDATE Reservas SET Estado = 'Cancelada' WHERE ID_publicacion = ? AND Estado NOT IN ('Cancelada', 'Rechazada')")
+                ->execute([$pub_id]);
         }
 
-        // 6. Marcar publicación como cancelada
-        $stmt_cancel = $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?");
-        $stmt_cancel->execute([$pub_id]);
+        // 7. Eliminar físicamente la publicación (sus reservas, pagos y calificaciones se eliminan por CASCADE)
+        $pdo->prepare("DELETE FROM Publicaciones WHERE ID_publicacion = ?")
+            ->execute([$pub_id]);
     }
 
-    // 7. Eliminar relación y vehículo (Físico porque el usuario pidió aplicar propuesta 1 que decía cancelar viajes, no el vehículo en sí)
-    // Pero la relación ConductorVehiculo tiene ON DELETE CASCADE, así que borramos el vehículo
-    $stmt_del_veh = $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?");
-    $stmt_del_veh->execute([$vehiculo_id]);
+    // 8. Eliminar relación ConductorVehiculo (tiene ON DELETE CASCADE, pero lo hacemos explícito por claridad)
+    $pdo->prepare("DELETE FROM ConductorVehiculo WHERE ID_vehiculo = ?")
+        ->execute([$vehiculo_id]);
+
+    // 9. Finalmente eliminar el vehículo (ya no tiene publicaciones que lo referencien)
+    $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?")
+        ->execute([$vehiculo_id]);
 
     $pdo->commit();
     header("Location: vehiculos.php?msg=" . urlencode("Vehículo eliminado y viajes asociados cancelados/reembolsados."));

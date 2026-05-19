@@ -173,12 +173,12 @@ require_once __DIR__ . '/header.php';
         </datalist>
 
         <span style="color: #94A3B8; margin-left: 10px;">📍</span>
-        <input type="text" name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($origen) ?>" autocomplete="off">
+        <input type="text"  name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($origen) ?>" minlength="2" maxlength="100" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 
         <span style="color: #94A3B8; margin-left: 5px;">🏁</span>
-        <input type="text" name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($destino) ?>" autocomplete="off">
+        <input type="text"  name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($destino) ?>" minlength="2" maxlength="100" autocomplete="off">
 
         <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
 

@@ -175,22 +175,22 @@ require_once __DIR__ . '/header.php';
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
                 <label>Licencia de Conducir (Número)</label>
-                <input type="text" name="licencia_conducir" required maxlength="100" placeholder="Ej: 12345678">
+                <input type="text"  name="licencia_conducir" required placeholder="Ej: 12345678" minlength="5" maxlength="25">
             </div>
             <div>
                 <label>Número de Contacto</label>
-                <input type="text" name="telefono_contacto" placeholder="Ej: 1122334455" required pattern="[0-9]{8,15}" title="Debe contener entre 8 y 15 números">
+                <input type="text"  name="telefono_contacto" placeholder="Ej: 1122334455" required pattern="[0-9]{8,15}" title="Debe contener entre 8 y 15 números" minlength="10" maxlength="15">
             </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
             <div>
                 <label>Cuenta Bancaria (CBU/CVU)</label>
-                <input type="text" name="cuenta_bancaria" required maxlength="100" placeholder="Tu CBU para cobros">
+                <input type="text"  name="cuenta_bancaria" required placeholder="Tu CBU para cobros" minlength="22" maxlength="22">
             </div>
             <div>
                 <label>Alias de MercadoPago</label>
-                <input type="text" name="alias_mp" placeholder="tu.alias.mp" required maxlength="100">
+                <input type="text"  name="alias_mp" placeholder="tu.alias.mp" required  minlength="6" maxlength="20">
             </div>
         </div>
 
@@ -214,33 +214,33 @@ require_once __DIR__ . '/header.php';
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <div>
                 <label>Marca:</label>
-                <input type="text" name="marca" placeholder="Ej: Toyota" required maxlength="100">
+                <input type="text"  name="marca" placeholder="Ej: Toyota" required  minlength="2" maxlength="30">
             </div>
             <div>
                 <label>Modelo:</label>
-                <input type="text" name="modelo" placeholder="Ej: Corolla" required maxlength="100">
+                <input type="text"  name="modelo" placeholder="Ej: Corolla" required  minlength="1" maxlength="40">
             </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
             <div>
                 <label>Color:</label>
-                <input type="text" name="color" placeholder="Ej: Blanco" required maxlength="50">
+                <input type="text"  name="color" placeholder="Ej: Blanco" required  minlength="3" maxlength="20">
             </div>
             <div>
                 <label>Patente:</label>
-                <input type="text" name="patente" placeholder="Ej: AB123CD" required minlength="6" maxlength="7" pattern="[A-Za-z0-9]{6,7}" title="Debe contener 6 o 7 caracteres alfanuméricos">
+                <input type="text"  name="patente" placeholder="Ej: AB123CD" required pattern="[A-Za-z0-9]{6,7}" title="Debe contener 6 o 7 caracteres alfanuméricos" minlength="6" maxlength="10">
             </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
             <div>
                 <label>Asientos disponibles:</label>
-                <input type="number" name="asientos" min="1" max="10" required>
+                <input type="number"  name="asientos" min="1" max="10" required minlength="1" maxlength="2">
             </div>
             <div>
                 <label>Póliza del Seguro</label>
-                <input type="text" name="seguro_vehiculo" placeholder="Número de póliza" required maxlength="100">
+                <input type="text"  name="seguro_vehiculo" placeholder="Número de póliza" required  minlength="5" maxlength="40">
             </div>
         </div>
 

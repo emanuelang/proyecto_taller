@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="post">
             <label style="display:block; margin-bottom: 5px; font-weight: bold;">Detalles de la Queja:</label>
-            <textarea name="descripcion" rows="6" style="width: 100%; padding: 10px; box-sizing: border-box;" placeholder="Explica lo sucedido de la forma más descriptiva posible..." required></textarea>
+            <textarea  name="descripcion" rows="6" style="width: 100%; padding: 10px; box-sizing: border-box;" placeholder="Explica lo sucedido de la forma más descriptiva posible..." required minlength="15" maxlength="1500"></textarea>
             
             <button type="submit" style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; font-size: 1em; cursor: pointer; border-radius: 4px; margin-top: 15px;">Enviar Queja de Forma Anónima</button>
         </form>

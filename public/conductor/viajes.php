@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
 $sql = "SELECT p.*
         FROM Publicaciones p
         JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
-        WHERE cp.ID_conductor = ?
+        WHERE cp.ID_conductor = ? AND p.Estado != 'Cancelada'
         ORDER BY p.HoraSalida ASC";
 
 $stmt = $pdo->prepare($sql);
@@ -19,6 +19,12 @@ $stmt->execute([$_SESSION['conductor_id']]);
 $viajes = $stmt->fetchAll();
 ?>
 <?php include __DIR__ . '/_nav.php'; ?>
+
+<?php if (isset($_GET['msg'])): ?>
+    <div style="background-color: #d4edda; color: #155724; padding: 12px 20px; border-radius: 6px; margin: 15px 0; border: 1px solid #c3e6cb;">
+        <?= htmlspecialchars($_GET['msg']) ?>
+    </div>
+<?php endif; ?>
 
 <?php if (empty($viajes)): ?>
     <div class="card" style="text-align: center; color: #64748b; padding: 40px;">

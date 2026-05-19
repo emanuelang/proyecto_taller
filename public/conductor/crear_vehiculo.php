@@ -181,19 +181,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="post" enctype="multipart/form-data">
         <label>Marca:</label> 
-        <input type="text" name="marca" placeholder="Ej: Toyota" required maxlength="100">
+        <input type="text"  name="marca" placeholder="Ej: Toyota" required  minlength="2" maxlength="30">
         
         <label>Modelo:</label> 
-        <input type="text" name="modelo" placeholder="Ej: Corolla" required maxlength="100">
+        <input type="text"  name="modelo" placeholder="Ej: Corolla" required  minlength="1" maxlength="40">
         
         <label>Color:</label> 
-        <input type="text" name="color" placeholder="Ej: Blanco" required maxlength="50">
+        <input type="text"  name="color" placeholder="Ej: Blanco" required  minlength="3" maxlength="20">
         
         <label>Patente:</label> 
-        <input type="text" name="patente" placeholder="Ej: AB123CD" required minlength="6" maxlength="7" pattern="[A-Za-z0-9]{6,7}" title="Debe contener 6 o 7 caracteres alfanuméricos">
+        <input type="text"  name="patente" placeholder="Ej: AB123CD" required pattern="[A-Za-z0-9]{6,7}" title="Debe contener 6 o 7 caracteres alfanuméricos" minlength="6" maxlength="10">
         
         <label>Asientos disponibles para pasajeros:</label> 
-        <input type="number" name="asientos" min="1" max="10" required>
+        <input type="number"  name="asientos" min="1" max="10" required minlength="1" maxlength="2">
 
         <label>Papeles del Auto (cédula verde/azul)</label>
         <input type="file" name="papeles_auto" accept="image/*" required>
