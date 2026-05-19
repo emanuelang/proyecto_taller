@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Carpooling</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
+    <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>" defer></script>
 </head>
 <body>
 

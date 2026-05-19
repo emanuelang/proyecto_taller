@@ -198,10 +198,10 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="file" name="foto_perfil" accept="image/*"><br><br>
 
                 <label>Sobre Mí (Descripción general):</label><br>
-                <textarea name="descripcion" rows="3" placeholder="Ej: Me llamo Juan, soy estudiante y viajo seguido a la capital..." style="width:100%;"><?= htmlspecialchars($perfil['Descripcion'] ?? '') ?></textarea><br><br>
+                <textarea  name="descripcion" rows="3" placeholder="Ej: Me llamo Juan, soy estudiante y viajo seguido a la capital..." style="width:100%;" minlength="20" maxlength="500"><?= htmlspecialchars($perfil['Descripcion'] ?? '') ?></textarea><br><br>
 
                 <label>Mis Preferencias de Viaje:</label><br>
-                <textarea name="preferencias" rows="3" placeholder="Ej: Me gusta viajar escuchando música tranquila, no tolero el cigarrillo, me gusta charlar." style="width:100%;"><?= htmlspecialchars($perfil['Preferencias'] ?? '') ?></textarea><br><br>
+                <textarea  name="preferencias" rows="3" placeholder="Ej: Me gusta viajar escuchando música tranquila, no tolero el cigarrillo, me gusta charlar." style="width:100%;" minlength="10" maxlength="300"><?= htmlspecialchars($perfil['Preferencias'] ?? '') ?></textarea><br><br>
                 
                 <button type="submit" class="btn" style="background-color: var(--primary);">Guardar Perfil</button>
             </form>

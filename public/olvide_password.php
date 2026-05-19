@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Recuperar Contraseña</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
 <body>
     <div class="nav-menu">
@@ -72,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </p>
 
         <label>Correo Electrónico:</label>
-        <input name="email" type="email" required placeholder="tu@email.com">
+        <input  name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254">
         
         <button type="submit" style="width: 100%; margin-top: 15px;">Enviar Enlace</button>
     </form>

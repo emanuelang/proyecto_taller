@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Login Administrador - Carpooling</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
     <style>
         .admin-login-container {
             max-width: 400px;
@@ -102,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($error): ?><p style="color:red; text-align:center;"><?= htmlspecialchars($error) ?></p><?php endif; ?>
     
     <form method="post">
-        <input name="email" type="email" required placeholder="Email Administrativo">
-        <input name="password" type="password" required placeholder="Contraseña">
+        <input  name="email" type="email" required placeholder="Email Administrativo" minlength="5" maxlength="254">
+        <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72">
         <button type="submit">Ingresar al Panel</button>
     </form>
     

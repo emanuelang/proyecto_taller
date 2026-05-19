@@ -60,10 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST">
             <label>Asunto del problema:</label>
-            <input type="text" name="asunto" placeholder="Ej: Problemas para publicar un viaje, Error en pagos, etc." required maxlength="150">
+            <input type="text"  name="asunto" placeholder="Ej: Problemas para publicar un viaje, Error en pagos, etc." required  minlength="5" maxlength="100">
 
             <label>Descripción detallada:</label>
-            <textarea name="mensaje" rows="6" placeholder="Describe el problema con el mayor detalle posible para que podamos ayudarte mejor..." required></textarea>
+            <textarea  name="mensaje" rows="6" placeholder="Describe el problema con el mayor detalle posible para que podamos ayudarte mejor..." required minlength="20" maxlength="2000"></textarea>
 
             <button type="submit" class="btn success-bg" style="width: 100%; margin-top: 15px; font-size: 1.1em; padding: 12px;">Enviar Mensaje a Soporte</button>
         </form>

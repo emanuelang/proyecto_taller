@@ -133,15 +133,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <h2>Editar viaje</h2>
 
-+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-+        <ul style="margin: 0; padding-left: 20px;">
-+            <?php foreach ($errores as $err): ?>
-+                <li><?= htmlspecialchars($err) ?></li>
-+            <?php endforeach; ?>
-+        </ul>
-+    </div>
-+<?php endif; ?>
-+
+<?php if (!empty($errores)): ?>
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+        <ul style="margin: 0; padding-left: 20px;">
+            <?php foreach ($errores as $err): ?>
+                <li><?= htmlspecialchars($err) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
+
 <form method="post">
     Origen:
     <select name="origen" required>

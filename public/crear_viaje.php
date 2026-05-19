@@ -107,6 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Falla silenciosa si las APIs no responden
         }
 
+        // Si la API falla, aplicamos 24hs por seguridad para que el sistema valide la superposición de todas formas
+        if ($duracion_min === null) {
+            $duracion_min = 1440;
+            $distancia_km = 0;
+        }
+
         // --- VALIDACIÓN DE SUPERPOSICIÓN DE HORARIOS ---
         if ($duracion_min !== null) {
             $new_start = $fecha;
@@ -231,16 +237,16 @@ $obs_def = $_GET['observaciones'] ?? '';
         <?php endif; ?>
 
         <label>Calle de Salida:</label>
-        <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required maxlength="200">
+        <input type="text"  name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required  minlength="5" maxlength="120">
 
         <label>Fecha y Hora:</label>
         <input type="datetime-local" name="fecha" required min="<?= date('Y-m-d\TH:i', strtotime('+24 hours')) ?>">
 
         <label>Precio por persona ($):</label>
-        <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" required min="0" step="0.01">
+        <input type="number"  name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" minlength="1" maxlength="7" required min="0" step="0.01">
 
         <label>Observaciones:</label>
-        <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4"><?= htmlspecialchars($obs_def) ?></textarea>
+        <textarea  name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4" minlength="0" maxlength="500"><?= htmlspecialchars($obs_def) ?></textarea>
 
         <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> class="btn" style="width: 100%; margin-top: 15px; background-color: var(--success);">Publicar viaje</button>
     </form>

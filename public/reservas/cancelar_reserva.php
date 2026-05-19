@@ -12,22 +12,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserva_id'])) {
 
     $reserva_id = (int) $_POST['reserva_id'];
     $usuario_id = $_SESSION['user_id'];
-
     /* El usuario quiere eliminar la reserva completamente de la base de datos */
     $stmt_p = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
     $stmt_p->execute([$usuario_id]);
     $pas = $stmt_p->fetch();
 
     if ($pas) {
-        $check = $pdo->prepare("SELECT 1 FROM PasajerosReservas WHERE ID_reserva = ? AND ID_pasajero = ?");
+        $check = $pdo->prepare("
+            SELECT r.Estado, p.Precio 
+            FROM Reservas r
+            JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+            JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+            WHERE r.ID_reserva = ? AND pr.ID_pasajero = ?
+        ");
         $check->execute([$reserva_id, $pas['ID_pasajero']]);
+        $reservaInfo = $check->fetch();
         
-        if ($check->fetch()) {
-            $stmt = $pdo->prepare("DELETE FROM Reservas WHERE ID_reserva = ?");
-            $stmt->execute([$reserva_id]);
-            $_SESSION['mensaje_cancelacion'] = "Has cancelado y eliminado la reserva del viaje exitosamente.";
+        if ($reservaInfo && $reservaInfo['Estado'] !== 'Cancelada') {
+            try {
+                $pdo->beginTransaction();
+
+                $stmt = $pdo->prepare("UPDATE Reservas SET Estado = 'Cancelada' WHERE ID_reserva = ?");
+                $stmt->execute([$reserva_id]);
+
+                if ($reservaInfo['Estado'] === 'Completada') {
+                    // Reembolsar saldo
+                    $reembolso = (float)$reservaInfo['Precio'];
+                    $stmt_reembolso = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?");
+                    $stmt_reembolso->execute([$reembolso, $usuario_id]);
+                    $_SESSION['mensaje_cancelacion'] = "Has cancelado la reserva exitosamente. Se han reembolsado $" . number_format($reembolso, 2) . " a tu saldo.";
+                } else {
+                    $_SESSION['mensaje_cancelacion'] = "Has cancelado la reserva exitosamente.";
+                }
+
+                $pdo->commit();
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $_SESSION['mensaje_cancelacion'] = "Error al cancelar la reserva: " . $e->getMessage();
+            }
         } else {
-            $_SESSION['mensaje_cancelacion'] = "No se pudo eliminar la reserva (ya fue eliminada o no te pertenece).";
+            $_SESSION['mensaje_cancelacion'] = "No se pudo cancelar la reserva (ya fue cancelada o no te pertenece).";
         }
     } else {
         $_SESSION['mensaje_cancelacion'] = "No estás registrado como pasajero.";

@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <title>Nueva Contraseña</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
 <body>
     <div class="nav-menu">
@@ -62,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($msg_type !== 'success'): ?>
     <form method="post">
         <label>Nueva Contraseña:</label>
-        <input name="pass1" type="password" required placeholder="Al menos 6 caracteres">
+        <input  name="pass1" type="password" required placeholder="Al menos 6 caracteres" minlength="8" maxlength="72">
         
         <label>Confirmar Nueva Contraseña:</label>
-        <input name="pass2" type="password" required placeholder="Repite la contraseña">
+        <input  name="pass2" type="password" required placeholder="Repite la contraseña" minlength="8" maxlength="72">
         
         <button type="submit" style="width: 100%; margin-top: 15px;">Guardar Contraseña</button>
     </form>

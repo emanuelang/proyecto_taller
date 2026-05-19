@@ -76,6 +76,7 @@ if (empty($_SESSION['csrf_token'])) {
     <meta charset="utf-8">
     <title>Login - Carpooling</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
 <body>
     <div class="nav-menu">
@@ -93,10 +94,10 @@ if (empty($_SESSION['csrf_token'])) {
         <h3 style="margin-top:0; color:var(--primary); text-align:center;">Bienvenido de nuevo</h3>
         
         <label>Correo Electrónico:</label>
-        <input name="email" type="email" required placeholder="tu@email.com">
+        <input  name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254">
         
         <label>Contraseña:</label>
-        <input name="password" type="password" required placeholder="••••••••">
+        <input  name="password" type="password" required placeholder="••••••••" minlength="8" maxlength="72">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         
         <div style="text-align: right; margin-top: 5px;">

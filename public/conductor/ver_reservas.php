@@ -104,6 +104,12 @@ $reservas = $stmt->fetchAll();
 <div class="no-print">
     <?php include __DIR__ . '/_nav.php'; ?>
     
+    <?php if (isset($_GET['msg'])): ?>
+        <div style="background-color: #d4edda; color: #155724; padding: 12px 20px; border-radius: 6px; margin: 0 0 15px 0; border: 1px solid #c3e6cb;">
+            <?= htmlspecialchars($_GET['msg']) ?>
+        </div>
+    <?php endif; ?>
+
     <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <a href="viajes.php" style="font-weight: bold;">← Volver a Mis Viajes</a>
         <button onclick="generarPDF()" class="btn" style="background-color: var(--success); display: flex; align-items: center; gap: 8px;">
