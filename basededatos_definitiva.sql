@@ -42,7 +42,9 @@ CREATE TABLE Conductores (
     FotoCarnet MEDIUMTEXT NULL,
     FotoCara MEDIUMTEXT NULL,
     ID_usuario INT NOT NULL,
-    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
+    vehiculo_activo_id INT NULL,
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (vehiculo_activo_id) REFERENCES Vehiculos(ID_vehiculo) ON DELETE SET NULL
 );
 
 CREATE TABLE Administradores (
