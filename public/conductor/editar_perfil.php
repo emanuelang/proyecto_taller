@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../../config/database.php';
+require_once '../../config/app.php';
 
 if (!isset($_SESSION['conductor_id'])) {
     header("Location: ../login.php");
@@ -10,7 +11,12 @@ if (!isset($_SESSION['conductor_id'])) {
 $conductor_id = $_SESSION['conductor_id'];
 
 /* Obtener vehículos */
-$stmt = $pdo->prepare("SELECT * FROM vehiculos WHERE conductor_id = ?");
+$stmt = $pdo->prepare("
+    SELECT v.*, v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente 
+    FROM Vehiculos v 
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo 
+    WHERE cv.ID_conductor = ?
+");
 $stmt->execute([$conductor_id]);
 $vehiculos = $stmt->fetchAll();
 
@@ -20,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehiculo_activo_id = $_POST['vehiculo_activo_id'] ?? null;
 
     $stmt = $pdo->prepare("
-        UPDATE conductores 
+        UPDATE Conductores 
         SET vehiculo_activo_id = ?
-        WHERE id = ?
+        WHERE ID_conductor = ?
     ");
 
     $stmt->execute([$vehiculo_activo_id, $conductor_id]);
