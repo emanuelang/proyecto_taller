@@ -5,39 +5,39 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 
 $error = '';
+if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
+    $error = 'Tu sesion se cerro por inactividad.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        die("Token CSRF inválido.");
+        die('Token CSRF invalido.');
     }
 
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT * FROM Usuarios WHERE Correo = ?");
+    $stmt = $pdo->prepare('SELECT * FROM Usuarios WHERE Correo = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
-        
-        // Verificar estado de la cuenta (Soft Delete)
         if (isset($user['Estado']) && $user['Estado'] === 'Inactivo') {
             $error = 'Esta cuenta ha sido desactivada.';
-        }
-        // Check User global ban
-        elseif ($user['BaneadoHasta'] && strtotime($user['BaneadoHasta']) > time()) {
-            $error = 'Tu cuenta está suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
+        } elseif (!empty($user['BaneadoHasta']) && strtotime($user['BaneadoHasta']) > time()) {
+            $error = 'Tu cuenta esta suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
         } else {
-
-            session_regenerate_id(true); // Previene session fixation
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user['ID_usuario'];
             $_SESSION['nombre'] = $user['Nombre'];
+            $_SESSION['last_activity'] = time();
 
             $stmt2 = $pdo->prepare("SELECT ID_conductor, BaneadoHasta FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");
             $stmt2->execute([$user['ID_usuario']]);
             $cond = $stmt2->fetch();
 
             if ($cond) {
-                if ($cond['BaneadoHasta'] && strtotime($cond['BaneadoHasta']) > time()) {
+                if (!empty($cond['BaneadoHasta']) && strtotime($cond['BaneadoHasta']) > time()) {
                     $_SESSION['is_conductor'] = false;
                     unset($_SESSION['conductor_id']);
                 } else {
@@ -49,13 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($_SESSION['conductor_id']);
             }
 
-            $stmt_admin = $pdo->prepare("SELECT ID_administrador FROM Administradores WHERE ID_usuario = ?");
+            $stmt_admin = $pdo->prepare('SELECT ID_administrador FROM Administradores WHERE ID_usuario = ?');
             $stmt_admin->execute([$user['ID_usuario']]);
-            if ($stmt_admin->fetch()) {
-                $_SESSION['is_admin'] = true;
-            } else {
-                $_SESSION['is_admin'] = false;
-            }
+            $_SESSION['is_admin'] = (bool) $stmt_admin->fetch();
 
             header('Location: ' . BASE_URL . 'index.php');
             exit;
@@ -68,47 +64,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Login - Carpooling</title>
+    <title>Iniciar sesion - MOVEON</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
-<body>
-    <div class="nav-menu">
-        <h2>Iniciar Sesión</h2>
-        <a href="<?= BASE_URL ?>index.php" style="margin-left: auto;">← Volver al inicio</a>
-    </div>
-
-    <?php if ($error): ?>
-        <p style="color:#ef4444; background:#fef2f2; border:1px solid #ef4444; padding:10px; border-radius:6px; text-align:center;">
-            <?= htmlspecialchars($error) ?>
-        </p>
-    <?php endif; ?>
-
-    <form method="post">
-        <h3 style="margin-top:0; color:var(--primary); text-align:center;">Bienvenido de nuevo</h3>
-        
-        <label>Correo Electrónico:</label>
-        <input  name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254">
-        
-        <label>Contraseña:</label>
-        <input  name="password" type="password" required placeholder="••••••••" minlength="8" maxlength="72">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-        
-        <div style="text-align: right; margin-top: 5px;">
-            <a href="<?= BASE_URL ?>olvide_password.php" style="font-size: 0.9em; color: #64748b;">¿Olvidaste tu contraseña?</a>
+<body class="auth-body">
+    <main class="auth-shell">
+        <div class="auth-topbar">
+            <a class="auth-brand" href="<?= BASE_URL ?>index.php">
+                <img src="<?= BASE_URL ?>assets/moveon-logo.svg" alt="MOVEON">
+                <span>MOVEON</span>
+            </a>
+            <a href="<?= BASE_URL ?>index.php">&larr; Volver</a>
         </div>
-        
-        <button type="submit" style="width: 100%; margin-top: 15px;">Ingresar</button>
-        
-        <p style="text-align:center; margin-top: 20px;">
-            ¿No tienes cuenta? <a href="<?= BASE_URL ?>registro_usuario.php">Regístrate aquí</a>
-        </p>
-    </form>
+
+        <section class="auth-card">
+            <h1>Iniciar sesion</h1>
+            <p class="page-subtitle">Bienvenido de nuevo. Ingresa para gestionar tus viajes.</p>
+
+            <?php if ($error): ?>
+                <div class="alert-error"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+
+            <form method="post">
+                <label>Correo electronico</label>
+                <input name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254" autocomplete="email">
+
+                <label>Contrasena</label>
+                <input name="password" type="password" required placeholder="........" minlength="8" maxlength="72" autocomplete="current-password">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
+                <div class="auth-link-row">
+                    <a href="<?= BASE_URL ?>olvide_password.php">Olvidaste tu contrasena?</a>
+                </div>
+
+                <button type="submit">Ingresar</button>
+
+                <p class="auth-footer">
+                    No tenes cuenta? <a href="<?= BASE_URL ?>registro_usuario.php">Registrate aqui</a>
+                </p>
+            </form>
+        </section>
+    </main>
 </body>
 </html>

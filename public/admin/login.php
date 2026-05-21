@@ -12,6 +12,10 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['is_admin']) && $_SESSION['is
 }
 
 $error = '';
+if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
+    $error = 'Tu sesion se cerro por inactividad.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
@@ -30,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['ID_usuario'];
         $_SESSION['nombre'] = $user['Nombre'];
         $_SESSION['is_admin'] = true; 
+        $_SESSION['last_activity'] = time();
         
         // Cargar también si es conductor para no pisar el panel de conductor:
         $stmt2 = $pdo->prepare("SELECT ID_conductor, BaneadoHasta FROM Conductores WHERE ID_usuario = ? AND Estado = 'Aceptada'");

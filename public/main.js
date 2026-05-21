@@ -1,4 +1,71 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const timeoutMs = Number(window.SESSION_TIMEOUT_MS || 0);
+    if (timeoutMs > 0) {
+        let inactivityTimer = null;
+        const logoutForInactivity = () => {
+            window.location.href = (window.BASE_URL || '') + 'logout.php?timeout=1';
+        };
+        const resetInactivityTimer = () => {
+            window.clearTimeout(inactivityTimer);
+            inactivityTimer = window.setTimeout(logoutForInactivity, timeoutMs);
+        };
+
+        ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((eventName) => {
+            document.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
+    }
+
+    const sidebar = document.getElementById('sidebarMenu');
+    const overlay = document.getElementById('sidebarOverlay');
+    const btnOpen = document.getElementById('sidebarOpen');
+    const notifSidebar = document.getElementById('notifMenu');
+    const btnNotifOpen = document.getElementById('notifOpen');
+    const btnNotifClose = document.getElementById('notifClose');
+
+    function showOverlay() {
+        if (overlay) overlay.style.display = 'block';
+    }
+
+    function hideOverlayIfClosed() {
+        if (!overlay) return;
+        const sidebarOpen = sidebar && sidebar.classList.contains('active');
+        const notifOpen = notifSidebar && notifSidebar.classList.contains('active');
+        if (!sidebarOpen && !notifOpen) overlay.style.display = 'none';
+    }
+
+    function setSidebar(open) {
+        if (!sidebar) return;
+        sidebar.classList.toggle('active', open);
+        if (open) showOverlay();
+        hideOverlayIfClosed();
+    }
+
+    function setNotifications(open) {
+        if (!notifSidebar) return;
+        notifSidebar.classList.toggle('active', open);
+        if (open) {
+            showOverlay();
+            fetch((window.BASE_URL || '') + 'notificaciones_api.php', { method: 'POST' })
+                .then(() => {
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) badge.style.display = 'none';
+                })
+                .catch(() => {});
+        }
+        hideOverlayIfClosed();
+    }
+
+    if (btnOpen) btnOpen.addEventListener('click', () => setSidebar(true));
+    if (btnNotifOpen) btnNotifOpen.addEventListener('click', () => setNotifications(true));
+    if (btnNotifClose) btnNotifClose.addEventListener('click', () => setNotifications(false));
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            setSidebar(false);
+            setNotifications(false);
+        });
+    }
+
     const textFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], textarea');
     
     textFields.forEach(field => {

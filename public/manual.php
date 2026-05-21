@@ -1,148 +1,67 @@
-<?php
+﻿<?php
 session_start();
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Manual de Usuario - Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= time() ?>">
-    <style>
-        .manual-container {
-            max-width: 800px;
-            margin: 40px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            font-family: inherit;
-        }
-        .manual-section {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px dashed #ccc;
-        }
-        .manual-section:last-child {
-            border-bottom: none;
-        }
-        h2 {
-            color: var(--primary);
-            margin-top: 0;
-        }
-        h3 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .faq-item {
-            background-color: #f8fafc;
-            border-left: 4px solid var(--primary);
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 0 4px 4px 0;
-        }
-        .faq-item h4 {
-            margin: 0 0 5px 0;
-            color: #1e293b;
-        }
-        .faq-item p {
-            margin: 0;
-            color: #475569;
-            font-size: 0.95em;
-            line-height: 1.5;
-        }
-        .top-bar {
-            background: var(--primary);
-            padding: 15px 20px;
-            color: white;
-            display: flex;
-            align-items: center;
-        }
-        .top-bar a {
-            color: white;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .top-bar a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body style="background-color: #f1f5f9; margin: 0;">
 
-<div class="top-bar">
-    <a href="<?= BASE_URL ?>index.php">← Volver al inicio</a>
-    <h3 style="margin: 0 auto; color: white;">Centro de Ayuda y Manual</h3>
-</div>
+<div class="page-shell" style="max-width:760px;">
+    <h1 class="page-title" style="text-align:center;">Centro de Ayuda</h1>
+    <p class="page-subtitle" style="text-align:center;">Todo lo que necesitás saber para usar la plataforma</p>
 
-<div class="manual-container">
-    <div class="manual-section">
-        <h2>👋 Bienvenido al Manual de Usuario</h2>
-        <p>Aquí encontrarás todas las respuestas necesarias para sacar el mayor provecho de nuestra plataforma de Carpooling. Aprende a viajar cómodo o a publicar tus propios viajes.</p>
-    </div>
-
-    <div class="manual-section">
-        <h3>1. ¿Cómo registrarse en la plataforma?</h3>
-        <p>Hacerse una cuenta es gratis y rápido. Sigue estos pasos:</p>
-        <ol>
-            <li>Haz clic en <strong>"Registrarse"</strong> en el menú de inicio.</li>
-            <li>Completa el formulario con tu Nombre, Apellido, DNI y Correo electrónico.</li>
-            <li>Elige una contraseña segura.</li>
-            <li>¡Listo! Tu cuenta como <strong>Pasajero</strong> se creará al instante y ya podrás empezar a buscar viajes.</li>
-        </ol>
-    </div>
-
-    <div class="manual-section">
-        <h3>2. ¿Cómo reservar un viaje?</h3>
-        <p>Encontrar un viaje hacia tu destino es muy sencillo:</p>
-        <ol>
-            <li>Ve a la página de <strong>Inicio</strong>. Utiliza el buscador para ingresar tu ciudad de salida y tu destino.</li>
-            <li>Verás una lista de tarjetas con los viajes disponibles. Haz clic en <strong>"Ver Detalle"</strong> en el viaje que te interese.</li>
-            <li>Revisa los datos del conductor, la cantidad de asientos libres y el vehículo.</li>
-            <li>Si estás de acuerdo, presiona <strong>"Comenzar Reserva"</strong> y confirma la operación.</li>
-        </ol>
-        <p>💡 <em>Tip: Puedes cancelar tu reserva desde la sección "Mis Reservas" de tu panel lateral, siempre y cuando el viaje no haya sido marcado como completado.</em></p>
-    </div>
-
-    <div class="manual-section">
-        <h3>3. ¿Cómo pagar mi reserva?</h3>
-        <p>Para asegurar tu asiento, debes abonar la reserva a través del sistema integrado en la plataforma. Una vez confirmada tu reserva y realizado el pago, la plataforma te otorgará un Código de Validación. Recuerda llevar este código el día del viaje para presentárselo al Conductor.</p>
-    </div>
-
-    <div class="manual-section">
-        <h3>4. ¿Cómo ganar dinero compartiendo el auto? (Convertirme en Conductor)</h3>
-        <p>Si tienes vehículo y quieres compartir los gastos de tu trayecto, puedes registrarte como conductor:</p>
-        <ol>
-            <li>Abre el menú lateral izquierdo (☰) y selecciona <strong>"Convertirme en conductor"</strong>.</li>
-            <li>Deberás preparar tu documentación obligatoria: <em>Póliza de Seguro, Licencia de Conducir, Cédula del Auto (papeles), tu cuenta para cobrar, y fotos tuyas y del auto de diversos ángulos</em>.</li>
-            <li>Llena el formulario por completo y haz clic en <strong>"Enviar solicitud de revisión"</strong>.</li>
-            <li>Un Administrador revisará tus antecedentes para mantener segura a la comunidad. Cuando seas aceptado, ¡la opción del menú cambiará a "Panel Conductor" y podrás crear viajes!</li>
-        </ol>
-    </div>
-
-    <div class="manual-section">
-        <h2>Preguntas Frecuentes (FAQs)</h2>
-
-        <div class="faq-item">
-            <h4>¿Qué pasa si el conductor cancela el viaje?</h4>
-            <p>Si el viaje es dado de baja, tus reservas para ese trayecto pasarán a estado "Rechazada/Cancelada". Te recomendamos siempre chequear de vez en cuando desde "Mis Reservas".</p>
+    <div class="help-grid">
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#eef4ff; color:var(--primary);">⚙</span>
+            <strong>Registrarse</strong>
         </div>
-
-        <div class="faq-item">
-            <h4>¿Puedo viajar con mascotas?</h4>
-            <p>Esto depende de la voluntad de cada conductor. Te aconsejamos fijarte en los detalles y pedir confirmación mediante mensajería si el conductor lo permite.</p>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#ecfdf5; color:var(--success);">▣</span>
+            <strong>Reservar viaje</strong>
         </div>
-
-        <div class="faq-item">
-            <h4>¿Son confiables los conductores?</h4>
-            <p>Sí. Nuestro equipo de Administración revisa uno por uno el carnet, rostro, patente y seguro de cada persona antes de darle el rol de Conductor. ¡Tu seguridad es nuestra prioridad!</p>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#f4efff; color:#7c3aed;">🚗</span>
+            <strong>Publicar viaje</strong>
+        </div>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#fff7ed; color:#f59e0b;">✓</span>
+            <strong>Pagos</strong>
+        </div>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#fff1f2; color:#e11d48;">◇</span>
+            <strong>Seguridad</strong>
+        </div>
+        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+            <span class="brand-icon" style="background:#f1f5f9; color:var(--text-muted);">?</span>
+            <strong>Soporte</strong>
         </div>
     </div>
 
-    <div class="manual-section" style="text-align: center; background: #e0f2fe; padding: 30px; border-radius: 8px; border: none; margin-top: 40px;">
-        <h3 style="color: #0284c7; margin-top: 0;">¿Aún tienes problemas?</h3>
-        <p style="color: #0369a1; margin-bottom: 20px;">Si no encontraste la solución aquí, nuestro equipo técnico está para ayudarte.</p>
-        <a href="<?= BASE_URL ?>soporte.php" class="btn" style="background-color: #0284c7; font-size: 1.1em; padding: 12px 25px;">Contactar a Soporte</a>
+    <h2 style="font-size:18px; text-transform:uppercase; letter-spacing:.5px;">Preguntas frecuentes</h2>
+
+    <details class="card" open>
+        <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Cómo registrarse en la plataforma?</summary>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Hacerse una cuenta es gratis y rápido. Hacé clic en "Registrarse", completá el formulario con nombre, apellido, DNI, correo electrónico y una contraseña segura. Tu cuenta como pasajero se crea al instante y ya podés buscar viajes.</p>
+    </details>
+
+    <details class="card">
+        <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Cómo reservar un viaje?</summary>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Buscá por ciudad de salida y llegada, entrá al detalle del viaje, revisá conductor, vehículo, precio y asientos disponibles. Si todo está bien, confirmá la reserva y seguí el proceso de pago.</p>
+    </details>
+
+    <details class="card">
+        <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Cómo publicar un viaje como conductor?</summary>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Primero solicitá convertirte en conductor desde el menú lateral. Cuando administración apruebe tu documentación, vas a poder cargar vehículos y publicar viajes desde el panel de conductor.</p>
+    </details>
+
+    <details class="card">
+        <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Qué pasa si se cancela un viaje?</summary>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Si el conductor o administración cancela un viaje, las reservas activas se cancelan y el importe se devuelve al saldo de la billetera del pasajero cuando corresponde.</p>
+    </details>
+
+    <div class="card" style="text-align:center; background:#e7f0ff;">
+        <h3 style="margin-top:0;">¿Aún tenés problemas?</h3>
+        <p class="text-muted">Nuestro equipo puede revisar tu caso desde soporte.</p>
+        <a href="<?= BASE_URL ?>soporte.php" class="btn">Contactar soporte</a>
     </div>
 </div>
 

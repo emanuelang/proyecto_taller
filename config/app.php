@@ -24,3 +24,33 @@ if (empty($docRoot) || empty($_SERVER['HTTP_HOST'])) {
 }
 
 define('BASE_URL', $protocol . $host . $baseDir);
+
+if (!defined('SESSION_TIMEOUT_SECONDS')) {
+    define('SESSION_TIMEOUT_SECONDS', 30 * 60);
+}
+
+if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    $isLogout = substr($scriptName, -11) === '/logout.php';
+    $now = time();
+
+    if (!$isLogout && isset($_SESSION['last_activity']) && ($now - (int)$_SESSION['last_activity']) > SESSION_TIMEOUT_SECONDS) {
+        $_SESSION = [];
+
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', $now - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+        }
+
+        session_destroy();
+
+        $loginUrl = strpos($scriptName, '/admin/') !== false
+            ? BASE_URL . 'admin/login.php?timeout=1'
+            : BASE_URL . 'login.php?timeout=1';
+
+        header('Location: ' . $loginUrl);
+        exit;
+    }
+
+    $_SESSION['last_activity'] = $now;
+}
