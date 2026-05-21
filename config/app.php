@@ -20,7 +20,7 @@ $baseDir = rtrim($baseDir, '/') . '/';
 
 // Si corremos scripts desde CLI sin web server, podemos tener un fallback seguro
 if (empty($docRoot) || empty($_SERVER['HTTP_HOST'])) {
-    $baseDir = '/proyecto_taller/public/';
+    $baseDir = '/' . basename(dirname(__DIR__)) . '/public/';
 }
 
 define('BASE_URL', $protocol . $host . $baseDir);

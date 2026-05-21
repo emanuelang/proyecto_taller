@@ -69,6 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const textFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], textarea');
     
     textFields.forEach(field => {
+        if (field.closest('.search-card')) return;
+
         if (field.hasAttribute('maxlength') || field.hasAttribute('minlength')) {
             const max = field.hasAttribute('maxlength') ? parseInt(field.getAttribute('maxlength'), 10) : 0;
             const min = field.hasAttribute('minlength') ? parseInt(field.getAttribute('minlength'), 10) : 0;

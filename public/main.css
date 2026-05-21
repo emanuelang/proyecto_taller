@@ -240,7 +240,7 @@ input[type="submit"],
     justify-content: center;
     gap: 8px;
     min-height: 42px;
-    padding: 10px 22px;
+    padding: 12px 22px 8px;
     border: 1px solid transparent;
     border-radius: 16px;
     background: var(--primary);
@@ -248,9 +248,10 @@ input[type="submit"],
     cursor: pointer;
     font-size: 16px;
     font-weight: 800;
-    line-height: 1;
+    line-height: 1.2;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    vertical-align: middle;
 }
 
 button:hover,
@@ -1098,11 +1099,16 @@ form {
 }
 
 .tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 42px;
-    padding: 0 26px;
+    padding: 4px 26px 0;
     border-radius: 14px;
     color: var(--text-muted);
     font-weight: 800;
+    line-height: 1.2;
+    vertical-align: middle;
 }
 
 .tab.active {
@@ -1280,6 +1286,126 @@ form {
     color: var(--text-muted);
 }
 
+.detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.detail-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-card-head h2,
+.detail-card-head h3 {
+    margin: 0;
+}
+
+.detail-stack {
+    display: grid;
+    gap: 20px;
+}
+
+.detail-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.detail-callout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 18px;
+    border-radius: 18px;
+    background: var(--surface-soft);
+}
+
+.detail-person {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.detail-avatar-wrap {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.detail-avatar {
+    width: 82px;
+    height: 82px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 28px;
+    font-weight: 850;
+    border: 3px solid #e6edf6;
+}
+
+.rating-pill {
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #07142b;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 850;
+}
+
+.vehicle-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 128px;
+    gap: 18px;
+    align-items: center;
+}
+
+.vehicle-photo {
+    width: 128px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 16px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-color);
+}
+
+.plate {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--surface-soft);
+}
+
+.plate strong {
+    font-family: Consolas, monospace;
+    letter-spacing: 2px;
+}
+
+.reservation-status {
+    max-width: 620px;
+    margin: 28px auto 0;
+    text-align: center;
+}
+
 @media (max-width: 980px) {
     .app-sidebar {
         transform: translateX(-100%);
@@ -1321,6 +1447,13 @@ form {
 
     .travel-grid {
         gap: 16px;
+    }
+
+    .detail-layout,
+    .detail-meta-grid,
+    .detail-callout,
+    .vehicle-summary {
+        grid-template-columns: 1fr;
     }
 
     .reservation-actions,

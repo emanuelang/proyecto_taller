@@ -70,7 +70,7 @@ if (empty($_SESSION['csrf_token'])) {
 <head>
     <meta charset="utf-8">
     <title>Iniciar sesion - MOVEON</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= filemtime(__DIR__ . '/main.css') ?>">
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
 <body class="auth-body">
