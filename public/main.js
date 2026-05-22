@@ -66,6 +66,73 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const cityInputs = document.querySelectorAll('.city-autocomplete');
+    cityInputs.forEach((input) => {
+        const wrapper = input.closest('.autocomplete-field');
+        const suggestions = wrapper ? wrapper.querySelector('.city-suggestions') : null;
+        let cities = [];
+
+        try {
+            cities = JSON.parse(input.dataset.cities || '[]');
+        } catch (error) {
+            cities = [];
+        }
+
+        const normalize = (value) => value
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        const closeSuggestions = () => {
+            if (suggestions) {
+                suggestions.classList.remove('active');
+                suggestions.innerHTML = '';
+            }
+        };
+
+        const renderSuggestions = () => {
+            if (!suggestions) return;
+
+            const query = normalize(input.value.trim());
+            const matches = cities
+                .filter((city) => query === '' || normalize(city).includes(query))
+                .slice(0, 12);
+
+            suggestions.innerHTML = '';
+
+            if (matches.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'city-suggestion-empty';
+                empty.textContent = 'No hay ciudades con ese nombre';
+                suggestions.appendChild(empty);
+            } else {
+                matches.forEach((city) => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'city-suggestion';
+                    option.textContent = city;
+                    option.addEventListener('mousedown', (event) => {
+                        event.preventDefault();
+                        input.value = city;
+                        closeSuggestions();
+                    });
+                    suggestions.appendChild(option);
+                });
+            }
+
+            suggestions.classList.add('active');
+        };
+
+        input.addEventListener('input', renderSuggestions);
+        input.addEventListener('focus', renderSuggestions);
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeSuggestions();
+        });
+        input.addEventListener('blur', () => {
+            window.setTimeout(closeSuggestions, 120);
+        });
+    });
+
     const textFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], textarea');
     
     textFields.forEach(field => {

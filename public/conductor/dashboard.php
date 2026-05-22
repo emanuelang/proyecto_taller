@@ -65,7 +65,6 @@ $promedio = $promedio ? number_format((float)$promedio, 1, '.', '') : 'Nuevo';
                     <span class="badge badge-success">Cuenta verificada</span>
                 </div>
             </div>
-            <a href="editar_perfil.php" class="btn btn-outline">Editar</a>
         </div>
 
         <div class="info-grid">

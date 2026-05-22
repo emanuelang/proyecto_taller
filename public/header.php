@@ -129,7 +129,7 @@ if ($es_admin && isset($pdo)) {
                     <span class="sidebar-icon">+</span> Ser conductor
                 </a>
             <?php else: ?>
-                <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link <?= strpos($current_path, '/conductor/') !== false ? 'active' : '' ?>">
+                <a href="<?= BASE_URL ?>conductor/dashboard.php" class="sidebar-link <?= (strpos($current_path, '/conductor/') !== false || $current_page === 'crear_viaje.php') ? 'active' : '' ?>">
                     <span class="sidebar-icon">⚙</span> Panel conductor
                 </a>
             <?php endif; ?>

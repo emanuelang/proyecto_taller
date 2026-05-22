@@ -7,17 +7,26 @@ require_once __DIR__ . '/../config/app.php';
    TRAER CIUDADES...
 ============================ */
 $ciudades_predefinidas = [
-    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay',
-    'Gualeguay', 'Colón', 'Federación', 'La Paz', 'Villaguay',
-    'Victoria', 'Chajarí', 'Crespo', 'Diamante', 'Federal',
-    'Nogoyá', 'Rosario del Tala', 'San Salvador', 'San José de Feliciano',
-    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'Córdoba', 'Rosario', 'La Plata'
+    'Aldea Brasilera', 'Aldea María Luisa', 'Aldea San Antonio', 'Aldea San Miguel',
+    'Aldea Valle María', 'Alcaraz', 'Aranguren', 'Basavilbaso', 'Bovril',
+    'Ceibas', 'Cerrito', 'Chajarí', 'Colón', 'Colonia Avellaneda',
+    'Colonia Ayuí', 'Colonia Elía', 'Colonia Ensayo', 'Concepción del Uruguay',
+    'Concordia', 'Crespo', 'Diamante', 'Estancia Grande', 'Federal',
+    'Federación', 'General Campos', 'General Galarza', 'General Ramírez',
+    'Gilbert', 'Gobernador Mansilla', 'Gualeguay', 'Gualeguaychú', 'Hasenkamp',
+    'Hernandarias', 'Hernández', 'Herrera', 'Ibicuy', 'La Criolla', 'La Paz',
+    'Larroque', 'Libertador San Martín', 'Los Charrúas', 'Lucas González',
+    'Maciá', 'María Grande', 'Nogoyá', 'Oro Verde', 'Paraná',
+    'Piedras Blancas', 'Pronunciamiento', 'Pueblo Belgrano', 'Puerto Yeruá',
+    'Rosario del Tala', 'San Benito', 'San Gustavo', 'San Jaime de la Frontera',
+    'San José', 'San José de Feliciano', 'San Justo', 'San Salvador',
+    'Santa Ana', 'Santa Elena', 'Sauce de Luna', 'Seguí', 'Urdinarrain',
+    'Viale', 'Victoria', 'Villa Clara', 'Villa del Rosario', 'Villa Elisa',
+    'Villa Hernandarias', 'Villa Mantero', 'Villa Paranacito',
+    'Villa Urquiza', 'Villaguay'
 ];
 
-$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones");
-$ciudades_db = $stmt_ciudades->fetchAll(PDO::FETCH_COLUMN);
-
-$todas_las_ciudades = array_unique(array_merge($ciudades_predefinidas, $ciudades_db));
+$todas_las_ciudades = array_unique($ciudades_predefinidas);
 sort($todas_las_ciudades);
 
 $ciudades = [];
@@ -169,14 +178,15 @@ require_once __DIR__ . '/header.php';
     <p class="page-subtitle">Encontrá el viaje perfecto para tu próximo destino</p>
 
     <form method="GET" class="search-card">
-        <datalist id="ciudades_list">
-            <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>"></option>
-            <?php endforeach; ?>
-        </datalist>
+        <div class="autocomplete-field">
+            <input type="text" name="origen" class="city-autocomplete" placeholder="Ciudad de salida" value="<?= htmlspecialchars($origen) ?>" minlength="2" maxlength="100" autocomplete="off" data-cities='<?= htmlspecialchars(json_encode(array_column($ciudades, 'nombre'), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>'>
+            <div class="city-suggestions" role="listbox"></div>
+        </div>
 
-        <input type="text" name="origen" list="ciudades_list" placeholder="Ciudad de salida" value="<?= htmlspecialchars($origen) ?>" minlength="2" maxlength="100" autocomplete="off">
-        <input type="text" name="destino" list="ciudades_list" placeholder="Ciudad de llegada" value="<?= htmlspecialchars($destino) ?>" minlength="2" maxlength="100" autocomplete="off">
+        <div class="autocomplete-field">
+            <input type="text" name="destino" class="city-autocomplete" placeholder="Ciudad de llegada" value="<?= htmlspecialchars($destino) ?>" minlength="2" maxlength="100" autocomplete="off" data-cities='<?= htmlspecialchars(json_encode(array_column($ciudades, 'nombre'), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>'>
+            <div class="city-suggestions" role="listbox"></div>
+        </div>
 
         <select name="orden">
             <option value="">Ordenar</option>
