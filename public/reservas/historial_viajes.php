@@ -155,8 +155,15 @@ function rate(reservaId, puntuacion) {
 
     fetch('calificar_conductor.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reserva_id: reservaId, puntuacion: puntuacion })
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({
+            reserva_id: reservaId,
+            puntuacion: puntuacion,
+            csrf_token: window.CSRF_TOKEN || ''
+        })
     })
     .then(r => r.json())
     .then(data => {

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -37,6 +38,8 @@ $stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Public
 $ciudades = $stmt_ciudades->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
+
     $origen = $_POST['origen'];
     $destino = $_POST['destino'];
     $fecha = $_POST['fecha'];
@@ -144,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php endif; ?>
 
 <form method="post">
+    <?= csrf_field() ?>
     Origen:
     <select name="origen" required>
         <?php foreach ($ciudades as $c): ?>

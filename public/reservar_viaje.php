@@ -2,17 +2,24 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
 
-if (!isset($_GET['id'])) {
-    die("Viaje no especificado.");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: " . BASE_URL . "index.php");
+    exit;
 }
 
-$viaje_id = (int) $_GET['id'];
+require_csrf();
+
+$viaje_id = (int)($_POST['id'] ?? 0);
+if ($viaje_id <= 0) {
+    safe_error('Viaje no especificado.');
+}
 
 /* Verificar viaje, cupo y datos para el pago */
 $sql = "
@@ -40,16 +47,16 @@ $stmt->execute([':viaje_id' => $viaje_id]);
 $viaje = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$viaje) {
-    die("El viaje no existe.");
+    safe_error("El viaje no existe.");
 }
 
 if ($viaje['ocupados'] >= $viaje['asientos']) {
-    die("No hay asientos disponibles en este viaje.");
+    safe_error("No hay asientos disponibles en este viaje.");
 }
 
 /* Evitar reservar propio viaje */
 if ($viaje['ID_usuario'] == $_SESSION['user_id']) {
-    die("No podés reservar tu propio viaje.");
+    safe_error("No podes reservar tu propio viaje.");
 }
 
 /* Evitar duplicado: si ya tiene una reserva Completada para este viaje */
@@ -66,7 +73,7 @@ $stmt_dup = $pdo->prepare($sql_dup);
 $stmt_dup->execute([':viaje_id' => $viaje_id, ':usuario_id' => $_SESSION['user_id']]);
 
 if ($stmt_dup->fetchColumn() > 0) {
-    die("Ya tenés una reserva confirmada para este viaje.");
+    safe_error("Ya tenes una reserva confirmada para este viaje.");
 }
 
 /* Verificar Saldo del Usuario */
@@ -94,13 +101,32 @@ if ($saldo_usuario >= $viaje['Precio']) {
 
         if (!$check || $check['ocupados'] >= $check['total']) {
             $pdo->rollBack();
-            die("Lo sentimos, los asientos se agotaron justo ahora. Intenta con otro viaje.");
+            safe_error("Lo sentimos, los asientos se agotaron justo ahora. Intenta con otro viaje.");
         }
         // ------------------------------------
 
+        $stmt_dup_lock = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM Reservas r
+            JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+            JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+            WHERE r.ID_publicacion = ?
+              AND pas.ID_usuario = ?
+              AND r.Estado = 'Completada'
+        ");
+        $stmt_dup_lock->execute([$viaje_id, $_SESSION['user_id']]);
+        if ($stmt_dup_lock->fetchColumn() > 0) {
+            $pdo->rollBack();
+            safe_error("Ya tenes una reserva confirmada para este viaje.");
+        }
+
         // 1. Descontar saldo
-        $stmt_desc = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ?");
-        $stmt_desc->execute([$viaje['Precio'], $_SESSION['user_id']]);
+        $stmt_desc = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ? AND Saldo >= ?");
+        $stmt_desc->execute([$viaje['Precio'], $_SESSION['user_id'], $viaje['Precio']]);
+        if ($stmt_desc->rowCount() !== 1) {
+            $pdo->rollBack();
+            safe_error("Saldo insuficiente para completar la reserva.");
+        }
         
         // 2. Obtener o crear ID Pasajero
         $stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
@@ -115,7 +141,7 @@ if ($saldo_usuario >= $viaje['Precio']) {
         }
         
         // 3. Generar código de acceso único
-        $codigo_acceso = "CA-" . strtoupper(substr(md5(uniqid(rand(), true)), 0, 8));
+        $codigo_acceso = "CA-" . strtoupper(bin2hex(random_bytes(4)));
         
         // 4. Crear Reserva Completada
         $stmt_res = $pdo->prepare("INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva, CodigoAcceso) VALUES (?, 'Completada', NOW(), ?)");
@@ -160,8 +186,11 @@ if ($saldo_usuario >= $viaje['Precio']) {
         <?php
         exit;
     } catch (Exception $e) {
-        $pdo->rollBack();
-        die("Error pagando con saldo: " . $e->getMessage());
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Error pagando con saldo: " . $e->getMessage());
+        safe_error("No se pudo completar la reserva con saldo.");
     }
 }
 
@@ -170,7 +199,12 @@ if ($saldo_usuario >= $viaje['Precio']) {
  * Vamos a pasar el ID de viaje y de usuario por la externa_reference a MP.
  * Solo guardaremos la reserva si el pago es exitoso.
  */
-$external_reference = $viaje_id . '_' . $_SESSION['user_id'];
+$external_reference = bin2hex(random_bytes(24));
+$_SESSION['pending_reserva'][$external_reference] = [
+    'viaje_id' => $viaje_id,
+    'user_id' => (int)$_SESSION['user_id'],
+    'created_at' => time(),
+];
 
 /* Generar la preferencia de Mercado Pago API REAL */
 $mp_access_token = 'APP_USR-6088138919766842-033021-cb005d5c6385fb2d1bb62e1583b4989a-3302874491';
@@ -251,7 +285,7 @@ if (isset($mp_result['sandbox_init_point'])) {
     <?php
     exit;
 } else {
-    // Si falla MP, no hay reserva que borrar de la base de datos, solo mostrar error
-    $request_body = json_encode($preference_data, JSON_UNESCAPED_UNICODE);
-    die("Error inesperado al conectar con Mercado Pago (Sandbox).<br>Error cURL: " . $curl_error . "<br>Respuesta MP: " . print_r($mp_result, true) . "<br>JSON Enviado: " . $request_body);
+    unset($_SESSION['pending_reserva'][$external_reference]);
+    error_log("Error Mercado Pago reserva. cURL: " . $curl_error . " Respuesta: " . print_r($mp_result, true));
+    safe_error("No se pudo conectar con Mercado Pago. Intenta nuevamente en unos minutos.");
 }

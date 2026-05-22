@@ -9,8 +9,12 @@ if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
     $error = 'Tu sesion se cerro por inactividad.';
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         die('Token CSRF invalido.');
     }
 
@@ -61,9 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">

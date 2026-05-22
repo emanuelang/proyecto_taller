@@ -2,9 +2,11 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Procesar eliminación de usuario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['usuario_id'])) {
+    require_csrf();
     $usuario_target = (int)$_POST['usuario_id'];
     $accion = $_POST['accion'];
     

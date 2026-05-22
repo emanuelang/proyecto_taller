@@ -2,9 +2,11 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Procesar resolución de tickets
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['soporte_id'])) {
+    require_csrf();
     $soporte_id = (int)$_POST['soporte_id'];
     
     if ($_POST['accion'] === 'resolver') {

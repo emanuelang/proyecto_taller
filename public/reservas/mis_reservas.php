@@ -111,6 +111,7 @@ $reservas = $stmt->fetchAll();
                 <div class="reservation-actions">
                     <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $r['publicacion_id'] ?>" class="btn btn-outline">Ver Detalle</a>
                     <form method="POST" action="cancelar_reserva.php">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="reserva_id" value="<?= $r['reserva_id'] ?>">
                         <button type="submit" class="btn-danger" onclick="return confirm('¿Seguro querés cancelar tu asiento? Se eliminará de tus reservas y dejará el lugar libre para otra persona.')">Cancelar</button>
                     </form>

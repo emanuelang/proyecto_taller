@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 $token = $_GET['token'] ?? '';
 $msg = '';
@@ -20,11 +21,12 @@ if (!$user) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $pass1 = $_POST['pass1'];
     $pass2 = $_POST['pass2'];
 
-    if (strlen($pass1) < 6) {
-        $msg = "La contraseña debe tener al menos 6 caracteres.";
+    if (strlen($pass1) < 8 || strlen($pass1) > 72) {
+        $msg = "La contraseña debe tener entre 8 y 72 caracteres.";
         $msg_type = "error";
     } elseif ($pass1 !== $pass2) {
         $msg = "Las contraseñas no coinciden.";
@@ -62,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php if ($msg_type !== 'success'): ?>
     <form method="post">
+        <?= csrf_field() ?>
         <label>Nueva Contraseña:</label>
         <input  name="pass1" type="password" required placeholder="Al menos 6 caracteres" minlength="8" maxlength="72">
         

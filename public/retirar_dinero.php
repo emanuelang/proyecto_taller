@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -23,24 +24,33 @@ if (!$perfil) {
 $saldo = (float)$perfil['Saldo'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $monto = (float)$_POST['monto'];
     
     if ($monto <= 0) {
         $error = "El monto a retirar debe ser mayor a 0.";
+    } elseif ($monto > 500000) {
+        $error = "El monto maximo por retiro es de $500.000.";
     } elseif ($monto > $saldo) {
         $error = "No tienes saldo suficiente para retirar $" . number_format($monto, 2, ',', '.') . ". Tu saldo actual es de $" . number_format($saldo, 2, ',', '.') . ".";
     } else {
         try {
             $pdo->beginTransaction();
-            $stmt_upd = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ?");
-            $stmt_upd->execute([$monto, $user_id]);
+            $stmt_upd = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo - ? WHERE ID_usuario = ? AND Saldo >= ?");
+            $stmt_upd->execute([$monto, $user_id, $monto]);
+            if ($stmt_upd->rowCount() !== 1) {
+                throw new Exception('Saldo insuficiente.');
+            }
             $pdo->commit();
             
             $saldo -= $monto; // Actualizar vista local
             $success = "Retiro de $" . number_format($monto, 2, ',', '.') . " realizado con éxito.";
         } catch (Exception $e) {
-            $pdo->rollBack();
-            $error = "Error al procesar el retiro: " . $e->getMessage();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("Error al procesar retiro: " . $e->getMessage());
+            $error = "No se pudo procesar el retiro.";
         }
     }
 }
@@ -101,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST">
+            <?= csrf_field() ?>
             <div class="input-group">
                 <label style="font-weight: bold; display: block; margin-bottom: 5px;">Monto a retirar ($ ARS):</label>
                 <input type="number" name="monto" min="1" max="<?= $saldo ?>" step="0.01" required placeholder="Ej: 5000" <?php if ($saldo <= 0) echo 'disabled'; ?>>

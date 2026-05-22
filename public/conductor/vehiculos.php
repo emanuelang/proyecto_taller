@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -46,7 +47,7 @@ $vehiculos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <div style="margin-top: 15px; display: flex; gap: 10px;">
                 <a href="editar_vehiculo.php?id=<?= $v['id'] ?>" class="btn" style="flex: 1; text-align: center;">Visualizar</a>
-                <a href="eliminar_vehiculo.php?id=<?= $v['id'] ?>" class="btn" style="flex: 1; text-align: center; background-color: #ef4444;" onclick="return confirm('¿Eliminar vehículo?')">Eliminar</a>
+                <a href="eliminar_vehiculo.php?id=<?= $v['id'] ?>&csrf_token=<?= urlencode(csrf_token()) ?>" class="btn" style="flex: 1; text-align: center; background-color: #ef4444;" onclick="return confirm('¿Eliminar vehículo?')">Eliminar</a>
             </div>
         </div>
     <?php endforeach; ?>

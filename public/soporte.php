@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -9,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $asunto = trim($_POST['asunto']);
     $mensaje = trim($_POST['mensaje']);
     $errores = [];
@@ -59,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST">
+            <?= csrf_field() ?>
             <label>Asunto del problema:</label>
             <input type="text"  name="asunto" placeholder="Ej: Problemas para publicar un viaje, Error en pagos, etc." required  minlength="5" maxlength="100">
 

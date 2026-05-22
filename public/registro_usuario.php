@@ -1,8 +1,10 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../core/security.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
 
     $nombre = trim($_POST['nombre']);
     $apellido = trim($_POST['apellido']);
@@ -67,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <form method="POST">
+        <?= csrf_field() ?>
         <h3 style="margin-top:0; color:var(--primary); text-align:center;">Únete a Carpooling</h3>
 
         <?php if (!empty($errores)): ?>

@@ -27,5 +27,7 @@ try {
         }
     }
 } catch (PDOException $e) {
-    die('Error DB: ' . $e->getMessage());
+    error_log('Error DB: ' . $e->getMessage());
+    http_response_code(500);
+    die('No se pudo conectar con la base de datos. Verifica que MySQL este iniciado.');
 }

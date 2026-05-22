@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -9,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $user_id = $_SESSION['user_id'];
     
     try {
@@ -90,7 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (Exception $e) {
         $pdo->rollBack();
-        die("Error al desactivar el perfil: " . $e->getMessage());
+        error_log("Error al desactivar el perfil: " . $e->getMessage());
+        safe_error('No se pudo desactivar el perfil.');
     }
 
 } else {

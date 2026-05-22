@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -12,12 +13,19 @@ $error = '';
 $sandbox_url = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
+
     $monto = (float)$_POST['monto'];
     
-    if ($monto <= 0) {
-        $error = "El monto debe ser mayor a 0.";
+    if ($monto <= 0 || $monto > 500000) {
+        $error = "El monto debe ser mayor a 0 y no superar $500.000.";
     } else {
-        $external_reference = $_SESSION['user_id'] . '_' . $monto; // Pasamos el user_id y el monto para verificarlo luego
+        $external_reference = bin2hex(random_bytes(24));
+        $_SESSION['pending_saldo'][$external_reference] = [
+            'user_id' => (int)$_SESSION['user_id'],
+            'monto' => $monto,
+            'created_at' => time(),
+        ];
         
         $mp_access_token = 'APP_USR-6088138919766842-033021-cb005d5c6385fb2d1bb62e1583b4989a-3302874491';
         
@@ -135,6 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="POST">
+                <?= csrf_field() ?>
                 <div class="input-group">
                     <label style="font-weight: bold; display: block; margin-bottom: 5px;">Monto a ingresar ($ ARS):</label>
                     <input type="number" name="monto" min="1" step="0.01" required placeholder="Ej: 5000">

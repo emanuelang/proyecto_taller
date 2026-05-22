@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_GET['id'])) {
     die('Viaje no especificado.');
@@ -217,7 +218,11 @@ require_once __DIR__ . '/header.php';
                 <strong>Este viaje fue publicado por vos.</strong>
             </div>
         <?php else: ?>
-            <a href="<?= BASE_URL ?>reservar_viaje.php?id=<?= (int)$viaje['id'] ?>" class="btn success-bg" style="min-width:260px;">Continuar reserva</a>
+            <form method="POST" action="<?= BASE_URL ?>reservar_viaje.php" style="padding:0; border:0; box-shadow:none;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$viaje['id'] ?>">
+                <button type="submit" class="btn success-bg" style="min-width:260px;">Continuar reserva</button>
+            </form>
         <?php endif; ?>
     </div>
 </div>

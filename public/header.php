@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../core/security.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,6 +9,7 @@
     <script>
         window.BASE_URL = <?= json_encode(BASE_URL) ?>;
         window.SESSION_TIMEOUT_MS = <?= isset($_SESSION['user_id']) ? (int)SESSION_TIMEOUT_SECONDS * 1000 : 0 ?>;
+        window.CSRF_TOKEN = <?= json_encode(function_exists('csrf_token') ? csrf_token() : '') ?>;
     </script>
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>" defer></script>
 </head>

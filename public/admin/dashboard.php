@@ -167,6 +167,7 @@ include __DIR__ . '/_nav.php';
                 <a href="backup.php" class="btn" style="width:100%; margin-top:22px;" target="_blank">Exportar Backup</a>
 
                 <form action="import_backup.php" method="POST" enctype="multipart/form-data" style="margin-top:14px;">
+                    <?= csrf_field() ?>
                     <input type="file" name="backup_file" accept=".sql" required>
                     <button type="submit" class="btn btn-outline" style="width:100%;">Importar Backup</button>
                 </form>

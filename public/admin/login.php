@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Si ya está logueado y es admin, lo redirigimos al dashboard
 if (isset($_SESSION['user_id']) && isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
@@ -17,6 +18,7 @@ if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
@@ -30,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
-        
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['ID_usuario'];
         $_SESSION['nombre'] = $user['Nombre'];
         $_SESSION['is_admin'] = true; 
@@ -108,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($error): ?><p style="color:red; text-align:center;"><?= htmlspecialchars($error) ?></p><?php endif; ?>
     
     <form method="post">
+        <?= csrf_field() ?>
         <input  name="email" type="email" required placeholder="Email Administrativo" minlength="5" maxlength="254">
         <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72">
         <button type="submit">Ingresar al Panel</button>

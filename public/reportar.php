@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 $conductor_id = $_GET['conductor_id'] ?? null;
 if (!$conductor_id) {
@@ -23,6 +24,7 @@ if (!$conductor) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $descripcion = trim($_POST['descripcion']);
     
     if (!empty($descripcion)) {
@@ -63,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="post">
+            <?= csrf_field() ?>
             <label style="display:block; margin-bottom: 5px; font-weight: bold;">Detalles de la Queja:</label>
             <textarea  name="descripcion" rows="6" style="width: 100%; padding: 10px; box-sizing: border-box;" placeholder="Explica lo sucedido de la forma más descriptiva posible..." required minlength="15" maxlength="1500"></textarea>
             

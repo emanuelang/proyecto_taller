@@ -46,7 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
         notifSidebar.classList.toggle('active', open);
         if (open) {
             showOverlay();
-            fetch((window.BASE_URL || '') + 'notificaciones_api.php', { method: 'POST' })
+            fetch((window.BASE_URL || '') + 'notificaciones_api.php', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' }
+            })
                 .then(() => {
                     const badge = document.getElementById('notifBadge');
                     if (badge) badge.style.display = 'none';
@@ -63,6 +66,18 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.addEventListener('click', () => {
             setSidebar(false);
             setNotifications(false);
+        });
+    }
+
+    if (window.CSRF_TOKEN) {
+        document.querySelectorAll('form[method="post"], form[method="POST"]').forEach((form) => {
+            if (!form.querySelector('input[name="csrf_token"]')) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'csrf_token';
+                input.value = window.CSRF_TOKEN;
+                form.appendChild(input);
+            }
         });
     }
 

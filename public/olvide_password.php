@@ -2,11 +2,13 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/mailer.php';
+require_once __DIR__ . '/../core/security.php';
 
 $msg = '';
 $msg_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $email = trim($_POST['email']);
 
     $stmt = $pdo->prepare("SELECT ID_usuario, Nombre FROM Usuarios WHERE Correo = ?");
@@ -67,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="post">
+        <?= csrf_field() ?>
         <h3 style="margin-top:0; color:var(--primary); text-align:center;">¿Olvidaste tu contraseña?</h3>
         <p style="text-align: center; color: #64748b; font-size: 0.9em; margin-bottom: 20px;">
             Ingresa tu correo electrónico y te enviaremos un enlace para restablecerla.

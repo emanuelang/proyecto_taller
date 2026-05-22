@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Filtros
 $estado_filtro = $_GET['estado'] ?? '';
@@ -68,6 +69,7 @@ $pagos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Manejo de Retiros
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'retirar') {
+    require_csrf();
     $monto_a_retirar = (float)$_POST['monto'];
     
     // Calcular ganancia neta actual antes de retirar
