@@ -4,14 +4,28 @@ require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 
-if (!isset($_SESSION['is_conductor'])) {
+if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
 }
 
-$viaje_id = (int)$_GET['id'];
+$viaje_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+$stmt_viaje = $pdo->prepare("
+    SELECT p.CiudadOrigen, p.CiudadDestino, p.HoraSalida, p.Precio
+    FROM Publicaciones p
+    JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+    WHERE p.ID_publicacion = ? AND cp.ID_conductor = ?
+");
+$stmt_viaje->execute([$viaje_id, $_SESSION['conductor_id']]);
+$viaje = $stmt_viaje->fetch(PDO::FETCH_ASSOC);
+
+if (!$viaje) {
+    die('Viaje no encontrado o sin permisos.');
+}
 
 $stmt = $pdo->prepare("
-    SELECT r.ID_reserva AS reserva_id, r.Estado, r.CodigoAcceso, u.Nombre AS nombre, u.Correo AS email, u.Telefono
+    SELECT r.ID_reserva AS reserva_id, r.Estado, r.CodigoAcceso,
+           u.Nombre AS nombre, u.Apellido AS apellido, u.Correo AS email, u.Telefono
     FROM Reservas r
     JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
     JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
@@ -20,160 +34,185 @@ $stmt = $pdo->prepare("
     ORDER BY u.Nombre ASC
 ");
 $stmt->execute([$viaje_id]);
-$reservas = $stmt->fetchAll();
+$reservas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+include __DIR__ . '/_nav.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Lista de Pasajeros</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-    <!-- Cargar html2pdf para exportar a PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        .boarding-header {
-            background-color: var(--primary);
-            color: white;
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0;
-        }
-        .boarding-body {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+    .boarding-header {
+        background: var(--primary);
+        color: white;
+        padding: 24px 26px;
+        border-radius: 18px 18px 0 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .boarding-body {
+        background: #fff;
+        padding: 26px;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 18px 18px;
+        box-shadow: var(--shadow);
+    }
+
+    .passenger-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 18px;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-left: 5px solid var(--primary);
+        margin-bottom: 16px;
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .passenger-info h3 {
+        margin: 0 0 6px;
+        color: var(--text-main);
+    }
+
+    .passenger-info p {
+        margin: 3px 0;
+        color: var(--text-muted);
+    }
+
+    .passenger-code {
+        min-width: 270px;
+        text-align: center;
+        background: #eff6ff;
+        padding: 14px 20px;
+        border-radius: 12px;
+        border: 1px solid #bfdbfe;
+    }
+
+    .passenger-code small {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .passenger-code span {
+        display: block;
+        margin-top: 6px;
+        color: var(--primary);
+        font-size: 30px;
+        font-weight: 850;
+        letter-spacing: 3px;
+    }
+
+    @media (max-width: 760px) {
+        .boarding-header,
         .passenger-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            background: #F8FAFC;
-            border: 1px dashed #CBD5E1;
-            border-left: 5px solid var(--primary);
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 6px;
+            grid-template-columns: 1fr;
+            display: grid;
         }
-        .passenger-info h3 { margin: 0 0 5px 0; color: #1E293B; }
-        .passenger-info p { margin: 2px 0; color: #475569; font-size: 0.95em; }
+
         .passenger-code {
-            text-align: center;
-            background: #EFF6FF;
-            padding: 10px 20px;
-            border-radius: 6px;
-            border: 1px solid #BFDBFE;
+            min-width: 0;
         }
-        .passenger-code span {
-            display: block;
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #1D4ED8;
-            letter-spacing: 2px;
-        }
-        .passenger-code small { color: #64748B; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-        .status-paid { background-color: #DCFCE7; color: #166534; border: 1px solid #BBF7D0; }
-        .status-pending { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+    }
 
-        @media print {
-            body { background: white; padding: 0; max-width: 100%; }
-            .no-print { display: none !important; }
-            .passenger-row { break-inside: avoid; border: 1px solid #ddd; }
-            .boarding-body { box-shadow: none; border: none; }
+    @media print {
+        .no-print,
+        .app-sidebar,
+        .sidebar-main-toggle {
+            display: none !important;
         }
-    </style>
-</head>
-<body>
 
-<!-- Menú de la aplicación (no se incluye en el PDF) -->
-<div class="no-print">
-    <?php include __DIR__ . '/_nav.php'; ?>
-    
+        .app-main {
+            margin: 0;
+            padding: 0;
+        }
+
+        .passenger-row {
+            break-inside: avoid;
+        }
+
+        .boarding-body {
+            box-shadow: none;
+        }
+    }
+</style>
+
+<div class="page-shell">
+    <div class="no-print" style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:22px;">
+        <a href="viajes.php" class="btn btn-outline">Volver a Mis Viajes</a>
+        <button onclick="generarPDF()" class="btn success-bg">Descargar Lista (PDF)</button>
+    </div>
+
     <?php if (isset($_GET['msg'])): ?>
-        <div style="background-color: #d4edda; color: #155724; padding: 12px 20px; border-radius: 6px; margin: 0 0 15px 0; border: 1px solid #c3e6cb;">
+        <div class="card" style="background:#f0fdf4; color:#047857;">
             <?= htmlspecialchars($_GET['msg']) ?>
         </div>
     <?php endif; ?>
 
-    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <a href="viajes.php" style="font-weight: bold;">← Volver a Mis Viajes</a>
-        <button onclick="generarPDF()" class="btn" style="background-color: var(--success); display: flex; align-items: center; gap: 8px;">
-            📄 Descargar Lista (PDF)
-        </button>
-    </div>
-</div>
-
-<!-- Contenedor principal que se exportará a PDF -->
-<div id="manifest-content">
-    <div class="boarding-header">
-        <div>
-            <h2 style="margin: 0; color: white;">Planilla de Pasajeros</h2>
-            <p style="margin: 5px 0 0 0; opacity: 0.9;">Viaje ID #<?= str_pad($viaje_id, 4, '0', STR_PAD_LEFT) ?></p>
-        </div>
-        <div style="text-align: right;">
-            <p style="margin: 0; font-weight: bold; font-size: 1.2em;">Total: <?= count($reservas) ?> pasajero(s)</p>
-            <p style="margin: 5px 0 0.8em 0; font-size: 0.9em; opacity: 0.8;">Lista generada para validación al abordar</p>
-        </div>
-    </div>
-
-    <div class="boarding-body">
-        <?php if (empty($reservas)): ?>
-            <div style="text-align: center; padding: 40px; color: #64748b;">
-                <p>No hay pasajeros confirmados para este viaje todavía.</p>
+    <div id="manifest-content">
+        <div class="boarding-header">
+            <div>
+                <h2 style="margin:0; color:white;">Planilla de Pasajeros</h2>
+                <p style="margin:6px 0 0; opacity:.9;">
+                    Viaje ID #<?= str_pad($viaje_id, 4, '0', STR_PAD_LEFT) ?> ·
+                    <?= htmlspecialchars($viaje['CiudadOrigen']) ?> → <?= htmlspecialchars($viaje['CiudadDestino']) ?>
+                </p>
             </div>
-        <?php endif; ?>
+            <div style="text-align:right;">
+                <p style="margin:0; font-weight:850; font-size:22px;">Total: <?= count($reservas) ?> pasajero(s)</p>
+                <p style="margin:6px 0 0; opacity:.85;">Lista generada para validación al abordar</p>
+            </div>
+        </div>
 
-        <?php foreach ($reservas as $index => $r): ?>
-            <div class="passenger-row">
-                <div class="passenger-info" style="flex: 1; min-width: 200px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-                        <span style="background: #E2E8F0; color: #475569; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: bold;"><?= $index + 1 ?></span>
-                        <h3><?= htmlspecialchars($r['nombre']) ?></h3>
-                        <?php if ($r['Estado'] === 'Completada'): ?>
-                            <span class="status-badge status-paid">Pagado</span>
-                        <?php else: ?>
-                            <span class="status-badge status-pending"><?= htmlspecialchars($r['Estado']) ?></span>
+        <div class="boarding-body">
+            <?php if (empty($reservas)): ?>
+                <div style="text-align:center; padding:46px;">
+                    <h3 style="margin-top:0;">No hay pasajeros confirmados</h3>
+                    <p class="text-muted">Cuando alguien reserve y pague este viaje, aparecerá en esta lista.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($reservas as $index => $r): ?>
+                    <div class="passenger-row">
+                        <div class="passenger-info">
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px; flex-wrap:wrap;">
+                                <span class="mini-avatar" style="width:30px; height:30px;"><?= $index + 1 ?></span>
+                                <h3><?= htmlspecialchars(trim($r['nombre'] . ' ' . $r['apellido'])) ?></h3>
+                                <span class="badge badge-success">Pagado</span>
+                            </div>
+                            <p><?= htmlspecialchars($r['email']) ?></p>
+                            <p><?= htmlspecialchars($r['Telefono'] ?: 'No especificado') ?></p>
+                        </div>
+
+                        <?php if (!empty($r['CodigoAcceso'])): ?>
+                            <div class="passenger-code">
+                                <small>Código de validación</small>
+                                <span><?= htmlspecialchars($r['CodigoAcceso']) ?></span>
+                            </div>
                         <?php endif; ?>
-                    </div>
-                    <p>✉️ <?= htmlspecialchars($r['email']) ?></p>
-                    <p>📞 <?= htmlspecialchars($r['Telefono'] ?? 'No especificado') ?></p>
-                </div>
 
-                <?php if ($r['CodigoAcceso']): ?>
-                    <div class="passenger-code" style="margin: 10px 0;">
-                        <small>Código de Validación</small>
-                        <span><?= htmlspecialchars($r['CodigoAcceso']) ?></span>
+                        <div class="no-print" style="grid-column:1 / -1; text-align:right;">
+                            <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>"
+                               class="btn btn-danger"
+                               onclick="return confirm('¿Seguro que deseas cancelar esta reserva confirmada?');">
+                                Cancelar pasaje
+                            </a>
+                        </div>
                     </div>
-                <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
 
-                <div class="no-print" style="width: 100%; margin-top: 10px; text-align: right;">
-                    <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>" 
-                       style="color: #EF4444; font-size: 0.9em; text-decoration: underline;" 
-                       onclick="return confirm('ATENCIÓN: ¿Seguro que deseas cancelar esta reserva confirmada?')">
-                       Cancelar Pasaje
-                    </a>
-                </div>
+            <div style="margin-top:26px; text-align:center; color:#94a3b8; font-size:14px;">
+                <p>Solicitá el código de validación a cada pasajero al momento de subir al vehículo.</p>
+                <p>Documento generado el <?= date('d/m/Y H:i') ?></p>
             </div>
-        <?php endforeach; ?>
-        
-        <div style="margin-top: 30px; text-align: center; color: #94A3B8; font-size: 0.85em;">
-            <p>Por favor, solicite el 'Código de Validación' a cada pasajero al momento de subir al vehículo para comprobar su identidad y el cobro del viaje.</p>
-            <p>Documento generado el <?= date('d/m/Y H:i') ?></p>
         </div>
     </div>
 </div>
@@ -182,11 +221,11 @@ $reservas = $stmt->fetchAll();
 function generarPDF() {
     const element = document.getElementById('manifest-content');
     const opt = {
-      margin:       10,
-      filename:     'lista_pasajeros_viaje_<?= $viaje_id ?>.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        margin: 10,
+        filename: 'lista_pasajeros_viaje_<?= $viaje_id ?>.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save();

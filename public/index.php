@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
@@ -7,17 +7,26 @@ require_once __DIR__ . '/../config/app.php';
    TRAER CIUDADES...
 ============================ */
 $ciudades_predefinidas = [
-    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 
-    'Gualeguay', 'Colón', 'Federación', 'La Paz', 'Villaguay', 
-    'Victoria', 'Chajarí', 'Crespo', 'Diamante', 'Federal', 
-    'Nogoyá', 'Rosario del Tala', 'San Salvador', 'San José de Feliciano', 
-    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'Córdoba', 'Rosario', 'La Plata'
+    'Aldea Brasilera', 'Aldea María Luisa', 'Aldea San Antonio', 'Aldea San Miguel',
+    'Aldea Valle María', 'Alcaraz', 'Aranguren', 'Basavilbaso', 'Bovril',
+    'Ceibas', 'Cerrito', 'Chajarí', 'Colón', 'Colonia Avellaneda',
+    'Colonia Ayuí', 'Colonia Elía', 'Colonia Ensayo', 'Concepción del Uruguay',
+    'Concordia', 'Crespo', 'Diamante', 'Estancia Grande', 'Federal',
+    'Federación', 'General Campos', 'General Galarza', 'General Ramírez',
+    'Gilbert', 'Gobernador Mansilla', 'Gualeguay', 'Gualeguaychú', 'Hasenkamp',
+    'Hernandarias', 'Hernández', 'Herrera', 'Ibicuy', 'La Criolla', 'La Paz',
+    'Larroque', 'Libertador San Martín', 'Los Charrúas', 'Lucas González',
+    'Maciá', 'María Grande', 'Nogoyá', 'Oro Verde', 'Paraná',
+    'Piedras Blancas', 'Pronunciamiento', 'Pueblo Belgrano', 'Puerto Yeruá',
+    'Rosario del Tala', 'San Benito', 'San Gustavo', 'San Jaime de la Frontera',
+    'San José', 'San José de Feliciano', 'San Justo', 'San Salvador',
+    'Santa Ana', 'Santa Elena', 'Sauce de Luna', 'Seguí', 'Urdinarrain',
+    'Viale', 'Victoria', 'Villa Clara', 'Villa del Rosario', 'Villa Elisa',
+    'Villa Hernandarias', 'Villa Mantero', 'Villa Paranacito',
+    'Villa Urquiza', 'Villaguay'
 ];
 
-$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones");
-$ciudades_db = $stmt_ciudades->fetchAll(PDO::FETCH_COLUMN);
-
-$todas_las_ciudades = array_unique(array_merge($ciudades_predefinidas, $ciudades_db));
+$todas_las_ciudades = array_unique($ciudades_predefinidas);
 sort($todas_las_ciudades);
 
 $ciudades = [];
@@ -89,6 +98,9 @@ $sql = "
            p.Precio AS precio,
            p.ID_publicacion AS id,
            c.ID_conductor AS conductor_id,
+           (SELECT AVG(cal.Puntuacion) FROM Calificaciones cal WHERE cal.ID_conductor = c.ID_conductor) AS promedio_calif,
+           (SELECT COUNT(*) FROM Calificaciones cal WHERE cal.ID_conductor = c.ID_conductor) AS total_calificaciones,
+           u.FotoPerfil AS conductor_foto,
            (v.CantidadAsientos - (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada')) AS asientos_disp
     FROM Publicaciones p
     JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
@@ -161,28 +173,22 @@ require_once __DIR__ . '/header.php';
     <?php endif; ?>
 <?php endif; ?>
 
-<h2 style="text-align: center; margin-top: 20px; margin-bottom: 15px;">Buscar viajes</h2>
+<div class="page-shell">
+    <h1 class="page-title">Buscar viajes</h1>
+    <p class="page-subtitle">Encontrá el viaje perfecto para tu próximo destino</p>
 
-<div style="display: flex; justify-content: center; margin-bottom: 40px; padding: 0 10px;">
-    <form method="GET" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #ffffff; padding: 10px 15px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); width: 100%; max-width: 850px; border: 1px solid #e2e8f0; justify-content: center;">
+    <form method="GET" class="search-card">
+        <div class="autocomplete-field">
+            <input type="text" name="origen" class="city-autocomplete" placeholder="Ciudad de salida" value="<?= htmlspecialchars($origen) ?>" minlength="2" maxlength="100" autocomplete="off" data-cities='<?= htmlspecialchars(json_encode(array_column($ciudades, 'nombre'), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>'>
+            <div class="city-suggestions" role="listbox"></div>
+        </div>
 
-        <datalist id="ciudades_list">
-            <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>"></option>
-            <?php endforeach; ?>
-        </datalist>
+        <div class="autocomplete-field">
+            <input type="text" name="destino" class="city-autocomplete" placeholder="Ciudad de llegada" value="<?= htmlspecialchars($destino) ?>" minlength="2" maxlength="100" autocomplete="off" data-cities='<?= htmlspecialchars(json_encode(array_column($ciudades, 'nombre'), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>'>
+            <div class="city-suggestions" role="listbox"></div>
+        </div>
 
-        <span style="color: #94A3B8; margin-left: 10px;">📍</span>
-        <input type="text"  name="origen" list="ciudades_list" placeholder="Salida" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($origen) ?>" minlength="2" maxlength="100" autocomplete="off">
-
-        <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
-
-        <span style="color: #94A3B8; margin-left: 5px;">🏁</span>
-        <input type="text"  name="destino" list="ciudades_list" placeholder="Llegada" style="flex: 1; min-width: 130px; border: none; background: transparent; padding: 10px 5px; font-size: 1rem; outline: none; color: #475569; margin:0;" value="<?= htmlspecialchars($destino) ?>" minlength="2" maxlength="100" autocomplete="off">
-
-        <div style="width: 1px; height: 35px; background-color: #cbd5e1; display: inline-block;"></div>
-
-        <select name="orden" style="flex: 1; min-width: 160px; border: none; background: transparent; padding: 10px; font-size: 1rem; outline: none; cursor: pointer; color: #475569; margin:0;">
+        <select name="orden">
             <option value="">Ordenar</option>
             <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
             <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
@@ -192,77 +198,91 @@ require_once __DIR__ . '/header.php';
             <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Menos asientos disponibles</option>
         </select>
 
-        <button type="submit" class="btn success-bg" style="border-radius: 30px; padding: 12px 30px; margin: 0; white-space: nowrap; font-size: 1rem;">
-            🔍 Buscar
-        </button>
+        <button type="submit">Buscar</button>
     </form>
-</div>
 
-<hr>
+    <div class="section-heading">
+        <h2>Viajes disponibles</h2>
+        <span class="results-count">(<?= (int)$total_viajes ?> resultados)</span>
+    </div>
 
-<h2>Viajes disponibles</h2>
+    <div class="travel-grid">
+    <?php if (empty($viajes)): ?>
+        <div class="card" style="grid-column:1/-1; text-align:center;">
+            <p class="text-muted" style="font-size:1.1em;">No hay viajes disponibles con esos filtros.</p>
+        </div>
+    <?php endif; ?>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
-<?php if (empty($viajes)): ?>
-    <p>No hay viajes disponibles.</p>
-<?php endif; ?>
+    <?php foreach ($viajes as $v): ?>
+        <div class="viaje trip-card">
+            <div>
+                <div class="trip-top">
+                    <span class="badge badge-primary">▣ <?= date('d M Y', strtotime($v['fecha'])) ?></span>
+                    <span class="trip-price">$<?= number_format($v['precio'], 0, ',', '.') ?></span>
+                </div>
 
-<?php foreach ($viajes as $v): ?>
-    <div class="viaje card" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <span class="badge badge-primary">Sale el <?= date('d/m/Y', strtotime($v['fecha'])) ?></span>
-                <span style="font-size: 1.25em; font-weight: bold; color: var(--success);">$<?= number_format($v['precio'], 2) ?></span>
+                <div class="trip-route">
+                    <div>
+                        <small>Salida</small>
+                        <strong><?= htmlspecialchars($v['origen_nombre']) ?></strong>
+                    </div>
+                    <div class="route-arrow">→</div>
+                    <div style="text-align:right;">
+                        <small>Llegada</small>
+                        <strong><?= htmlspecialchars($v['destino_nombre']) ?></strong>
+                    </div>
+                </div>
+
+                <div class="trip-meta">
+                    <span>◷ <?= date('H:i', strtotime($v['fecha'])) ?> hs</span>
+                    <span>♙ <?= max(0, $v['asientos_disp']) ?> asientos</span>
+                </div>
             </div>
 
-            <h3 style="margin: 5px 0 15px 0; font-size: 1.3em; color: var(--text-main); display:flex; align-items: center; gap: 8px;">
-                <?= htmlspecialchars($v['origen_nombre']) ?>
-                <span style="color: #CBD5E1; font-weight: 300;">→</span> 
-                <?= htmlspecialchars($v['destino_nombre']) ?>
-            </h3>
-
-            <div style="display: flex; flex-direction: column; gap: 8px; color: #475569; font-size: 0.95em; margin-bottom: 20px;">
-                <div>🕒 <?= date('H:i', strtotime($v['fecha'])) ?> hs</div>
-                <div>👤 <?= htmlspecialchars($v['conductor_nombre']) ?></div>
-                <div>💺 <?= max(0, $v['asientos_disp']) ?> asientos disponibles</div>
+            <div class="trip-footer">
+                <div class="driver-chip">
+                    <?php if (!empty($v['conductor_foto'])): ?>
+                        <img src="<?= htmlspecialchars($v['conductor_foto']) ?>" class="mini-avatar-img" alt="Foto de <?= htmlspecialchars($v['conductor_nombre']) ?>">
+                    <?php else: ?>
+                        <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($v['conductor_nombre'], 0, 1))) ?></span>
+                    <?php endif; ?>
+                    <div>
+                        <strong><?= htmlspecialchars($v['conductor_nombre']) ?></strong>
+                        <?php if (!empty($v['promedio_calif'])): ?>
+                            <div class="driver-rating">★ <?= number_format(floor($v['promedio_calif'] * 10) / 10, 1, ',', '.') ?> <span>(<?= (int)$v['total_calificaciones'] ?>)</span></div>
+                        <?php else: ?>
+                            <div class="driver-rating muted">Nuevo</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline">Ver Detalle</a>
             </div>
         </div>
-
-        <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline" style="display: block; text-align: center; width: 100%;">Ver Detalle</a>
+    <?php endforeach; ?>
     </div>
-<?php endforeach; ?>
-</div>
 
-<?php if ($total_paginas > 1): ?>
-    <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 40px; margin-bottom: 40px; flex-wrap: wrap;">
-        <!-- Primera página y Anterior -->
-        <?php if ($pagina_actual > 1): ?>
-            <a href="<?= htmlspecialchars($query_separator . 'pagina=1') ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Primera página">&lt;&lt;</a>
-            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual - 1)) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Página anterior">&lt;</a>
-        <?php else: ?>
-            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&lt;&lt;</span>
-            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&lt;</span>
-        <?php endif; ?>
-
-        <!-- Números de página -->
-        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-            <?php if ($i == $pagina_actual): ?>
-                <span style="background: var(--primary); color: white; padding: 8px 14px; border-radius: 6px; font-weight: bold; border: 1px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><?= $i ?></span>
-            <?php else: ?>
-                <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $i) ?>" class="btn" style="background: #ffffff; color: #475569; padding: 8px 14px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none; transition: all 0.2s;"><?= $i ?></a>
+    <?php if ($total_paginas > 1): ?>
+        <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin:34px 0 0; flex-wrap:wrap;">
+            <?php if ($pagina_actual > 1): ?>
+                <a href="<?= htmlspecialchars($query_separator . 'pagina=1') ?>" class="btn btn-outline">&lt;&lt;</a>
+                <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual - 1)) ?>" class="btn btn-outline">&lt;</a>
             <?php endif; ?>
-        <?php endfor; ?>
 
-        <!-- Siguiente y Última -->
-        <?php if ($pagina_actual < $total_paginas): ?>
-            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual + 1)) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Página siguiente">&gt;</a>
-            <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $total_paginas) ?>" class="btn" style="background: #f1f5f9; color: #475569; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; text-decoration: none;" title="Última página">&gt;&gt;</a>
-        <?php else: ?>
-            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&gt;</span>
-            <span style="background: #e2e8f0; color: #94a3b8; padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 1px solid #cbd5e1; cursor: not-allowed; user-select: none;">&gt;&gt;</span>
-        <?php endif; ?>
-    </div>
-<?php endif; ?>
+            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                <?php if ($i == $pagina_actual): ?>
+                    <span class="btn" style="pointer-events:none;"><?= $i ?></span>
+                <?php else: ?>
+                    <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $i) ?>" class="btn btn-outline"><?= $i ?></a>
+                <?php endif; ?>
+            <?php endfor; ?>
 
+            <?php if ($pagina_actual < $total_paginas): ?>
+                <a href="<?= htmlspecialchars($query_separator . 'pagina=' . ($pagina_actual + 1)) ?>" class="btn btn-outline">&gt;</a>
+                <a href="<?= htmlspecialchars($query_separator . 'pagina=' . $total_paginas) ?>" class="btn btn-outline">&gt;&gt;</a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+</div>
 </body>
 </html>
+

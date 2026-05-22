@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
@@ -9,11 +9,11 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
 }
 
 $ciudades_predefinidas = [
-    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 
-    'Gualeguay', 'Colón', 'Federación', 'La Paz', 'Villaguay', 
-    'Victoria', 'Chajarí', 'Crespo', 'Diamante', 'Federal', 
-    'Nogoyá', 'Rosario del Tala', 'San Salvador', 'San José de Feliciano', 
-    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'Córdoba', 'Rosario', 'La Plata'
+    'ParanÃ¡', 'Concordia', 'GualeguaychÃº', 'ConcepciÃ³n del Uruguay', 
+    'Gualeguay', 'ColÃ³n', 'FederaciÃ³n', 'La Paz', 'Villaguay', 
+    'Victoria', 'ChajarÃ­', 'Crespo', 'Diamante', 'Federal', 
+    'NogoyÃ¡', 'Rosario del Tala', 'San Salvador', 'San JosÃ© de Feliciano', 
+    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'CÃ³rdoba', 'Rosario', 'La Plata'
 ];
 
 $stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones");
@@ -29,7 +29,7 @@ foreach ($todas_las_ciudades as $c) {
     }
 }
 
-// NUEVO: Obtenemos los vehículos del conductor logueado que estén aprobados
+// NUEVO: Obtenemos los vehÃ­culos del conductor logueado que estÃ©n aprobados
 $stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.Estado = 'Aceptado'");
 $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $calle_salida = trim($_POST['calle_salida']);
     $fecha = $_POST['fecha'];
     $precio = $_POST['precio'];
-    $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehículo seleccionado
+    $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehÃ­culo seleccionado
     $observaciones = $_POST['observaciones'] ?? '';
 
     $errores = [];
@@ -54,16 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (strtotime($fecha) < strtotime('+23 hours 50 minutes')) { // Permitimos un margen de 10 min por demoras
-        $errores[] = "El viaje debe programarse con al menos 24 horas de anticipación.";
+        $errores[] = "El viaje debe programarse con al menos 24 horas de anticipaciÃ³n.";
     }
 
-    // Validar que el vehículo seleccionado pertenezca al conductor y esté aceptado
+    // Validar que el vehÃ­culo seleccionado pertenezca al conductor y estÃ© aceptado
     $stmt_vehiculo = $pdo->prepare("SELECT v.ID_vehiculo FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.ID_vehiculo = ? AND v.Estado = 'Aceptado'");
     $stmt_vehiculo->execute([$_SESSION['conductor_id'], $vehiculo_id]);
     $vehiculo = $stmt_vehiculo->fetch();
     
     if (!$vehiculo) {
-        $errores[] = "Error: El vehículo seleccionado no es válido o no ha sido aprobado.";
+        $errores[] = "Error: El vehÃ­culo seleccionado no es vÃ¡lido o no ha sido aprobado.";
     }
 
     if (empty($errores)) {
@@ -77,14 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]
             ]);
 
-            $url_origen = "https://nominatim.openstreetmap.org/search?q=" . urlencode($origen . ", Entre Ríos, Argentina") . "&format=json&limit=1";
+            $url_origen = "https://nominatim.openstreetmap.org/search?q=" . urlencode($origen . ", Entre RÃ­os, Argentina") . "&format=json&limit=1";
             $res_orig = @file_get_contents($url_origen, false, $context);
             $data_orig = json_decode($res_orig, true);
 
-            // Pausa breve para respetar las políticas de nominatim (1 request por segundo)
+            // Pausa breve para respetar las polÃ­ticas de nominatim (1 request por segundo)
             usleep(1000000); 
 
-            $url_destino = "https://nominatim.openstreetmap.org/search?q=" . urlencode($destino . ", Entre Ríos, Argentina") . "&format=json&limit=1";
+            $url_destino = "https://nominatim.openstreetmap.org/search?q=" . urlencode($destino . ", Entre RÃ­os, Argentina") . "&format=json&limit=1";
             $res_dest = @file_get_contents($url_destino, false, $context);
             $data_dest = json_decode($res_dest, true);
 
@@ -100,20 +100,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (isset($routeData['routes'][0])) {
                     $distancia_km = ceil($routeData['routes'][0]['distance'] / 1000); // Redondeado para arriba en KM
-                    $duracion_min = ceil($routeData['routes'][0]['duration'] / 60); // Duración en minutos
+                    $duracion_min = ceil($routeData['routes'][0]['duration'] / 60); // DuraciÃ³n en minutos
                 }
             }
         } catch (Exception $e) {
             // Falla silenciosa si las APIs no responden
         }
 
-        // Si la API falla, aplicamos 24hs por seguridad para que el sistema valide la superposición de todas formas
+        // Si la API falla, aplicamos 24hs por seguridad para que el sistema valide la superposiciÃ³n de todas formas
         if ($duracion_min === null) {
             $duracion_min = 1440;
             $distancia_km = 0;
         }
 
-        // --- VALIDACIÓN DE SUPERPOSICIÓN DE HORARIOS ---
+        // --- VALIDACIÃ“N DE SUPERPOSICIÃ“N DE HORARIOS ---
         if ($duracion_min !== null) {
             $new_start = $fecha;
             $new_end = date('Y-m-d H:i:s', strtotime($fecha . " + $duracion_min minutes"));
@@ -169,86 +169,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <?php
-$origen_def = $_GET['origen'] ?? '';
-$destino_def = $_GET['destino'] ?? '';
-$precio_def = $_GET['precio'] ?? '';
-$obs_def = $_GET['observaciones'] ?? '';
+$origen_def = $_POST['origen'] ?? $_GET['origen'] ?? '';
+$destino_def = $_POST['destino'] ?? $_GET['destino'] ?? '';
+$precio_def = $_POST['precio'] ?? $_GET['precio'] ?? '';
+$obs_def = $_POST['observaciones'] ?? $_GET['observaciones'] ?? '';
+$calle_def = $_POST['calle_salida'] ?? '';
+$fecha_def = $_POST['fecha'] ?? '';
+$vehiculo_def = $_POST['vehiculo_id'] ?? '';
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Crear Viaje</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-</head>
-<body>
+<?php include __DIR__ . '/header.php'; ?>
 
-<div class="nav-menu">
-    <h2>Crear viaje</h2>
-    <a href="<?= BASE_URL ?>conductor/dashboard.php" style="margin-left: auto;">← Volver al Dashboard</a>
-</div>
+<div class="page-shell create-trip-page">
+    <div class="create-trip-head">
+        <div>
+            <h1 class="page-title">Crear viaje</h1>
+            <p class="page-subtitle">Publica una salida, elegi tu vehiculo y deja los datos listos para que otros pasajeros puedan reservar.</p>
+        </div>
+        <a href="<?= BASE_URL ?>conductor/dashboard.php" class="btn btn-outline">Volver al panel</a>
+    </div>
 
-<div class="card" style="max-width: 600px; margin: 0 auto;">
-    <form method="POST">
-
-        <?php if (!empty($errores)): ?>
-            <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-                <ul style="margin: 0; padding-left: 20px;">
-                    <?php foreach ($errores as $err): ?>
-                        <li><?= htmlspecialchars($err) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
-
-        <label>Origen:</label>
-        <select name="origen" required>
-            <option value="">Origen</option>
-            <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen_def === $c['nombre']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['nombre']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-
-        <label>Destino:</label>
-        <select name="destino" required>
-            <option value="">Destino</option>
-            <?php foreach ($ciudades as $c): ?>
-                <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino_def === $c['nombre']) ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['nombre']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select><br><br>
-
-        <?php if (empty($vehiculos)): ?>
-            <div style="padding: 10px; margin-bottom: 15px; background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px;">
-                ⚠️ No tienes vehículos aprobados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php" style="font-weight: bold; color: #856404; text-decoration: underline;">Registra uno aquí</a> o espera a que un administrador lo apruebe.
-            </div>
-        <?php else: ?>
-            <label>Vehículo a utilizar:</label>
-            <select name="vehiculo_id" required>
-                <option value="">Selecciona tu vehículo</option>
-                <?php foreach ($vehiculos as $v): ?>
-                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['marca'] . ' ' . $v['modelo'] . ' (' . $v['patente'] . ')') ?></option>
+    <?php if (!empty($errores)): ?>
+        <div class="alert-error">
+            <ul class="create-trip-alert-list">
+                <?php foreach ($errores as $err): ?>
+                    <li><?= htmlspecialchars($err) ?></li>
                 <?php endforeach; ?>
-            </select><br><br>
-        <?php endif; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
-        <label>Calle de Salida:</label>
-        <input type="text"  name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" required  minlength="5" maxlength="120">
+    <form method="POST" class="create-trip-form">
+        <section class="card create-trip-card">
+            <div class="form-section-head">
+                <span class="section-kicker">Ruta</span>
+                <h2>Origen y destino</h2>
+            </div>
 
-        <label>Fecha y Hora:</label>
-        <input type="datetime-local" name="fecha" required min="<?= date('Y-m-d\TH:i', strtotime('+24 hours')) ?>">
+            <div class="create-trip-grid">
+                <div class="field-group">
+                    <label>Origen</label>
+                    <select name="origen" required>
+                        <option value="">Seleccionar origen</option>
+                        <?php foreach ($ciudades as $c): ?>
+                            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($origen_def === $c['nombre']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($c['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-        <label>Precio por persona ($):</label>
-        <input type="number"  name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" minlength="1" maxlength="7" required min="0" step="0.01">
+                <div class="field-group">
+                    <label>Destino</label>
+                    <select name="destino" required>
+                        <option value="">Seleccionar destino</option>
+                        <?php foreach ($ciudades as $c): ?>
+                            <option value="<?= htmlspecialchars($c['nombre']) ?>" <?= ($destino_def === $c['nombre']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($c['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-        <label>Observaciones:</label>
-        <textarea  name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4" minlength="0" maxlength="500"><?= htmlspecialchars($obs_def) ?></textarea>
+                <div class="field-group full-width">
+                    <label>Calle de salida</label>
+                    <input type="text" name="calle_salida" placeholder="Ej: Av. Corrientes 1234, esquina Callao" value="<?= htmlspecialchars($calle_def) ?>" required minlength="5" maxlength="120">
+                </div>
+            </div>
+        </section>
 
-        <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> class="btn" style="width: 100%; margin-top: 15px; background-color: var(--success);">Publicar viaje</button>
+        <section class="card create-trip-card">
+            <div class="form-section-head">
+                <span class="section-kicker">Detalles</span>
+                <h2>Fecha, vehiculo y precio</h2>
+            </div>
+
+            <?php if (empty($vehiculos)): ?>
+                <div class="alert-warning">
+                    No tenes vehiculos aprobados. <a href="<?= BASE_URL ?>conductor/crear_vehiculo.php">Registra uno</a> o espera a que un administrador lo apruebe.
+                </div>
+            <?php else: ?>
+                <div class="create-trip-grid">
+                    <div class="field-group full-width">
+                        <label>Vehiculo a utilizar</label>
+                        <select name="vehiculo_id" required>
+                            <option value="">Selecciona tu vehiculo</option>
+                            <?php foreach ($vehiculos as $v): ?>
+                                <option value="<?= $v['id'] ?>" <?= ((string)$vehiculo_def === (string)$v['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($v['marca'] . ' ' . $v['modelo'] . ' (' . $v['patente'] . ')') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Fecha y hora</label>
+                        <input type="datetime-local" name="fecha" value="<?= htmlspecialchars($fecha_def) ?>" required min="<?= date('Y-m-d\TH:i', strtotime('+24 hours')) ?>">
+                    </div>
+
+                    <div class="field-group">
+                        <label>Precio por persona ($)</label>
+                        <input type="number" name="precio" placeholder="Ej: 2500" value="<?= htmlspecialchars($precio_def) ?>" minlength="1" maxlength="7" required min="0" step="0.01">
+                    </div>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <section class="card create-trip-card">
+            <div class="form-section-head">
+                <span class="section-kicker">Notas</span>
+                <h2>Observaciones</h2>
+            </div>
+
+            <label>Informacion adicional</label>
+            <textarea name="observaciones" placeholder="Ej: No se aceptan mascotas" rows="4" minlength="0" maxlength="500"><?= htmlspecialchars($obs_def) ?></textarea>
+        </section>
+
+        <div class="create-trip-actions">
+            <a href="<?= BASE_URL ?>conductor/viajes.php" class="btn btn-outline">Cancelar</a>
+            <button type="submit" <?= empty($vehiculos) ? 'disabled' : '' ?> class="btn success-bg">Publicar viaje</button>
+        </div>
     </form>
 </div>
 

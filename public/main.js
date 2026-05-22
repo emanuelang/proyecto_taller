@@ -1,7 +1,143 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const timeoutMs = Number(window.SESSION_TIMEOUT_MS || 0);
+    if (timeoutMs > 0) {
+        let inactivityTimer = null;
+        const logoutForInactivity = () => {
+            window.location.href = (window.BASE_URL || '') + 'logout.php?timeout=1';
+        };
+        const resetInactivityTimer = () => {
+            window.clearTimeout(inactivityTimer);
+            inactivityTimer = window.setTimeout(logoutForInactivity, timeoutMs);
+        };
+
+        ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((eventName) => {
+            document.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
+    }
+
+    const sidebar = document.getElementById('sidebarMenu');
+    const overlay = document.getElementById('sidebarOverlay');
+    const btnOpen = document.getElementById('sidebarOpen');
+    const notifSidebar = document.getElementById('notifMenu');
+    const btnNotifOpen = document.getElementById('notifOpen');
+    const btnNotifClose = document.getElementById('notifClose');
+
+    function showOverlay() {
+        if (overlay) overlay.style.display = 'block';
+    }
+
+    function hideOverlayIfClosed() {
+        if (!overlay) return;
+        const sidebarOpen = sidebar && sidebar.classList.contains('active');
+        const notifOpen = notifSidebar && notifSidebar.classList.contains('active');
+        if (!sidebarOpen && !notifOpen) overlay.style.display = 'none';
+    }
+
+    function setSidebar(open) {
+        if (!sidebar) return;
+        sidebar.classList.toggle('active', open);
+        if (open) showOverlay();
+        hideOverlayIfClosed();
+    }
+
+    function setNotifications(open) {
+        if (!notifSidebar) return;
+        notifSidebar.classList.toggle('active', open);
+        if (open) {
+            showOverlay();
+            fetch((window.BASE_URL || '') + 'notificaciones_api.php', { method: 'POST' })
+                .then(() => {
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) badge.style.display = 'none';
+                })
+                .catch(() => {});
+        }
+        hideOverlayIfClosed();
+    }
+
+    if (btnOpen) btnOpen.addEventListener('click', () => setSidebar(true));
+    if (btnNotifOpen) btnNotifOpen.addEventListener('click', () => setNotifications(true));
+    if (btnNotifClose) btnNotifClose.addEventListener('click', () => setNotifications(false));
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            setSidebar(false);
+            setNotifications(false);
+        });
+    }
+
+    const cityInputs = document.querySelectorAll('.city-autocomplete');
+    cityInputs.forEach((input) => {
+        const wrapper = input.closest('.autocomplete-field');
+        const suggestions = wrapper ? wrapper.querySelector('.city-suggestions') : null;
+        let cities = [];
+
+        try {
+            cities = JSON.parse(input.dataset.cities || '[]');
+        } catch (error) {
+            cities = [];
+        }
+
+        const normalize = (value) => value
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        const closeSuggestions = () => {
+            if (suggestions) {
+                suggestions.classList.remove('active');
+                suggestions.innerHTML = '';
+            }
+        };
+
+        const renderSuggestions = () => {
+            if (!suggestions) return;
+
+            const query = normalize(input.value.trim());
+            const matches = cities
+                .filter((city) => query === '' || normalize(city).includes(query))
+                .slice(0, 12);
+
+            suggestions.innerHTML = '';
+
+            if (matches.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'city-suggestion-empty';
+                empty.textContent = 'No hay ciudades con ese nombre';
+                suggestions.appendChild(empty);
+            } else {
+                matches.forEach((city) => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'city-suggestion';
+                    option.textContent = city;
+                    option.addEventListener('mousedown', (event) => {
+                        event.preventDefault();
+                        input.value = city;
+                        closeSuggestions();
+                    });
+                    suggestions.appendChild(option);
+                });
+            }
+
+            suggestions.classList.add('active');
+        };
+
+        input.addEventListener('input', renderSuggestions);
+        input.addEventListener('focus', renderSuggestions);
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeSuggestions();
+        });
+        input.addEventListener('blur', () => {
+            window.setTimeout(closeSuggestions, 120);
+        });
+    });
+
     const textFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="number"], textarea');
     
     textFields.forEach(field => {
+        if (field.closest('.search-card')) return;
+
         if (field.hasAttribute('maxlength') || field.hasAttribute('minlength')) {
             const max = field.hasAttribute('maxlength') ? parseInt(field.getAttribute('maxlength'), 10) : 0;
             const min = field.hasAttribute('minlength') ? parseInt(field.getAttribute('minlength'), 10) : 0;

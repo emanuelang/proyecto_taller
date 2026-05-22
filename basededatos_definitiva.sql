@@ -108,6 +108,12 @@ CREATE TABLE Pagos (
     FOREIGN KEY (ID_reserva) REFERENCES Reservas(ID_reserva) ON DELETE CASCADE
 );
 
+CREATE TABLE RetirosAdmin (
+    ID_retiro INT AUTO_INCREMENT PRIMARY KEY,
+    Monto DECIMAL(10,2) NOT NULL,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE Calificaciones (
     ID_calificacion INT AUTO_INCREMENT PRIMARY KEY,
     Comentario TEXT,
