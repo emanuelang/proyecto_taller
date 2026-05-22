@@ -97,7 +97,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254" autocomplete="email">
 
                 <label>Contrasena</label>
-                <input name="password" type="password" required placeholder="........" minlength="8" maxlength="72" autocomplete="current-password">
+                <div class="password-field">
+                    <input name="password" type="password" required placeholder="........" minlength="8" maxlength="72" autocomplete="current-password">
+                    <button class="password-toggle" type="button" aria-label="Mostrar contrasena" aria-pressed="false">
+                        <span class="password-eye password-eye-open" aria-hidden="true"></span>
+                        <span class="password-eye password-eye-closed" aria-hidden="true"></span>
+                    </button>
+                </div>
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                 <div class="auth-link-row">

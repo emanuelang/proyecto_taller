@@ -81,6 +81,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    document.querySelectorAll('.password-field').forEach((field) => {
+        const input = field.querySelector('input');
+        const toggle = field.querySelector('.password-toggle');
+        if (!input || !toggle) return;
+
+        toggle.addEventListener('click', () => {
+            const shouldShow = input.type === 'password';
+            input.type = shouldShow ? 'text' : 'password';
+            toggle.setAttribute('aria-label', shouldShow ? 'Ocultar contrasena' : 'Mostrar contrasena');
+            toggle.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+        });
+    });
+
     const cityInputs = document.querySelectorAll('.city-autocomplete');
     cityInputs.forEach((input) => {
         const wrapper = input.closest('.autocomplete-field');

@@ -112,7 +112,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="post">
         <?= csrf_field() ?>
         <input  name="email" type="email" required placeholder="Email Administrativo" minlength="5" maxlength="254">
-        <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72">
+        <div class="password-field">
+            <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72" autocomplete="current-password">
+            <button class="password-toggle" type="button" aria-label="Mostrar contrasena" aria-pressed="false">
+                <span class="password-eye password-eye-open" aria-hidden="true"></span>
+                <span class="password-eye password-eye-closed" aria-hidden="true"></span>
+            </button>
+        </div>
         <button type="submit">Ingresar al Panel</button>
     </form>
     
