@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -206,9 +207,6 @@ $_SESSION['pending_reserva'][$external_reference] = [
     'created_at' => time(),
 ];
 
-/* Generar la preferencia de Mercado Pago API REAL */
-$mp_access_token = 'APP_USR-6088138919766842-033021-cb005d5c6385fb2d1bb62e1583b4989a-3302874491';
-
 $preference_data = array(
     "items" => array(
         array(
@@ -219,30 +217,21 @@ $preference_data = array(
         )
     ),
     "back_urls" => array(
-        "success" => BASE_URL . "reservas/mp_success.php",
-        "failure" => BASE_URL . "reservas/mp_failure.php",
-        "pending" => BASE_URL . "reservas/mp_pending.php"
+        "success" => app_public_url("reservas/mp_success.php?external_reference=" . urlencode($external_reference)),
+        "failure" => app_public_url("reservas/mp_failure.php?external_reference=" . urlencode($external_reference)),
+        "pending" => app_public_url("reservas/mp_pending.php?external_reference=" . urlencode($external_reference))
     ),
     "external_reference" => $external_reference
 );
 
-$ch = curl_init('https://api.mercadopago.com/checkout/preferences');
-curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-    'Authorization: Bearer ' . $mp_access_token,
-    'Content-Type: application/json'
-));
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($preference_data));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Permitir cURL en XAMPP
+if (stripos(app_public_url(), 'https://') === 0) {
+    $preference_data["auto_return"] = "approved";
+}
 
-$response = curl_exec($ch);
-$curl_error = curl_error($ch);
-$mp_result = json_decode($response, true);
-curl_close($ch);
+$mp_result = mp_create_preference($preference_data);
+$sandbox_url = $mp_result['ok'] ? mp_checkout_url($mp_result['data']) : '';
 
-if (isset($mp_result['sandbox_init_point'])) {
-    $sandbox_url = $mp_result['sandbox_init_point'];
+if ($sandbox_url !== '') {
     ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -262,10 +251,14 @@ if (isset($mp_result['sandbox_init_point'])) {
             
             <div id="post-pago" style="display:none; margin-top: 40px; padding-top: 25px; border-top: 1px solid #eee;">
                 <h3 style="color:#28a745;">¿Completaste el pago exitosamente?</h3>
-                <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Suele tardar unos segundos en acreditarse en el entorno local. Si ya terminaste de pagar en la otra pestaña, DEBES confirmar aquí abajo para generar tu código de viaje:</p>
-                <a href="<?= BASE_URL ?>reservas/mp_success.php?collection_status=approved&external_reference=<?= $external_reference ?>" class="btn" style="background-color:#28a745; border-color:#28a745; width:100%; box-sizing:border-box; font-size:1.1em; color: white; display: inline-block; padding: 15px; border-radius: 5px; text-decoration: none;">
-                    ✅ Sí, ya pagué exitosamente
-                </a>
+                <?php if (mp_local_test_mode()): ?>
+                    <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Modo prueba local habilitado. Usalo solo si Mercado Pago no puede redirigir al entorno local.</p>
+                    <a href="<?= BASE_URL ?>reservas/mp_success.php?collection_status=approved&external_reference=<?= htmlspecialchars($external_reference) ?>&local_test=1" class="btn" style="background-color:#28a745; border-color:#28a745; width:100%; box-sizing:border-box; font-size:1.1em; color: white; display: inline-block; padding: 15px; border-radius: 5px; text-decoration: none;">
+                        Confirmar reserva en modo prueba local
+                    </a>
+                <?php else: ?>
+                    <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Cuando Mercado Pago apruebe la operacion, volveras automaticamente a MOVEON y se generara tu codigo de viaje.</p>
+                <?php endif; ?>
             </div>
             
             <script>
@@ -286,6 +279,6 @@ if (isset($mp_result['sandbox_init_point'])) {
     exit;
 } else {
     unset($_SESSION['pending_reserva'][$external_reference]);
-    error_log("Error Mercado Pago reserva. cURL: " . $curl_error . " Respuesta: " . print_r($mp_result, true));
+    error_log("Error Mercado Pago reserva. Error: " . ($mp_result['error'] ?? '') . " status=" . ($mp_result['status'] ?? 0));
     safe_error("No se pudo conectar con Mercado Pago. Intenta nuevamente en unos minutos.");
 }

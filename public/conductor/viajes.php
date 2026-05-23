@@ -3,11 +3,14 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/trips.php';
 
 if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     header("Location: " . BASE_URL . "index.php");
     exit;
 }
+
+sync_finished_trips($pdo);
 
 $vista = $_GET['vista'] ?? 'activos';
 $vista = $vista === 'historial' ? 'historial' : 'activos';

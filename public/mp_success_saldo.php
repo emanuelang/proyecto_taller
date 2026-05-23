@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -10,9 +11,9 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $external_reference = $_GET['external_reference'] ?? null;
-$status = $_GET['collection_status'] ?? null;
+$payment_id = mp_extract_payment_id();
 
-if (!$external_reference || $status !== 'approved') {
+if (!$external_reference) {
     safe_error('Pago no aprobado.');
 }
 
@@ -28,6 +29,11 @@ if ($monto <= 0 || $monto > 500000) {
     safe_error('Monto invalido.');
 }
 
+$is_local_test = mp_local_test_mode() && ($_GET['local_test'] ?? '') === '1';
+if (!$is_local_test && !mp_validate_approved_payment($payment_id, $external_reference, $monto)) {
+    safe_error('No se pudo validar el pago con Mercado Pago.');
+}
+
 try {
     $pdo->beginTransaction();
 
@@ -37,7 +43,9 @@ try {
     $pdo->commit();
     unset($_SESSION['pending_saldo'][$external_reference]);
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log('Error procesando saldo: ' . $e->getMessage());
     safe_error('No se pudo acreditar el saldo.');
 }

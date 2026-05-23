@@ -2,6 +2,9 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/trips.php';
+
+sync_finished_trips($pdo);
 
 $stmt_users = $pdo->query("
     SELECT COUNT(*)
@@ -16,14 +19,25 @@ $usuarios_activos = (int)$stmt_users->fetchColumn();
 $total_viajes = (int)$pdo->query("SELECT COUNT(*) FROM Publicaciones")->fetchColumn();
 $conductores_pendientes = (int)$pdo->query("SELECT COUNT(*) FROM Conductores WHERE Estado = 'Esperando'")->fetchColumn();
 
-$total_pagos = (float)($pdo->query("SELECT COALESCE(SUM(Monto),0) FROM Pagos WHERE Estado = 'Completado'")->fetchColumn() ?: 0);
+$total_pagos = (float)($pdo->query("
+    SELECT COALESCE(SUM(pg.Monto),0)
+    FROM Pagos pg
+    JOIN Reservas r ON pg.ID_reserva = r.ID_reserva
+    WHERE pg.Estado = 'Completado' AND r.Estado = 'Completada'
+")->fetchColumn() ?: 0);
 $rentabilidad_plataforma = $total_pagos * 0.10;
 
 $inicio_mes = date('Y-m-01 00:00:00');
 $inicio_mes_siguiente = date('Y-m-01 00:00:00', strtotime('first day of next month'));
 $inicio_mes_anterior = date('Y-m-01 00:00:00', strtotime('first day of previous month'));
 
-$stmt_mes = $pdo->prepare("SELECT COALESCE(SUM(Monto),0) FROM Pagos WHERE Estado = 'Completado' AND Fecha >= ? AND Fecha < ?");
+$stmt_mes = $pdo->prepare("
+    SELECT COALESCE(SUM(pg.Monto),0)
+    FROM Pagos pg
+    JOIN Reservas r ON pg.ID_reserva = r.ID_reserva
+    WHERE pg.Estado = 'Completado' AND r.Estado = 'Completada'
+      AND pg.Fecha >= ? AND pg.Fecha < ?
+");
 $stmt_mes->execute([$inicio_mes, $inicio_mes_siguiente]);
 $ingresos_mes = (float)$stmt_mes->fetchColumn();
 

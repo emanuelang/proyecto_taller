@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -27,8 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'created_at' => time(),
         ];
         
-        $mp_access_token = 'APP_USR-6088138919766842-033021-cb005d5c6385fb2d1bb62e1583b4989a-3302874491';
-        
         $preference_data = array(
             "items" => array(
                 array(
@@ -39,32 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 )
             ),
             "back_urls" => array(
-                "success" => BASE_URL . "mp_success_saldo.php",
-                "failure" => BASE_URL . "perfil.php",
-                "pending" => BASE_URL . "perfil.php"
+                "success" => app_public_url("mp_success_saldo.php?external_reference=" . urlencode($external_reference)),
+                "failure" => app_public_url("perfil.php?mp_status=failure"),
+                "pending" => app_public_url("perfil.php?mp_status=pending")
             ),
             "external_reference" => $external_reference
         );
-        
-        $ch = curl_init('https://api.mercadopago.com/checkout/preferences');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Authorization: Bearer ' . $mp_access_token,
-            'Content-Type: application/json'
-        ));
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($preference_data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        
-        $response = curl_exec($ch);
-        $curl_error = curl_error($ch);
-        $mp_result = json_decode($response, true);
-        curl_close($ch);
-        
-        if (isset($mp_result['sandbox_init_point'])) {
-            $sandbox_url = $mp_result['sandbox_init_point'];
-        } else {
+
+        if (stripos(app_public_url(), 'https://') === 0) {
+            $preference_data["auto_return"] = "approved";
+        }
+
+        $mp_result = mp_create_preference($preference_data);
+        $sandbox_url = $mp_result['ok'] ? mp_checkout_url($mp_result['data']) : '';
+
+        if ($sandbox_url === '') {
+            unset($_SESSION['pending_saldo'][$external_reference]);
+            error_log("Error creando preferencia MP saldo: " . ($mp_result['error'] ?? '') . " status=" . ($mp_result['status'] ?? 0));
             $error = "Error al conectar con Mercado Pago. Intente nuevamente.";
+        } else {
+            $sandbox_url = $sandbox_url;
         }
     }
 }
@@ -116,10 +109,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <div id="post-pago" style="display:none; margin-top: 40px; padding-top: 25px; border-top: 1px solid #eee;">
                 <h3 style="color:#28a745;">¿Completaste el pago exitosamente?</h3>
-                <p style="color: #666; font-size:0.9em; margin-bottom:15px;">DEBES confirmar aquí abajo para acreditar tu saldo:</p>
-                <a href="<?= BASE_URL ?>mp_success_saldo.php?collection_status=approved&external_reference=<?= htmlspecialchars($external_reference) ?>" class="btn" style="background-color:#28a745; width:100%; box-sizing:border-box; font-size:1.1em; color:white; text-decoration:none; display:inline-block;">
-                    ✅ Sí, ya pagué exitosamente
-                </a>
+                <?php if (mp_local_test_mode()): ?>
+                    <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Modo prueba local habilitado. Usalo solo si Mercado Pago no puede redirigir al entorno local.</p>
+                    <a href="<?= BASE_URL ?>mp_success_saldo.php?collection_status=approved&external_reference=<?= htmlspecialchars($external_reference) ?>&local_test=1" class="btn" style="background-color:#28a745; width:100%; box-sizing:border-box; font-size:1.1em; color:white; text-decoration:none; display:inline-block;">
+                        Confirmar carga en modo prueba local
+                    </a>
+                <?php else: ?>
+                    <p style="color: #666; font-size:0.9em; margin-bottom:15px;">Cuando Mercado Pago apruebe la operacion, la acreditacion se validara automaticamente.</p>
+                <?php endif; ?>
             </div>
             
             <script>

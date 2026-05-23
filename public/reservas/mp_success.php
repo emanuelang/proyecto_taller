@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -10,10 +11,9 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $external_reference = $_GET['external_reference'] ?? null;
-$status = $_GET['collection_status'] ?? null;
-$payment_id = $_GET['collection_id'] ?? null;
+$payment_id = mp_extract_payment_id();
 
-if (!$external_reference || $status !== 'approved') {
+if (!$external_reference) {
     safe_error('Pago no aprobado.');
 }
 
@@ -53,6 +53,11 @@ try {
 
     if ((int)$viaje['ocupados'] >= (int)$viaje['total']) {
         throw new Exception('No hay asientos disponibles en este viaje.');
+    }
+
+    $is_local_test = mp_local_test_mode() && ($_GET['local_test'] ?? '') === '1';
+    if (!$is_local_test && !mp_validate_approved_payment($payment_id, $external_reference, (float)$viaje['Precio'])) {
+        throw new Exception('No se pudo validar el pago con Mercado Pago.');
     }
 
     $stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");

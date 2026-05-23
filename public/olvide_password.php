@@ -38,7 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "Te hemos enviado un correo con las instrucciones.";
             $msg_type = "success";
         } else {
-            $msg = "Aún no has configurado tus credenciales de Gmail en core/mailer.php. <br><br><b>MODO DE PRUEBA:</b> Aquí tienes el enlace secreto generado que se habría enviado al correo:<br> <a href='{$enlace}'>Restablecer Contraseña</a>";
+            error_log("No se pudo enviar correo de recuperacion. Enlace generado: " . $enlace);
+            $msg = "No pudimos enviar el correo en este momento. Intentalo nuevamente mas tarde.";
             $msg_type = "error";
         }
     } else {

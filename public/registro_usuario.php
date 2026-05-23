@@ -15,8 +15,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = password_hash($raw_password, PASSWORD_DEFAULT);
     
     $errores = [];
-    if (strlen($nombre) > 100) $errores[] = "El nombre es demasiado largo.";
-    if (strlen($apellido) > 100) $errores[] = "El apellido es demasiado largo.";
+    if (strlen($nombre) < 2 || strlen($nombre) > 100) $errores[] = "El nombre debe tener entre 2 y 100 caracteres.";
+    if (strlen($apellido) < 2 || strlen($apellido) > 100) $errores[] = "El apellido debe tener entre 2 y 100 caracteres.";
+    if (!preg_match('/^[\p{L}\s]+$/u', $nombre)) $errores[] = "El nombre solo puede contener letras y espacios.";
+    if (!preg_match('/^[\p{L}\s]+$/u', $apellido)) $errores[] = "El apellido solo puede contener letras y espacios.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) $errores[] = "El correo electronico no es valido.";
     if (!preg_match('/^[0-9]{7,8}$/', $dni)) $errores[] = "El DNI debe tener 7 u 8 dígitos numéricos.";
     if (!preg_match('/^[0-9]{8,15}$/', $telefono)) $errores[] = "El teléfono debe tener entre 8 y 15 dígitos numéricos.";
     if (strlen($raw_password) < 8 || strlen($raw_password) > 72) $errores[] = "La contraseña debe tener entre 8 y 72 caracteres.";
