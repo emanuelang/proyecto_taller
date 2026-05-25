@@ -130,6 +130,16 @@ body.guest-body {
     font-weight: 700;
 }
 
+.alert-success {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid #bbf7d0;
+    border-radius: 14px;
+    background: #dcfce7;
+    color: #166534;
+    font-weight: 700;
+}
+
 .app-main {
     min-height: 100vh;
     margin-left: 304px;

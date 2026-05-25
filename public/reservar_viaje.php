@@ -232,6 +232,8 @@ $mp_result = mp_create_preference($preference_data);
 $sandbox_url = $mp_result['ok'] ? mp_checkout_url($mp_result['data']) : '';
 
 if ($sandbox_url !== '') {
+    header("Location: " . $sandbox_url);
+    exit;
     ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -245,7 +247,7 @@ if ($sandbox_url !== '') {
             <h2 style="color: #009ee3; margin-top:0;">Damos inicio a tu pago</h2>
             <p style="color: #555; margin-bottom: 30px; font-size: 1.1em;">Por seguridad, la pasarela de Mercado Pago se abrirá de forma independiente.</p>
             
-            <a href="<?= $sandbox_url ?>" target="_blank" onclick="this.style.display='none'; document.getElementById('post-pago').style.display='block';" style="display:inline-block; padding:15px 30px; background-color:#009ee3; color:white; font-size:1.2em; text-decoration:none; border-radius:5px; font-weight:bold; box-shadow: 0 2px 5px rgba(0,158,227,0.4); margin-bottom:15px;">
+            <a href="<?= $sandbox_url ?>" onclick="this.style.display='none'; document.getElementById('post-pago').style.display='block';" style="display:inline-block; padding:15px 30px; background-color:#009ee3; color:white; font-size:1.2em; text-decoration:none; border-radius:5px; font-weight:bold; box-shadow: 0 2px 5px rgba(0,158,227,0.4); margin-bottom:15px;">
                 Pagar en Mercado Pago 🔒
             </a>
             
@@ -266,7 +268,7 @@ if ($sandbox_url !== '') {
                 setTimeout(function() {
                     const btn = document.querySelector('a[href="<?= $sandbox_url ?>"]');
                     if (btn && btn.style.display !== 'none') {
-                        window.open('<?= $sandbox_url ?>', '_blank');
+                        window.location.href = '<?= $sandbox_url ?>';
                         btn.style.display = 'none';
                         document.getElementById('post-pago').style.display='block';
                     }

@@ -57,7 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Error creando preferencia MP saldo: " . ($mp_result['error'] ?? '') . " status=" . ($mp_result['status'] ?? 0));
             $error = "Error al conectar con Mercado Pago. Intente nuevamente.";
         } else {
-            $sandbox_url = $sandbox_url;
+            header("Location: " . $sandbox_url);
+            exit;
         }
     }
 }
@@ -103,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h2 style="color: #009ee3; margin-top:0;">Damos inicio a tu pago</h2>
             <p style="color: #555; margin-bottom: 30px; font-size: 1.1em;">Por seguridad, la pasarela de Mercado Pago se abrirá de forma independiente.</p>
             
-            <a href="<?= $sandbox_url ?>" target="_blank" onclick="this.style.display='none'; document.getElementById('post-pago').style.display='block';" class="btn" style="background-color:#009ee3; color:white; font-size:1.2em; text-decoration:none; display:inline-block; margin-bottom:15px; border:none;">
+            <a href="<?= $sandbox_url ?>" onclick="this.style.display='none'; document.getElementById('post-pago').style.display='block';" class="btn" style="background-color:#009ee3; color:white; font-size:1.2em; text-decoration:none; display:inline-block; margin-bottom:15px; border:none;">
                 Pagar en Mercado Pago 🔒
             </a>
             
@@ -123,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setTimeout(function() {
                     const btn = document.querySelector('a[href="<?= $sandbox_url ?>"]');
                     if (btn && btn.style.display !== 'none') {
-                        window.open('<?= $sandbox_url ?>', '_blank');
+                        window.location.href = '<?= $sandbox_url ?>';
                         btn.style.display = 'none';
                         document.getElementById('post-pago').style.display='block';
                     }
