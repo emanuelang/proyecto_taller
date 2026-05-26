@@ -2,11 +2,15 @@
 session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/trips.php';
 
 if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     header("Location: " . BASE_URL . "index.php");
     exit;
 }
+
+sync_finished_trips($pdo);
 
 $vista = $_GET['vista'] ?? 'activos';
 $vista = $vista === 'historial' ? 'historial' : 'activos';
@@ -106,7 +110,7 @@ include __DIR__ . '/_nav.php';
                         </a>
 
                         <?php if ($vista === 'activos'): ?>
-                            <a href="<?= BASE_URL ?>conductor/eliminar_viaje.php?id=<?= $v['ID_publicacion'] ?>" class="btn btn-danger" onclick="return confirm('¿Eliminar este viaje? Se cancelarán reservas activas y se harán reembolsos cuando corresponda.')">
+                            <a href="<?= BASE_URL ?>conductor/eliminar_viaje.php?id=<?= $v['ID_publicacion'] ?>&csrf_token=<?= urlencode(csrf_token()) ?>" class="btn btn-danger" onclick="return confirm('¿Eliminar este viaje? Se cancelarán reservas activas y se harán reembolsos cuando corresponda.')">
                                 Eliminar viaje
                             </a>
                         <?php else: ?>

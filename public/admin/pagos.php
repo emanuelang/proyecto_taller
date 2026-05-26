@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Filtros
 $estado_filtro = $_GET['estado'] ?? '';
@@ -68,10 +69,16 @@ $pagos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Manejo de Retiros
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'retirar') {
+    require_csrf();
     $monto_a_retirar = (float)$_POST['monto'];
     
     // Calcular ganancia neta actual antes de retirar
-    $stmt_bruto = $pdo->query("SELECT SUM(Monto) FROM Pagos WHERE Estado = 'Completado'");
+    $stmt_bruto = $pdo->query("
+        SELECT SUM(p.Monto)
+        FROM Pagos p
+        JOIN Reservas r ON p.ID_reserva = r.ID_reserva
+        WHERE p.Estado = 'Completado' AND r.Estado = 'Completada'
+    ");
     $bruto = $stmt_bruto->fetchColumn() ?: 0;
     $stmt_retirado = $pdo->query("SELECT SUM(Monto) FROM RetirosAdmin");
     $retirado = $stmt_retirado->fetchColumn() ?: 0;
@@ -87,7 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // Cálculo de ganancias totales
-$stmt_ganancias = $pdo->query("SELECT SUM(Monto) FROM Pagos WHERE Estado = 'Completado'");
+$stmt_ganancias = $pdo->query("
+    SELECT SUM(p.Monto)
+    FROM Pagos p
+    JOIN Reservas r ON p.ID_reserva = r.ID_reserva
+    WHERE p.Estado = 'Completado' AND r.Estado = 'Completada'
+");
 $total_bruto = $stmt_ganancias->fetchColumn() ?: 0;
 $ganancia_neta_total = $total_bruto * 0.10; // 10% retención total histórica
 

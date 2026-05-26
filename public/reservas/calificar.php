@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -50,6 +51,7 @@ if ($stmt_check->fetchColumn() > 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $puntaje = (int) $_POST['puntaje'];
     $comentario = $_POST['comentario'] ?? '';
 
@@ -103,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST">
+        <?= csrf_field() ?>
         <h3 style="margin-top:0; color:var(--primary);">Tu Opinión Cuenta</h3>
         <p style="color: #64748b; margin-bottom: 20px;">
             Ayudá a la comunidad calificando cómo estuvo el viaje.

@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -199,7 +200,7 @@ include __DIR__ . '/_nav.php';
                         <?php endif; ?>
 
                         <div class="no-print" style="grid-column:1 / -1; text-align:right;">
-                            <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>"
+                            <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>&csrf_token=<?= urlencode(csrf_token()) ?>"
                                class="btn btn-danger"
                                onclick="return confirm('¿Seguro que deseas cancelar esta reserva confirmada?');">
                                 Cancelar pasaje

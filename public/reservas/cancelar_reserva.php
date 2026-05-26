@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . "/../../config/database.php";
 require_once __DIR__ . "/../../config/app.php";
+require_once __DIR__ . "/../../core/security.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -9,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserva_id'])) {
+    require_csrf();
 
     $reserva_id = (int) $_POST['reserva_id'];
     $usuario_id = $_SESSION['user_id'];
@@ -48,7 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserva_id'])) {
                 $pdo->commit();
             } catch (Exception $e) {
                 $pdo->rollBack();
-                $_SESSION['mensaje_cancelacion'] = "Error al cancelar la reserva: " . $e->getMessage();
+                error_log("Error al cancelar reserva: " . $e->getMessage());
+                $_SESSION['mensaje_cancelacion'] = "Error al cancelar la reserva.";
             }
         } else {
             $_SESSION['mensaje_cancelacion'] = "No se pudo cancelar la reserva (ya fue cancelada o no te pertenece).";

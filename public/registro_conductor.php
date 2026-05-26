@@ -1,10 +1,10 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 require_once __DIR__ . '/../core/storage.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -30,6 +30,7 @@ if ($cond) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
 
     $licencia = trim($_POST['licencia_conducir']);
     $seguro = trim($_POST['seguro_vehiculo']);
@@ -167,6 +168,7 @@ require_once __DIR__ . '/header.php';
     <?php endif; ?>
 
     <form method="post" enctype="multipart/form-data" style="max-width: 100%; border: none; padding: 0; box-shadow: none;">
+        <?= csrf_field() ?>
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
             <div style="background: var(--primary); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">1</div>
             <h3 style="margin: 0; color: var(--primary);">Tus Datos de Conductor</h3>

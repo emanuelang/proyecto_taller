@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Si ya está logueado y es admin, lo redirigimos al dashboard
 if (isset($_SESSION['user_id']) && isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === true) {
@@ -17,6 +18,7 @@ if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $email = trim($_POST['email']);
     $pass = $_POST['password'];
 
@@ -30,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
-        
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['ID_usuario'];
         $_SESSION['nombre'] = $user['Nombre'];
         $_SESSION['is_admin'] = true; 
@@ -65,7 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login Administrador - Carpooling</title>
+    <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>assets/moveon-favicon.svg">
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= filemtime(__DIR__ . '/../main.css') ?>">
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
     <style>
@@ -108,8 +112,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($error): ?><p style="color:red; text-align:center;"><?= htmlspecialchars($error) ?></p><?php endif; ?>
     
     <form method="post">
+        <?= csrf_field() ?>
         <input  name="email" type="email" required placeholder="Email Administrativo" minlength="5" maxlength="254">
-        <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72">
+        <div class="password-field">
+            <input  name="password" type="password" required placeholder="Contraseña" minlength="8" maxlength="72" autocomplete="current-password">
+            <button class="password-toggle" type="button" aria-label="Mostrar contrasena" aria-pressed="false">
+                <span class="password-eye password-eye-open" aria-hidden="true"></span>
+                <span class="password-eye password-eye-closed" aria-hidden="true"></span>
+            </button>
+        </div>
         <button type="submit">Ingresar al Panel</button>
     </form>
     

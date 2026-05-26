@@ -2,9 +2,14 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/trips.php';
+
+sync_finished_trips($pdo);
 
 // Procesar eliminación de publicación (viaje)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['viaje_id'])) {
+    require_csrf();
     $viaje_target = (int)$_POST['viaje_id'];
     $accion = $_POST['accion'];
     

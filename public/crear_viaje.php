@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
     header("Location: " . BASE_URL . "index.php");
@@ -35,6 +36,7 @@ $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
 
     $origen = $_POST['origen'];
     $destino = $_POST['destino'];
@@ -47,6 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errores = [];
     if (strlen($calle_salida) > 200) {
         $errores[] = "La calle de salida es muy larga.";
+    }
+
+    if ((float)$precio <= 0 || (float)$precio > 1000000) {
+        $errores[] = "El precio debe ser mayor a 0 y no superar $1.000.000.";
     }
 
     if ($origen === $destino) {
@@ -200,6 +206,7 @@ $vehiculo_def = $_POST['vehiculo_id'] ?? '';
     <?php endif; ?>
 
     <form method="POST" class="create-trip-form">
+        <?= csrf_field() ?>
         <section class="card create-trip-card">
             <div class="form-section-head">
                 <span class="section-kicker">Ruta</span>

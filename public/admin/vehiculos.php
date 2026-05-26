@@ -2,9 +2,11 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['vehiculo_id'])) {
+    require_csrf();
     $vehiculo_id = (int)$_POST['vehiculo_id'];
     $accion = $_POST['accion'];
     

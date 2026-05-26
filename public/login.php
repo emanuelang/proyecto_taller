@@ -9,8 +9,12 @@ if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
     $error = 'Tu sesion se cerro por inactividad.';
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         die('Token CSRF invalido.');
     }
 
@@ -61,15 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Iniciar sesion - MOVEON</title>
+    <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>assets/moveon-favicon.svg">
     <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= filemtime(__DIR__ . '/main.css') ?>">
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
@@ -96,7 +99,13 @@ if (empty($_SESSION['csrf_token'])) {
                 <input name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254" autocomplete="email">
 
                 <label>Contrasena</label>
-                <input name="password" type="password" required placeholder="........" minlength="8" maxlength="72" autocomplete="current-password">
+                <div class="password-field">
+                    <input name="password" type="password" required placeholder="........" minlength="8" maxlength="72" autocomplete="current-password">
+                    <button class="password-toggle" type="button" aria-label="Mostrar contrasena" aria-pressed="false">
+                        <span class="password-eye password-eye-open" aria-hidden="true"></span>
+                        <span class="password-eye password-eye-closed" aria-hidden="true"></span>
+                    </button>
+                </div>
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                 <div class="auth-link-row">

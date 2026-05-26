@@ -1,15 +1,27 @@
 <?php
-session_start();
 require_once __DIR__ . "/../../config/database.php";
+require_once __DIR__ . "/../../core/security.php";
 
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'No autorizado']);
     exit;
 }
 
 $data = json_decode(file_get_contents('php://input'), true);
+if (!is_array($data)) {
+    echo json_encode(['success' => false, 'message' => 'Solicitud invalida']);
+    exit;
+}
+
+$csrfToken = $data['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+if (!verify_csrf_token($csrfToken)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Solicitud invalida. Volve a cargar la pagina.']);
+    exit;
+}
 
 if (!isset($data['reserva_id']) || !isset($data['puntuacion'])) {
     echo json_encode(['success' => false, 'message' => 'Datos incompletos']);
@@ -19,15 +31,14 @@ if (!isset($data['reserva_id']) || !isset($data['puntuacion'])) {
 $reserva_id = (int)$data['reserva_id'];
 $puntuacion = (int)$data['puntuacion'];
 
-if ($puntuacion < 1 || $puntuacion > 5) {
-    echo json_encode(['success' => false, 'message' => 'Puntuación inválida']);
+if ($reserva_id <= 0 || $puntuacion < 1 || $puntuacion > 5) {
+    echo json_encode(['success' => false, 'message' => 'Datos invalidos']);
     exit;
 }
 
 $usuario_id = $_SESSION['user_id'];
 
 try {
-    // Verificar que el usuario es pasajero de esa reserva y obtener el conductor
     $stmt = $pdo->prepare("
         SELECT pr.ID_pasajero, cp.ID_conductor, c.ID_usuario AS conductor_usuario_id
         FROM PasajerosReservas pr
@@ -45,31 +56,26 @@ try {
         exit;
     }
 
-    $pasajero_id = $res['ID_pasajero'];
-    $conductor_id = $res['ID_conductor'];
-
-    // Validar que no se está calificando a sí mismo
     if ($usuario_id == $res['conductor_usuario_id']) {
         echo json_encode(['success' => false, 'message' => 'No puedes calificarte a ti mismo']);
         exit;
     }
 
-    // Verificar si ya calificó
     $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM Calificaciones WHERE ID_reserva = ? AND ID_pasajero = ?");
-    $stmt_check->execute([$reserva_id, $pasajero_id]);
+    $stmt_check->execute([$reserva_id, $res['ID_pasajero']]);
     if ($stmt_check->fetchColumn() > 0) {
         echo json_encode(['success' => false, 'message' => 'Ya calificaste este viaje']);
         exit;
     }
 
-    // Insertar calificación
     $stmt_insert = $pdo->prepare("
         INSERT INTO Calificaciones (Puntuacion, ID_pasajero, ID_conductor, ID_reserva)
         VALUES (?, ?, ?, ?)
     ");
-    $stmt_insert->execute([$puntuacion, $pasajero_id, $conductor_id, $reserva_id]);
+    $stmt_insert->execute([$puntuacion, $res['ID_pasajero'], $res['ID_conductor'], $reserva_id]);
 
-    echo json_encode(['success' => true, 'message' => 'Calificación guardada exitosamente']);
+    echo json_encode(['success' => true, 'message' => 'Calificacion guardada exitosamente']);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Error en el servidor: ' . $e->getMessage()]);
+    error_log('Error calificando conductor: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'No se pudo guardar la calificacion']);
 }

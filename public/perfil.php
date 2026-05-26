@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../core/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -62,6 +63,7 @@ $error = "";
 
 // Actualización del perfil (solo si es el propio perfil).
 if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $desc = trim($_POST['descripcion']);
     $prefs = trim($_POST['preferencias']);
     $foto_perfil = $perfil['FotoPerfil'];
@@ -151,6 +153,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <?php if ($modo_edicion): ?>
                 <form id="perfilEditForm" method="POST" enctype="multipart/form-data" style="padding:0; border:none; box-shadow:none; max-width:100%;">
+                    <?= csrf_field() ?>
                     <h3 style="margin-top:0;">Editar perfil</h3>
                     <label>Foto de Perfil:</label><br>
                     <input type="file" name="foto_perfil" accept="image/*" id="foto_perfil_input"><br>
@@ -201,6 +204,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h3 style="color: #ef4444; margin-top: 0;">Zona de Riesgo</h3>
                 <p style="color: #64748b;">Eliminar tu cuenta borrará permanentemente todos tus datos, vehículos, viajes creados, reservas y reseñas. Esta acción no se puede deshacer.</p>
                 <form method="POST" action="eliminar_perfil.php" style="padding:0; border:none; box-shadow:none;" onsubmit="return confirm('¿Estás seguro que deseas eliminar tu perfil de forma permanente?');">
+                    <?= csrf_field() ?>
                     <button type="submit" class="btn" style="background-color: #ef4444; color: white; width: 100%;">Eliminar mi Perfil</button>
                 </form>
             </div>

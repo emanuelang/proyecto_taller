@@ -2,9 +2,11 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 
 // Procesar acciones sobre los reportes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
+    require_csrf();
     if ($_POST['accion'] === 'eliminar_reporte' && isset($_POST['reporte_id'])) {
         $reporte_target = (int)$_POST['reporte_id'];
         $stmt_del = $pdo->prepare("DELETE FROM Reportes WHERE ID_reporte = ?");

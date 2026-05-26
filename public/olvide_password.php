@@ -2,12 +2,14 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/mailer.php';
+require_once __DIR__ . '/../core/security.php';
 
 $msg = '';
 $msg_type = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email']);
+    require_csrf();
+    $email = trim($_POST['email'] ?? '');
 
     $stmt = $pdo->prepare("SELECT ID_usuario, Nombre FROM Usuarios WHERE Correo = ?");
     $stmt->execute([$email]);
@@ -20,62 +22,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_update = $pdo->prepare("UPDATE Usuarios SET TokenRecuperacion = ?, ExpiracionToken = ? WHERE ID_usuario = ?");
         $stmt_update->execute([$token, $expiracion, $user['ID_usuario']]);
 
-        // Construir enlace de recuperación
         $enlace = BASE_URL . "restablecer_password.php?token=" . $token;
+        $nombre = htmlspecialchars($user['Nombre'], ENT_QUOTES, 'UTF-8');
+        $enlace_html = htmlspecialchars($enlace, ENT_QUOTES, 'UTF-8');
 
         $cuerpo = "
-            <h2>Recuperación de Contraseña</h2>
-            <p>Hola {$user['Nombre']},</p>
-            <p>Has solicitado restablecer tu contraseña en Carpooling. Haz clic en el siguiente enlace para crear una nueva:</p>
-            <p><a href='{$enlace}' style='display:inline-block; padding:10px 20px; background-color:#38BDF8; color:white; text-decoration:none; border-radius:5px;'>Restablecer Contraseña</a></p>
-            <p>Este enlace expirará en 1 hora.</p>
+            <h2>Recuperacion de contrasena</h2>
+            <p>Hola {$nombre},</p>
+            <p>Solicitaste restablecer tu contrasena en MOVEON. Usa el siguiente boton para crear una nueva:</p>
+            <p><a href='{$enlace_html}' style='display:inline-block; padding:10px 20px; background-color:#2563eb; color:white; text-decoration:none; border-radius:8px;'>Restablecer contrasena</a></p>
+            <p>Este enlace expira en 1 hora.</p>
             <p>Si no solicitaste esto, ignora este correo.</p>
         ";
 
-        if (enviarCorreo($email, "Recuperación de contraseña - Carpooling", $cuerpo)) {
-            $msg = "Te hemos enviado un correo con las instrucciones.";
+        if (enviarCorreo($email, "Recuperacion de contrasena - MOVEON", $cuerpo)) {
+            $msg = "Te enviamos un correo con las instrucciones.";
             $msg_type = "success";
         } else {
-            $msg = "Aún no has configurado tus credenciales de Gmail en core/mailer.php. <br><br><b>MODO DE PRUEBA:</b> Aquí tienes el enlace secreto generado que se habría enviado al correo:<br> <a href='{$enlace}'>Restablecer Contraseña</a>";
+            error_log("No se pudo enviar correo de recuperacion. Enlace generado: " . $enlace);
+            $msg = "No pudimos enviar el correo en este momento. Intentalo nuevamente mas tarde.";
             $msg_type = "error";
         }
     } else {
-        // Por seguridad, damos el mismo mensaje si el usuario no existe (evita enumeración de usuarios)
-        $msg = "Te hemos enviado un correo con las instrucciones (si la cuenta existe).";
+        $msg = "Te enviamos un correo con las instrucciones si la cuenta existe.";
         $msg_type = "success";
     }
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8">
-    <title>Recuperar Contraseña</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recuperar contrasena - MOVEON</title>
+    <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>assets/moveon-favicon.svg">
+    <link rel="stylesheet" href="<?= BASE_URL ?>main.css?v=<?= filemtime(__DIR__ . '/main.css') ?>">
     <script src="<?= BASE_URL ?>main.js?v=<?= time() ?>"></script>
 </head>
-<body>
-    <div class="nav-menu">
-        <h2>Recuperar Contraseña</h2>
-        <a href="<?= BASE_URL ?>login.php" style="margin-left: auto;">← Volver al login</a>
-    </div>
+<body class="auth-body">
+    <main class="auth-shell">
+        <div class="auth-topbar">
+            <a class="auth-brand" href="<?= BASE_URL ?>index.php">
+                <img src="<?= BASE_URL ?>assets/moveon-logo.svg" alt="MOVEON">
+                <span>MOVEON</span>
+            </a>
+            <a href="<?= BASE_URL ?>login.php">&larr; Volver al login</a>
+        </div>
 
-    <?php if ($msg): ?>
-        <p style="color:<?= $msg_type === 'success' ? '#166534' : '#ef4444' ?>; background:<?= $msg_type === 'success' ? '#dcfce7' : '#fef2f2' ?>; border:1px solid <?= $msg_type === 'success' ? '#bbf7d0' : '#ef4444' ?>; padding:10px; border-radius:6px; text-align:center;">
-            <?= $msg ?>
-        </p>
-    <?php endif; ?>
+        <section class="auth-card">
+            <h1>Recuperar contrasena</h1>
+            <p class="page-subtitle">Ingresa tu correo y te enviamos un enlace para crear una nueva.</p>
 
-    <form method="post">
-        <h3 style="margin-top:0; color:var(--primary); text-align:center;">¿Olvidaste tu contraseña?</h3>
-        <p style="text-align: center; color: #64748b; font-size: 0.9em; margin-bottom: 20px;">
-            Ingresa tu correo electrónico y te enviaremos un enlace para restablecerla.
-        </p>
+            <?php if ($msg): ?>
+                <div class="<?= $msg_type === 'success' ? 'alert-success' : 'alert-error' ?>">
+                    <?= htmlspecialchars($msg) ?>
+                </div>
+            <?php endif; ?>
 
-        <label>Correo Electrónico:</label>
-        <input  name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254">
-        
-        <button type="submit" style="width: 100%; margin-top: 15px;">Enviar Enlace</button>
-    </form>
+            <form method="post">
+                <?= csrf_field() ?>
+                <label>Correo electronico</label>
+                <input name="email" type="email" required placeholder="tu@email.com" minlength="5" maxlength="254" autocomplete="email">
+
+                <button type="submit">Enviar enlace</button>
+            </form>
+        </section>
+    </main>
 </body>
 </html>

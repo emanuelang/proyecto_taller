@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
     die('Acceso denegado');
@@ -8,6 +9,10 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 
 $reserva_id = (int)($_GET['id'] ?? 0);
 $viaje_id   = (int)($_GET['viaje'] ?? 0);
+
+if (!verify_csrf_token($_GET['csrf_token'] ?? null)) {
+    safe_error('Solicitud invalida. Volve a cargar la pagina.');
+}
 
 if (!$reserva_id || !$viaje_id) {
     header("Location: viajes.php");
@@ -58,8 +63,11 @@ try {
     $pdo->commit();
 
 } catch (Exception $e) {
-    $pdo->rollBack();
-    die("Error al cancelar la reserva: " . $e->getMessage());
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log("Error al cancelar reserva desde conductor: " . $e->getMessage());
+    safe_error("No se pudo cancelar la reserva.");
 }
 
 header("Location: ver_reservas.php?id=$viaje_id&msg=" . urlencode("Reserva cancelada correctamente."));
