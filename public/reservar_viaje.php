@@ -3,12 +3,15 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
 require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
+
+require_active_session($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: " . BASE_URL . "index.php");
@@ -39,8 +42,16 @@ $sql = "
     FROM Publicaciones p
     JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
     JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+    JOIN Usuarios u_cond ON c.ID_usuario = u_cond.ID_usuario
     JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
     WHERE p.ID_publicacion = :viaje_id
+      AND p.Estado = 'Activa'
+      AND p.HoraSalida >= NOW()
+      AND c.Estado = 'Aceptada'
+      AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+      AND u_cond.estado = 'activo'
+      AND (u_cond.BaneadoHasta IS NULL OR u_cond.BaneadoHasta <= NOW())
+      AND v.Estado = 'Aceptado'
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -48,7 +59,7 @@ $stmt->execute([':viaje_id' => $viaje_id]);
 $viaje = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$viaje) {
-    safe_error("El viaje no existe.");
+    safe_error("El viaje no existe o ya no esta disponible.");
 }
 
 if ($viaje['ocupados'] >= $viaje['asientos']) {
@@ -93,8 +104,18 @@ if ($saldo_usuario >= $viaje['Precio']) {
             SELECT v.CantidadAsientos AS total,
                    (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') AS ocupados
             FROM Publicaciones p
+            JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+            JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+            JOIN Usuarios u_cond ON c.ID_usuario = u_cond.ID_usuario
             JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
             WHERE p.ID_publicacion = ?
+              AND p.Estado = 'Activa'
+              AND p.HoraSalida >= NOW()
+              AND c.Estado = 'Aceptada'
+              AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+              AND u_cond.estado = 'activo'
+              AND (u_cond.BaneadoHasta IS NULL OR u_cond.BaneadoHasta <= NOW())
+              AND v.Estado = 'Aceptado'
             FOR UPDATE
         ");
         $stmt_lock->execute([$viaje_id]);

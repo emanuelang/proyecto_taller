@@ -3,6 +3,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/account_lifecycle.php';
 
 // Procesar eliminación de usuario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['usuario_id'])) {
@@ -21,9 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                 $msg_error = "No puedes sancionar o eliminar a otro administrador.";
             } else {
                 if ($accion === 'eliminar_usuario') {
-                    $stmt_del = $pdo->prepare("DELETE FROM Usuarios WHERE ID_usuario = ?");
-                    $stmt_del->execute([$usuario_target]);
-                    $msg_exito = "Usuario eliminado permanentemente del sistema.";
+                    try {
+                        $pdo->beginTransaction();
+                        deactivate_user_account($pdo, $usuario_target, 'El usuario fue desactivado por administracion.');
+                        $pdo->commit();
+                        $msg_exito = "Usuario desactivado correctamente. Sus viajes y reservas activas fueron cancelados.";
+                    } catch (Exception $e) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        error_log("Error al desactivar usuario desde admin: " . $e->getMessage());
+                        $msg_error = "No se pudo desactivar el usuario.";
+                    }
                 } elseif ($accion === 'banear_usuario') {
                     $fecha_ban = $_POST['fecha_ban'] ?? '';
                     if (!empty($fecha_ban)) {

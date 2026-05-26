@@ -3,12 +3,15 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
 require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
+
+require_active_session($pdo);
 
 $error = '';
 $sandbox_url = '';

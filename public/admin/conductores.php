@@ -3,6 +3,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/account_lifecycle.php';
 
 // Procesar acciones de aprobar/rechazar
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['conductor_id'])) {
@@ -75,11 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                 $stmt_ban->execute([$fecha_ban, $conductor_id]);
                 
                 // Buscar viajes activos para cancelar y reembolsar
-                $stmt_viajes = $pdo->prepare("SELECT p.ID_publicacion, p.Precio, p.CiudadOrigen, p.CiudadDestino FROM Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion WHERE cp.ID_conductor = ? AND p.Estado = 'Activa'");
-                $stmt_viajes->execute([$conductor_id]);
-                $viajes_activos = $stmt_viajes->fetchAll(PDO::FETCH_ASSOC);
+                $stmt_viajes = $pdo->prepare("SELECT p.ID_publicacion FROM Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion WHERE cp.ID_conductor = ? AND p.Estado = 'Activa' AND p.HoraSalida >= NOW() AND p.HoraSalida <= ?");
+                $stmt_viajes->execute([$conductor_id, $fecha_ban]);
+                $viajes_activos = $stmt_viajes->fetchAll(PDO::FETCH_COLUMN);
 
-                foreach ($viajes_activos as $v) {
+                foreach ($viajes_activos as $publicacion_id) {
+                    cancel_publication_with_refunds($pdo, (int)$publicacion_id, 'El conductor fue suspendido temporalmente por la administracion.');
+                    continue;
                     $stmt_res = $pdo->prepare("
                         SELECT u.ID_usuario
                         FROM Reservas r
@@ -101,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                 }
 
                 $pdo->commit();
-                $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Sus viajes han sido cancelados y reembolsados.";
+                $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Se cancelaron solo los viajes dentro del periodo de suspension.";
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $msg = "Error: " . $e->getMessage();

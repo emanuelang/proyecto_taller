@@ -3,6 +3,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/account_lifecycle.php';
 
 // Procesar acciones sobre los reportes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
@@ -33,13 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
         $fecha_ban = $_POST['fecha_ban'] ?? '';
         
         if (!empty($fecha_ban)) {
+            $pdo->beginTransaction();
             $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
             $stmt_ban->execute([$fecha_ban, $conductor_target]);
             
-            $stmt_cancel_viajes = $pdo->prepare("UPDATE Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion SET p.Estado = 'Cancelada' WHERE cp.ID_conductor = ? AND p.Estado = 'Activa'");
-            $stmt_cancel_viajes->execute([$conductor_target]);
+            $stmt_viajes = $pdo->prepare("
+                SELECT p.ID_publicacion
+                FROM Publicaciones p
+                JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+                WHERE cp.ID_conductor = ?
+                  AND p.Estado = 'Activa'
+                  AND p.HoraSalida >= NOW()
+                  AND p.HoraSalida <= ?
+            ");
+            $stmt_viajes->execute([$conductor_target, $fecha_ban]);
+            foreach ($stmt_viajes->fetchAll(PDO::FETCH_COLUMN) as $publicacion_id) {
+                cancel_publication_with_refunds($pdo, (int)$publicacion_id, 'El conductor fue suspendido temporalmente por la administracion.');
+            }
             
-            $msg_exito = "Conductor suspendido temporalmente hasta el $fecha_ban y se han cancelado sus viajes activos.";
+            $pdo->commit();
+            $msg_exito = "Conductor suspendido temporalmente hasta el $fecha_ban. Se cancelaron solo los viajes dentro del periodo de suspension.";
         }
     }
 }

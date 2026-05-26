@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
@@ -11,7 +12,8 @@ $reserva_id = (int)($_GET['id'] ?? 0);
 $viaje_id   = (int)($_GET['viaje'] ?? 0);
 
 if (!verify_csrf_token($_GET['csrf_token'] ?? null)) {
-    safe_error('Solicitud invalida. Volve a cargar la pagina.');
+    header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode("La sesion expiro. Volve a cargar la pagina e intentalo nuevamente."));
+    exit;
 }
 
 if (!$reserva_id || !$viaje_id) {
@@ -57,9 +59,6 @@ try {
         ->execute([$reserva_id]);
 
     // 5. Liberar el asiento en la publicación
-    $pdo->prepare("UPDATE Publicaciones SET LugaresDisponibles = LugaresDisponibles + 1 WHERE ID_publicacion = (SELECT ID_publicacion FROM Reservas WHERE ID_reserva = ?) AND LugaresDisponibles IS NOT NULL")
-        ->execute([$reserva_id]);
-
     $pdo->commit();
 
 } catch (Exception $e) {
@@ -67,7 +66,8 @@ try {
         $pdo->rollBack();
     }
     error_log("Error al cancelar reserva desde conductor: " . $e->getMessage());
-    safe_error("No se pudo cancelar la reserva.");
+    header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode("No se pudo cancelar la reserva. Intentalo nuevamente."));
+    exit;
 }
 
 header("Location: ver_reservas.php?id=$viaje_id&msg=" . urlencode("Reserva cancelada correctamente."));

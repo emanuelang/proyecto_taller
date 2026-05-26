@@ -3,12 +3,15 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/session_guard.php';
 require_once __DIR__ . '/../../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
+
+require_active_session($pdo);
 
 $external_reference = $_GET['external_reference'] ?? null;
 $payment_id = mp_extract_payment_id();
@@ -30,20 +33,28 @@ try {
     $pdo->beginTransaction();
 
     $stmt_viaje = $pdo->prepare("
-        SELECT p.ID_publicacion, p.Precio, p.Estado, c.ID_usuario AS conductor_usuario_id,
+        SELECT p.ID_publicacion, p.Precio, p.Estado, p.HoraSalida, c.ID_usuario AS conductor_usuario_id,
                v.CantidadAsientos AS total,
                (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') AS ocupados
         FROM Publicaciones p
         JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+        JOIN Usuarios u_cond ON c.ID_usuario = u_cond.ID_usuario
         JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
         WHERE p.ID_publicacion = ?
+          AND p.Estado = 'Activa'
+          AND p.HoraSalida >= NOW()
+          AND c.Estado = 'Aceptada'
+          AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+          AND u_cond.estado = 'activo'
+          AND (u_cond.BaneadoHasta IS NULL OR u_cond.BaneadoHasta <= NOW())
+          AND v.Estado = 'Aceptado'
         FOR UPDATE
     ");
     $stmt_viaje->execute([$viaje_id]);
     $viaje = $stmt_viaje->fetch(PDO::FETCH_ASSOC);
 
-    if (!$viaje || $viaje['Estado'] !== 'Activa') {
+    if (!$viaje) {
         throw new Exception('El viaje ya no esta disponible.');
     }
 

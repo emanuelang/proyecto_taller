@@ -12,7 +12,7 @@ $stmt_users = $pdo->query("
     LEFT JOIN Administradores a ON u.ID_usuario = a.ID_usuario
     WHERE a.ID_administrador IS NULL
     AND (u.BaneadoHasta IS NULL OR u.BaneadoHasta < NOW())
-    AND (u.Estado IS NULL OR u.Estado <> 'Inactivo')
+    AND u.estado = 'activo'
 ");
 $usuarios_activos = (int)$stmt_users->fetchColumn();
 

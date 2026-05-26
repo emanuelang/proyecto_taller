@@ -3,8 +3,12 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/trips.php';
+require_once __DIR__ . '/../core/session_guard.php';
 
 sync_finished_trips($pdo);
+if (isset($_SESSION['user_id'])) {
+    require_active_session($pdo);
+}
 
 /* ============================
    TRAER CIUDADES...
@@ -54,7 +58,13 @@ $offset = ($pagina_actual - 1) * $limite;
 /* ============================
    CONDICIONES BASE
 ============================ */
-$where_sql = "WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'";
+$where_sql = "WHERE p.HoraSalida >= NOW()
+    AND p.Estado = 'Activa'
+    AND c.Estado = 'Aceptada'
+    AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+    AND u.estado = 'activo'
+    AND (u.BaneadoHasta IS NULL OR u.BaneadoHasta <= NOW())
+    AND v.Estado = 'Aceptado'";
 $params = [];
 
 if ($origen !== '') {

@@ -7,6 +7,10 @@ require_once __DIR__ . '/../config/app.php';
 $error = '';
 if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
     $error = 'Tu sesion se cerro por inactividad.';
+} elseif (isset($_GET['inactive']) && $_GET['inactive'] === '1') {
+    $error = 'Tu cuenta esta desactivada. No podes ingresar con ese perfil.';
+} elseif (isset($_GET['banned']) && $_GET['banned'] === '1') {
+    $error = 'Tu cuenta esta suspendida temporalmente.';
 }
 
 if (empty($_SESSION['csrf_token'])) {
@@ -26,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
-        if (isset($user['Estado']) && $user['Estado'] === 'Inactivo') {
-            $error = 'Esta cuenta ha sido desactivada.';
+        if (($user['estado'] ?? 'activo') !== 'activo') {
+            $error = 'Esta cuenta ha sido desactivada o suspendida.';
         } elseif (!empty($user['BaneadoHasta']) && strtotime($user['BaneadoHasta']) > time()) {
             $error = 'Tu cuenta esta suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
         } else {

@@ -158,6 +158,12 @@ include __DIR__ . '/_nav.php';
         </div>
     <?php endif; ?>
 
+    <?php if (isset($_GET['err'])): ?>
+        <div class="card" style="background:#fef2f2; color:#b91c1c;">
+            <?= htmlspecialchars($_GET['err']) ?>
+        </div>
+    <?php endif; ?>
+
     <div id="manifest-content">
         <div class="boarding-header">
             <div>

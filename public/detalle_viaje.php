@@ -3,6 +3,11 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
+
+if (isset($_SESSION['user_id'])) {
+    require_active_session($pdo);
+}
 
 if (!isset($_GET['id'])) {
     die('Viaje no especificado.');
@@ -38,6 +43,11 @@ $sql = "
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     JOIN Vehiculos veh ON p.ID_vehiculo = veh.ID_vehiculo
     WHERE p.ID_publicacion = :viaje_id
+      AND u.estado = 'activo'
+      AND (u.BaneadoHasta IS NULL OR u.BaneadoHasta <= NOW())
+      AND c.Estado = 'Aceptada'
+      AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+      AND veh.Estado = 'Aceptado'
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -211,6 +221,8 @@ require_once __DIR__ . '/header.php';
                 <h3 style="margin:0 0 8px; color:#166534;">Asiento confirmado</h3>
                 <p style="margin:0;">Ya formas parte de este viaje. Revisá tus reservas para ver más detalles.</p>
             </div>
+        <?php elseif ($viaje['estado'] !== 'Activa' || strtotime($viaje['fecha']) < time()): ?>
+            <button disabled>Viaje no disponible</button>
         <?php elseif ($asientos_disponibles <= 0): ?>
             <button disabled>Viaje agotado</button>
         <?php elseif (!empty($_SESSION['is_conductor']) && isset($_SESSION['conductor_id']) && (int)$_SESSION['conductor_id'] === (int)$viaje['conductor_id']): ?>

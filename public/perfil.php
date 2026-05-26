@@ -3,11 +3,14 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
+
+require_active_session($pdo);
 
 $user_id = $_SESSION['user_id'];
 $es_propio = true;
@@ -20,7 +23,7 @@ if (isset($_GET['id']) && (int)$_GET['id'] !== $user_id) {
 
 $modo_edicion = $es_propio && isset($_GET['editar']) && $_GET['editar'] === '1';
 
-$stmt = $pdo->prepare("SELECT Nombre, Apellido, Correo, Telefono, FotoPerfil, Descripcion, Preferencias, Saldo FROM Usuarios WHERE ID_usuario = ?");
+$stmt = $pdo->prepare("SELECT Nombre, Apellido, Correo, Telefono, FotoPerfil, Descripcion, Preferencias, Saldo FROM Usuarios WHERE ID_usuario = ? AND estado = 'activo'");
 $stmt->execute([$user_id]);
 $perfil = $stmt->fetch();
 
@@ -202,7 +205,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
                 <h3 style="color: #ef4444; margin-top: 0;">Zona de Riesgo</h3>
-                <p style="color: #64748b;">Eliminar tu cuenta borrará permanentemente todos tus datos, vehículos, viajes creados, reservas y reseñas. Esta acción no se puede deshacer.</p>
+                <p style="color: #64748b;">Eliminar tu cuenta la desactiva, cierra tu sesion, cancela tus viajes y reservas activas, y conserva el historial necesario para auditoria.</p>
                 <form method="POST" action="eliminar_perfil.php" style="padding:0; border:none; box-shadow:none;" onsubmit="return confirm('¿Estás seguro que deseas eliminar tu perfil de forma permanente?');">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn" style="background-color: #ef4444; color: white; width: 100%;">Eliminar mi Perfil</button>

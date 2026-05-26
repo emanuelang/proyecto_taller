@@ -1,4 +1,10 @@
-<?php require_once __DIR__ . '/../core/security.php'; ?>
+<?php
+require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
+if (isset($pdo) && isset($_SESSION['user_id'])) {
+    require_active_session($pdo);
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>

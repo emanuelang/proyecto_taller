@@ -3,24 +3,41 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
 
-if (!isset($_SESSION['user_id']) || !$_SESSION['is_conductor']) {
+if (!isset($_SESSION['user_id'])) {
+    header("Location: " . BASE_URL . "index.php");
+    exit;
+}
+
+require_active_session($pdo);
+
+if (empty($_SESSION['is_conductor'])) {
     header("Location: " . BASE_URL . "index.php");
     exit;
 }
 
 $ciudades_predefinidas = [
-    'ParanÃ¡', 'Concordia', 'GualeguaychÃº', 'ConcepciÃ³n del Uruguay', 
-    'Gualeguay', 'ColÃ³n', 'FederaciÃ³n', 'La Paz', 'Villaguay', 
-    'Victoria', 'ChajarÃ­', 'Crespo', 'Diamante', 'Federal', 
-    'NogoyÃ¡', 'Rosario del Tala', 'San Salvador', 'San JosÃ© de Feliciano', 
-    'Santa Elena', 'Oro Verde', 'Buenos Aires', 'CÃ³rdoba', 'Rosario', 'La Plata'
+    'Aldea Brasilera', 'Aldea María Luisa', 'Aldea San Antonio', 'Aldea San Miguel',
+    'Aldea Valle María', 'Alcaraz', 'Aranguren', 'Basavilbaso', 'Bovril',
+    'Ceibas', 'Cerrito', 'Chajarí', 'Colón', 'Colonia Avellaneda',
+    'Colonia Ayuí', 'Colonia Elía', 'Colonia Ensayo', 'Concepción del Uruguay',
+    'Concordia', 'Crespo', 'Diamante', 'Estancia Grande', 'Federal',
+    'Federación', 'General Campos', 'General Galarza', 'General Ramírez',
+    'Gilbert', 'Gobernador Mansilla', 'Gualeguay', 'Gualeguaychú', 'Hasenkamp',
+    'Hernandarias', 'Hernández', 'Herrera', 'Ibicuy', 'La Criolla', 'La Paz',
+    'Larroque', 'Libertador San Martín', 'Los Charrúas', 'Lucas González',
+    'Maciá', 'María Grande', 'Nogoyá', 'Oro Verde', 'Paraná',
+    'Piedras Blancas', 'Pronunciamiento', 'Pueblo Belgrano', 'Puerto Yeruá',
+    'Rosario del Tala', 'San Benito', 'San Gustavo', 'San Jaime de la Frontera',
+    'San José', 'San José de Feliciano', 'San Justo', 'San Salvador',
+    'Santa Ana', 'Santa Elena', 'Sauce de Luna', 'Seguí', 'Urdinarrain',
+    'Viale', 'Victoria', 'Villa Clara', 'Villa del Rosario', 'Villa Elisa',
+    'Villa Hernandarias', 'Villa Mantero', 'Villa Paranacito',
+    'Villa Urquiza', 'Villaguay'
 ];
 
-$stmt_ciudades = $pdo->query("SELECT DISTINCT CiudadOrigen AS nombre FROM Publicaciones UNION SELECT DISTINCT CiudadDestino AS nombre FROM Publicaciones");
-$ciudades_db = $stmt_ciudades->fetchAll(PDO::FETCH_COLUMN);
-
-$todas_las_ciudades = array_unique(array_merge($ciudades_predefinidas, $ciudades_db));
+$todas_las_ciudades = array_unique($ciudades_predefinidas);
 sort($todas_las_ciudades);
 
 $ciudades = [];
@@ -30,7 +47,7 @@ foreach ($todas_las_ciudades as $c) {
     }
 }
 
-// NUEVO: Obtenemos los vehÃ­culos del conductor logueado que estÃ©n aprobados
+// Obtenemos los vehículos aprobados del conductor logueado.
 $stmt_v = $pdo->prepare("SELECT v.ID_vehiculo AS id, v.Marca AS marca, v.Modelo AS modelo, v.Patente AS patente FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.Estado = 'Aceptado'");
 $stmt_v->execute([$_SESSION['conductor_id']]);
 $vehiculos = $stmt_v->fetchAll();
@@ -43,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $calle_salida = trim($_POST['calle_salida']);
     $fecha = $_POST['fecha'];
     $precio = $_POST['precio'];
-    $vehiculo_id = $_POST['vehiculo_id']; // Capturamos el vehÃ­culo seleccionado
+    $vehiculo_id = $_POST['vehiculo_id'];
     $observaciones = $_POST['observaciones'] ?? '';
 
     $errores = [];
@@ -59,17 +76,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = "El origen y el destino no pueden ser la misma ciudad.";
     }
 
-    if (strtotime($fecha) < strtotime('+23 hours 50 minutes')) { // Permitimos un margen de 10 min por demoras
-        $errores[] = "El viaje debe programarse con al menos 24 horas de anticipaciÃ³n.";
+    if (!in_array($origen, $todas_las_ciudades, true) || !in_array($destino, $todas_las_ciudades, true)) {
+        $errores[] = "Selecciona ciudades válidas de Entre Ríos.";
     }
 
-    // Validar que el vehÃ­culo seleccionado pertenezca al conductor y estÃ© aceptado
+    if (strtotime($fecha) < strtotime('+23 hours 50 minutes')) { // Permitimos un margen de 10 min por demoras
+        $errores[] = "El viaje debe programarse con al menos 24 horas de anticipación.";
+    }
+
+    // Validar que el vehículo seleccionado pertenezca al conductor y esté aceptado.
     $stmt_vehiculo = $pdo->prepare("SELECT v.ID_vehiculo FROM Vehiculos v JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo WHERE cv.ID_conductor = ? AND v.ID_vehiculo = ? AND v.Estado = 'Aceptado'");
     $stmt_vehiculo->execute([$_SESSION['conductor_id'], $vehiculo_id]);
     $vehiculo = $stmt_vehiculo->fetch();
     
     if (!$vehiculo) {
-        $errores[] = "Error: El vehÃ­culo seleccionado no es vÃ¡lido o no ha sido aprobado.";
+        $errores[] = "Error: El vehículo seleccionado no es válido o no ha sido aprobado.";
     }
 
     if (empty($errores)) {
@@ -83,14 +104,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]
             ]);
 
-            $url_origen = "https://nominatim.openstreetmap.org/search?q=" . urlencode($origen . ", Entre RÃ­os, Argentina") . "&format=json&limit=1";
+            $url_origen = "https://nominatim.openstreetmap.org/search?q=" . urlencode($origen . ", Entre Ríos, Argentina") . "&format=json&limit=1";
             $res_orig = @file_get_contents($url_origen, false, $context);
             $data_orig = json_decode($res_orig, true);
 
-            // Pausa breve para respetar las polÃ­ticas de nominatim (1 request por segundo)
+            // Pausa breve para respetar las políticas de Nominatim (1 request por segundo).
             usleep(1000000); 
 
-            $url_destino = "https://nominatim.openstreetmap.org/search?q=" . urlencode($destino . ", Entre RÃ­os, Argentina") . "&format=json&limit=1";
+            $url_destino = "https://nominatim.openstreetmap.org/search?q=" . urlencode($destino . ", Entre Ríos, Argentina") . "&format=json&limit=1";
             $res_dest = @file_get_contents($url_destino, false, $context);
             $data_dest = json_decode($res_dest, true);
 
@@ -106,20 +127,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (isset($routeData['routes'][0])) {
                     $distancia_km = ceil($routeData['routes'][0]['distance'] / 1000); // Redondeado para arriba en KM
-                    $duracion_min = ceil($routeData['routes'][0]['duration'] / 60); // DuraciÃ³n en minutos
+                    $duracion_min = ceil($routeData['routes'][0]['duration'] / 60);
                 }
             }
         } catch (Exception $e) {
             // Falla silenciosa si las APIs no responden
         }
 
-        // Si la API falla, aplicamos 24hs por seguridad para que el sistema valide la superposiciÃ³n de todas formas
+        // Si la API falla, aplicamos 24hs para validar la superposición de todas formas.
         if ($duracion_min === null) {
             $duracion_min = 1440;
             $distancia_km = 0;
         }
 
-        // --- VALIDACIÃ“N DE SUPERPOSICIÃ“N DE HORARIOS ---
+        // --- Validación de superposición de horarios ---
         if ($duracion_min !== null) {
             $new_start = $fecha;
             $new_end = date('Y-m-d H:i:s', strtotime($fecha . " + $duracion_min minutes"));

@@ -15,6 +15,10 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['is_admin']) && $_SESSION['is
 $error = '';
 if (isset($_GET['timeout']) && $_GET['timeout'] === '1') {
     $error = 'Tu sesion se cerro por inactividad.';
+} elseif (isset($_GET['inactive']) && $_GET['inactive'] === '1') {
+    $error = 'Tu cuenta esta desactivada. No podes ingresar al panel.';
+} elseif (isset($_GET['banned']) && $_GET['banned'] === '1') {
+    $error = 'Tu cuenta esta suspendida temporalmente.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -32,6 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($pass, $user['Contraseña'])) {
+        if (($user['estado'] ?? 'activo') !== 'activo') {
+            $error = 'Esta cuenta ha sido desactivada o suspendida.';
+        } elseif (!empty($user['BaneadoHasta']) && strtotime($user['BaneadoHasta']) > time()) {
+            $error = 'Tu cuenta esta suspendida hasta el ' . date('d/m/Y H:i', strtotime($user['BaneadoHasta']));
+        } else {
         session_regenerate_id(true);
         $_SESSION['user_id'] = $user['ID_usuario'];
         $_SESSION['nombre'] = $user['Nombre'];
@@ -58,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         header('Location: dashboard.php');
         exit;
+        }
     } else {
         $error = 'Credenciales incorrectas o no tienes permisos de administrador.';
     }

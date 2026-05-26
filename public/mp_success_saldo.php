@@ -3,12 +3,15 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
+require_once __DIR__ . '/../core/session_guard.php';
 require_once __DIR__ . '/../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
     exit;
 }
+
+require_active_session($pdo);
 
 $external_reference = $_GET['external_reference'] ?? null;
 $payment_id = mp_extract_payment_id();
@@ -37,8 +40,11 @@ if (!$is_local_test && !mp_validate_approved_payment($payment_id, $external_refe
 try {
     $pdo->beginTransaction();
 
-    $stmt = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?");
+    $stmt = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ? AND estado = 'activo'");
     $stmt->execute([$monto, $usuario_id]);
+    if ($stmt->rowCount() !== 1) {
+        throw new Exception('Usuario inactivo o inexistente.');
+    }
 
     $pdo->commit();
     unset($_SESSION['pending_saldo'][$external_reference]);
