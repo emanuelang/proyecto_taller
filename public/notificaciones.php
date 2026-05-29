@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/session_guard.php';
+require_once __DIR__ . '/../core/trips.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -10,6 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_active_session($pdo);
+refresh_finished_trip_notifications($pdo);
 
 $user_id = $_SESSION['user_id'];
 

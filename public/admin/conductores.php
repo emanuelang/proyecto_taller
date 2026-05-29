@@ -5,6 +5,43 @@ require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 require_once __DIR__ . '/../../core/account_lifecycle.php';
 
+function conductor_suspension_reason(PDO $pdo, int $conductor_id): string
+{
+    $stmt = $pdo->prepare("
+        SELECT r.ID_reporte, r.Descripcion, p.CiudadOrigen, p.CiudadDestino, p.HoraSalida
+        FROM Reportes r
+        LEFT JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+        WHERE r.ID_conductor = ?
+        ORDER BY r.Fecha DESC, r.Hora DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$conductor_id]);
+    $reporte = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($reporte) {
+        $viaje = trim((string)($reporte['CiudadOrigen'] ?? '')) !== ''
+            ? " Viaje: {$reporte['CiudadOrigen']} -> {$reporte['CiudadDestino']} (" . date('d/m/Y H:i', strtotime($reporte['HoraSalida'])) . ")."
+            : '';
+        $detalle = trim((string)($reporte['Descripcion'] ?? ''));
+        return "Motivo: reporte #" . (int)$reporte['ID_reporte'] . "." . $viaje . " Detalle: " . ($detalle !== '' ? $detalle : 'Sin detalle adicional.');
+    }
+
+    return "Motivo: decision de un administrador.";
+}
+
+function notify_conductor_suspension_from_admin(PDO $pdo, int $conductor_id, string $fecha_ban, string $reason): void
+{
+    $stmt = $pdo->prepare("SELECT ID_usuario FROM Conductores WHERE ID_conductor = ?");
+    $stmt->execute([$conductor_id]);
+    $usuario_id = (int)($stmt->fetchColumn() ?: 0);
+    if ($usuario_id <= 0) {
+        return;
+    }
+
+    $mensaje = "Tu cuenta de conductor fue suspendida hasta " . date('d/m/Y H:i', strtotime($fecha_ban)) . ". " . $reason;
+    $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$usuario_id, $mensaje]);
+}
+
 // Procesar acciones de aprobar/rechazar
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['conductor_id'])) {
     require_csrf();
@@ -14,7 +51,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
     if ($accion === 'aprobar') {
         $stmt = $pdo->prepare("UPDATE Conductores SET Estado = 'Aceptada' WHERE ID_conductor = ?");
         $stmt->execute([$conductor_id]);
-        $msg = "Conductor aprobado con Ã©xito.";
+        $msg = "Conductor aprobado con éxito.";
+    } elseif ($accion === 'quitar_suspension') {
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = NULL WHERE ID_conductor = ? AND Estado = 'Aceptada'");
+            $stmt->execute([$conductor_id]);
+
+            $stmt_vehiculos = $pdo->prepare("
+                UPDATE Vehiculos v
+                JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+                SET v.Estado = 'Aceptado'
+                WHERE cv.ID_conductor = ?
+                  AND v.Estado = 'Suspendido'
+            ");
+            $stmt_vehiculos->execute([$conductor_id]);
+
+            $pdo->commit();
+            $msg = "Suspension quitada. Los vehiculos suspendidos del conductor volvieron a estar aprobados.";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $msg = "Error: " . $e->getMessage();
+        }
     } elseif ($accion === 'rechazar' || $accion === 'eliminar') {
         try {
             $pdo->beginTransaction();
@@ -41,30 +100,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                     if (PAYMENTS_ENABLED) {
                         $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$pub['Precio'], $res['ID_usuario']]);
                     }
-                    $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " â†’ " . $pub['CiudadDestino'] . ") ha sido eliminado por la administraciÃ³n. Se reembolsaron $" . number_format($pub['Precio'], 2) . ".";
+                    $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " -> " . $pub['CiudadDestino'] . ") ha sido eliminado por la administracion. Se reembolsaron $" . number_format($pub['Precio'], 2) . ".";
                     if (!PAYMENTS_ENABLED) {
                         $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " -> " . $pub['CiudadDestino'] . ") ha sido eliminado por la administracion.";
                     }
                     $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$res['ID_usuario'], $mensaje]);
                 }
                 
-                // Marcar publicaciÃ³n como cancelada
+                // Marcar publicacion como cancelada
                 $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$pub['ID_publicacion']]);
             }
 
-            // 2. Obtener vehÃ­culos para borrar despuÃ©s
+            // 2. Obtener vehiculos para borrar despues
             $stmt_vehiculo = $pdo->prepare("SELECT ID_vehiculo FROM ConductorVehiculo WHERE ID_conductor = ?");
             $stmt_vehiculo->execute([$conductor_id]);
             $vehiculos = $stmt_vehiculo->fetchAll(PDO::FETCH_ASSOC);
 
-            // 3. Borrar el conductor (borrado fÃ­sico del conductor segÃºn lo actual)
+            // 3. Borrar el conductor
             if ($accion === 'eliminar') {
                 $pdo->prepare("UPDATE Conductores SET Estado = 'Eliminado', BaneadoHasta = NULL WHERE ID_conductor = ?")->execute([$conductor_id]);
             } else {
                 $pdo->prepare("UPDATE Conductores SET Estado = 'Rechazado', BaneadoHasta = NULL WHERE ID_conductor = ?")->execute([$conductor_id]);
             }
 
-            // 4. Borrar vehÃ­culos
+            // 4. Borrar vehiculos
             foreach ($vehiculos as $v) {
                 if ($accion === 'eliminar') {
                     $pdo->prepare("UPDATE Vehiculos SET Estado = 'Rechazado' WHERE ID_vehiculo = ?")->execute([$v['ID_vehiculo']]);
@@ -85,6 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                 
                 $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
                 $stmt_ban->execute([$fecha_ban, $conductor_id]);
+                $suspension_reason = conductor_suspension_reason($pdo, $conductor_id);
+
+                $stmt_suspend_vehiculos = $pdo->prepare("
+                    UPDATE Vehiculos v
+                    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+                    SET v.Estado = 'Suspendido'
+                    WHERE cv.ID_conductor = ?
+                      AND v.Estado = 'Aceptado'
+                ");
+                $stmt_suspend_vehiculos->execute([$conductor_id]);
                 
                 // Buscar viajes activos para cancelar y reembolsar
                 $stmt_viajes = $pdo->prepare("SELECT p.ID_publicacion FROM Publicaciones p JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion WHERE cp.ID_conductor = ? AND p.Estado = 'Activa' AND p.HoraSalida >= NOW() AND p.HoraSalida <= ?");
@@ -107,15 +176,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
 
                     foreach ($pasajeros as $pas) {
                         $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$v['Precio'], $pas['ID_usuario']]);
-                        $mensaje = "El conductor de tu viaje (" . $v['CiudadOrigen'] . " â†’ " . $v['CiudadDestino'] . ") ha sido suspendido temporalmente. Se han reembolsado $" . number_format($v['Precio'], 2) . ".";
+                        $mensaje = "El conductor de tu viaje (" . $v['CiudadOrigen'] . " -> " . $v['CiudadDestino'] . ") ha sido suspendido temporalmente. Se han reembolsado $" . number_format($v['Precio'], 2) . ".";
                         $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$pas['ID_usuario'], $mensaje]);
                     }
                     
                     $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$v['ID_publicacion']]);
                 }
 
+                notify_conductor_suspension_from_admin($pdo, $conductor_id, $fecha_ban, $suspension_reason);
                 $pdo->commit();
-                $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Se cancelaron solo los viajes dentro del periodo de suspension.";
+                $msg = "Conductor suspendido correctamente hasta el $fecha_ban. Tambien se suspendieron sus vehiculos aprobados.";
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $msg = "Error: " . $e->getMessage();
@@ -125,7 +195,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
 
 }
 
-// Filtro de bÃºsqueda
+$pdo->exec("
+    UPDATE Vehiculos v
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+    JOIN Conductores c ON cv.ID_conductor = c.ID_conductor
+    SET v.Estado = 'Suspendido'
+    WHERE c.Estado = 'Aceptada'
+      AND c.BaneadoHasta IS NOT NULL
+      AND c.BaneadoHasta > NOW()
+      AND v.Estado = 'Aceptado'
+");
+
+// Filtro de busqueda
 $search = $_GET['search'] ?? '';
 $tipo_conductores = ($_GET['tipo'] ?? 'pendientes') === 'aprobados' ? 'aprobados' : 'pendientes';
 $estado_aprobados = $_GET['estado'] ?? 'activos';
@@ -150,25 +231,28 @@ $stmt_total_pendientes = $pdo->prepare("
 $stmt_total_pendientes->execute($params_pendientes);
 $total_pendientes = (int)$stmt_total_pendientes->fetchColumn();
 
-// Obtener la lista de conductores pendientes y sus vehÃ­culos
+// Obtener la lista de conductores pendientes y sus vehiculos
 $sql1 = "
     SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en,
            c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
            u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email, u.DNI,
-           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, 
-           v.Foto AS vehiculo_doc, v.PapelesAuto, v.FotoFrente, v.FotoCostado, v.FotoAtras
+           COUNT(v.ID_vehiculo) AS total_vehiculos,
+           GROUP_CONCAT(CONCAT(COALESCE(v.Marca, ''), ' ', COALESCE(v.Modelo, ''), ' - ', COALESCE(v.Patente, 'Sin patente'), ' (', COALESCE(v.Estado, 'Sin estado'), ')') ORDER BY v.ID_vehiculo SEPARATOR '||') AS vehiculos_resumen
     FROM Conductores c
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
     LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
     WHERE c.Estado = 'Esperando' $search_sql
+    GROUP BY c.ID_conductor, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro,
+             c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
+             u.ID_usuario, u.Nombre, u.Correo, u.DNI
     ORDER BY c.FechaRegistro DESC
 ";
 $stmt = $pdo->prepare($sql1);
 $stmt->execute($params_pendientes);
 $pendientes = $stmt->fetchAll();
 
-// PaginaciÃ³n para Aceptados
+// Paginacion para Aceptados
 $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina < 1) $pagina = 1;
 $limite = 10;
@@ -213,13 +297,38 @@ $sql2 = "
     SELECT c.ID_conductor AS id, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro AS creado_en, c.BaneadoHasta,
            c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
            u.ID_usuario AS usuario_id, u.Nombre AS nombre, u.Correo AS email, u.DNI,
-           v.Marca AS marca, v.Modelo AS modelo, v.Color AS color, v.CantidadAsientos AS asientos, 
-           v.Foto AS vehiculo_doc, v.PapelesAuto, v.FotoFrente, v.FotoCostado, v.FotoAtras
+           COUNT(v.ID_vehiculo) AS total_vehiculos,
+           SUM(CASE WHEN v.Estado = 'Suspendido' THEN 1 ELSE 0 END) AS total_vehiculos_suspendidos,
+           GROUP_CONCAT(CONCAT(COALESCE(v.Marca, ''), ' ', COALESCE(v.Modelo, ''), ' - ', COALESCE(v.Patente, 'Sin patente'), ' (', COALESCE(v.Estado, 'Sin estado'), ')') ORDER BY v.ID_vehiculo SEPARATOR '||') AS vehiculos_resumen,
+           (
+                SELECT COUNT(*)
+                FROM Reportes rep_count
+                WHERE rep_count.ID_conductor = c.ID_conductor
+           ) AS reportes_asociados,
+           (
+                SELECT CONCAT_WS('||',
+                    rep.ID_reporte,
+                    CONCAT(rep.Fecha, ' ', rep.Hora),
+                    COALESCE(rep.Descripcion, ''),
+                    COALESCE(p.CiudadOrigen, ''),
+                    COALESCE(p.CiudadDestino, ''),
+                    COALESCE(p.HoraSalida, ''),
+                    COALESCE(p.ID_publicacion, 0)
+                )
+                FROM Reportes rep
+                LEFT JOIN Publicaciones p ON rep.ID_publicacion = p.ID_publicacion
+                WHERE rep.ID_conductor = c.ID_conductor
+                ORDER BY rep.Fecha DESC, rep.Hora DESC
+                LIMIT 1
+           ) AS reporte_asociado
     FROM Conductores c
     JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     LEFT JOIN ConductorVehiculo cv ON c.ID_conductor = cv.ID_conductor
     LEFT JOIN Vehiculos v ON cv.ID_vehiculo = v.ID_vehiculo
     WHERE $aprobados_estado_sql $search_sql
+    GROUP BY c.ID_conductor, c.LicenciaConducir, c.SeguroVehiculo, c.CuentaBancaria, c.Estado, c.FechaRegistro, c.BaneadoHasta,
+             c.TelefonoContacto, c.AliasMP, c.FotoCarnet, c.FotoCara,
+             u.ID_usuario, u.Nombre, u.Correo, u.DNI
     ORDER BY c.FechaRegistro DESC
     LIMIT $limite OFFSET $offset
 ";
@@ -269,7 +378,7 @@ require_once __DIR__ . '/../header.php';
                 <tr>
                     <th>Usuario</th>
                     <th>Perfil y Licencia</th>
-                    <th>VehÃ­culo Inicial</th>
+                    <th>Vehículo Inicial</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -284,7 +393,7 @@ require_once __DIR__ . '/../header.php';
                     <td>
                         <ul class="details-list">
                             <li><strong>Tel:</strong> <?= htmlspecialchars($c['TelefonoContacto'] ?? '---') ?></li>
-                            <li><strong>Licencia NÂ°:</strong> <?= htmlspecialchars($c['LicenciaConducir']) ?></li>
+                            <li><strong>Licencia N°:</strong> <?= htmlspecialchars($c['LicenciaConducir']) ?></li>
                             <li><strong>Seguro policial:</strong> <?= htmlspecialchars($c['SeguroVehiculo']) ?></li>
                             <li><strong>CBU Bancario:</strong> <?= htmlspecialchars($c['CuentaBancaria']) ?></li>
                             <li><strong>Alias MP:</strong> <?= htmlspecialchars($c['AliasMP'] ?? '---') ?></li>
@@ -298,29 +407,17 @@ require_once __DIR__ . '/../header.php';
                         </ul>
                     </td>
                     <td>
-                        <?php if($c['marca']): ?>
+                        <?php if((int)$c['total_vehiculos'] > 0): ?>
                             <ul class="details-list">
-                                <li><strong>Auto:</strong> <?= htmlspecialchars($c['marca'] . ' ' . $c['modelo']) ?></li>
-                                <li><strong>Color:</strong> <?= htmlspecialchars($c['color']) ?></li>
-                                <li><strong>Asientos disp:</strong> <?= $c['asientos'] ?></li>
-                                
-                                <li style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;">
-                                    <?php if($c['PapelesAuto']): ?>
-                                        <div><small>Papeles</small><br><img src="<?= $c['PapelesAuto'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                <li><strong>Total:</strong> <?= (int)$c['total_vehiculos'] ?> vehiculo(s)</li>
+                                <?php foreach (explode('||', (string)$c['vehiculos_resumen']) as $vehiculo_txt): ?>
+                                    <?php if ($vehiculo_txt !== ''): ?>
+                                        <li><?= htmlspecialchars($vehiculo_txt) ?></li>
                                     <?php endif; ?>
-                                    <?php if($c['FotoFrente']): ?>
-                                        <div><small>Frente</small><br><img src="<?= $c['FotoFrente'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                    <?php if($c['FotoCostado']): ?>
-                                        <div><small>Costado</small><br><img src="<?= $c['FotoCostado'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                    <?php if($c['FotoAtras']): ?>
-                                        <div><small>AtrÃ¡s</small><br><img src="<?= $c['FotoAtras'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                </li>
+                                <?php endforeach; ?>
                             </ul>
                         <?php else: ?>
-                            <em>No registrÃ³ vehÃ­culo</em>
+                            <em>No registró vehículo</em>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -328,13 +425,13 @@ require_once __DIR__ . '/../header.php';
                             <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['id'] ?>">
                             <input type="hidden" name="accion" value="aprobar">
-                            <button type="submit" class="btn-aprobar" onclick="return confirm('Â¿Aprobar a este conductor?');">Aprobar</button>
+                            <button type="submit" class="btn-aprobar" onclick="return confirm('¿Aprobar a este conductor?');">Aprobar</button>
                         </form>
                         <form method="post">
                             <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['id'] ?>">
                             <input type="hidden" name="accion" value="rechazar">
-                            <button type="submit" class="btn-rechazar" onclick="return confirm('Â¿Rechazar a este conductor?');">Rechazar</button>
+                            <button type="submit" class="btn-rechazar" onclick="return confirm('¿Rechazar a este conductor?');">Rechazar</button>
                         </form>
                     </td>
                 </tr>
@@ -368,7 +465,10 @@ require_once __DIR__ . '/../header.php';
                 <tr>
                     <th>Usuario</th>
                     <th>Perfil y Licencia</th>
-                    <th>VehÃ­culo Asociado</th>
+                    <th>Vehículo Asociado</th>
+                    <?php if ($estado_aprobados !== 'activos'): ?>
+                        <th>Reporte asociado</th>
+                    <?php endif; ?>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -383,7 +483,7 @@ require_once __DIR__ . '/../header.php';
                     <td>
                         <ul class="details-list">
                             <li><strong>Tel:</strong> <?= htmlspecialchars($a['TelefonoContacto'] ?? '---') ?></li>
-                            <li><strong>Licencia NÂ°:</strong> <?= htmlspecialchars($a['LicenciaConducir']) ?></li>
+                            <li><strong>Licencia N°:</strong> <?= htmlspecialchars($a['LicenciaConducir']) ?></li>
                             <li><strong>Seguro policial:</strong> <?= htmlspecialchars($a['SeguroVehiculo']) ?></li>
                             <li><strong>CBU Bancario:</strong> <?= htmlspecialchars($a['CuentaBancaria']) ?></li>
                             <li><strong>Alias MP:</strong> <?= htmlspecialchars($a['AliasMP'] ?? '---') ?></li>
@@ -406,49 +506,76 @@ require_once __DIR__ . '/../header.php';
                         </ul>
                     </td>
                     <td>
-                        <?php if($a['marca']): ?>
+                        <?php if((int)$a['total_vehiculos'] > 0): ?>
                             <ul class="details-list">
-                                <li><strong>Auto:</strong> <?= htmlspecialchars($a['marca'] . ' ' . $a['modelo']) ?></li>
-                                <li><strong>Color:</strong> <?= htmlspecialchars($a['color']) ?></li>
-                                <li><strong>Asientos disp:</strong> <?= $a['asientos'] ?></li>
-                                
-                                <li style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px;">
-                                    <?php if($a['PapelesAuto']): ?>
-                                        <div><small>Papeles</small><br><img src="<?= $a['PapelesAuto'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
+                                <li><strong>Total:</strong> <?= (int)$a['total_vehiculos'] ?> vehiculo(s)</li>
+                                <?php foreach (explode('||', (string)$a['vehiculos_resumen']) as $vehiculo_txt): ?>
+                                    <?php if ($vehiculo_txt !== ''): ?>
+                                        <li><?= htmlspecialchars($vehiculo_txt) ?></li>
                                     <?php endif; ?>
-                                    <?php if($a['FotoFrente']): ?>
-                                        <div><small>Frente</small><br><img src="<?= $a['FotoFrente'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                    <?php if($a['FotoCostado']): ?>
-                                        <div><small>Costado</small><br><img src="<?= $a['FotoCostado'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                    <?php if($a['FotoAtras']): ?>
-                                        <div><small>AtrÃ¡s</small><br><img src="<?= $a['FotoAtras'] ?>" style="max-height: 80px; border: 1px solid #ccc; border-radius: 3px;"></div>
-                                    <?php endif; ?>
-                                </li>
+                                <?php endforeach; ?>
                             </ul>
                         <?php else: ?>
-                            <em>No registrÃ³ vehÃ­culo</em>
+                            <em>No registró vehículo</em>
                         <?php endif; ?>
                     </td>
+                    <?php if ($estado_aprobados !== 'activos'): ?>
+                        <td>
+                            <?php
+                                $reporte = $a['reporte_asociado'] ? explode('||', (string)$a['reporte_asociado']) : [];
+                                $tiene_reporte = count($reporte) >= 7 && (int)$a['reportes_asociados'] > 0;
+                            ?>
+                            <?php if ($tiene_reporte): ?>
+                                <strong>Reporte #<?= (int)$reporte[0] ?></strong><br>
+                                <span class="text-muted"><?= date('d/m/Y H:i', strtotime($reporte[1])) ?></span><br>
+                                <span><?= nl2br(htmlspecialchars($reporte[2] !== '' ? $reporte[2] : 'Sin detalle adicional.')) ?></span><br>
+                                <?php if ((int)$reporte[6] > 0): ?>
+                                    <span class="text-muted">
+                                        Viaje #<?= (int)$reporte[6] ?>:
+                                        <?= htmlspecialchars($reporte[3]) ?> -> <?= htmlspecialchars($reporte[4]) ?>
+                                        <?php if ($reporte[5] !== ''): ?>
+                                            (<?= date('d/m/Y H:i', strtotime($reporte[5])) ?>)
+                                        <?php endif; ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">Sin viaje asociado</span>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span class="text-muted">Sin reporte de viaje asociado</span>
+                            <?php endif; ?>
+                        </td>
+                    <?php endif; ?>
                     <td style="vertical-align: middle; text-align: center;">
                         <?php if (in_array($a['Estado'], ['Eliminado', 'Rechazado'], true)): ?>
                             <span class="badge badge-orange">Eliminado permanente</span>
                         <?php else: ?>
-                        <form method="post" style="margin-bottom: 5px; text-align: left; background: #f9f9f9; padding: 5px; border: 1px solid #ddd;">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
-                            <input type="hidden" name="accion" value="banear_conductor">
-                            <label style="font-size: 0.8em; font-weight: bold;">Suspender conductor hasta:</label><br>
-                            <input type="datetime-local" name="fecha_ban" required style="width: 100%; box-sizing: border-box; margin-bottom: 5px; font-size: 0.85em;">
-                            <button type="submit" style="background-color: #f0ad4e; color: white; padding: 4px; border: none; cursor: pointer; border-radius: 3px; width: 100%; font-size: 0.85em;">Suspender</button>
-                        </form>
+                        <?php $esta_suspendido = !empty($a['BaneadoHasta']) && strtotime($a['BaneadoHasta']) > time(); ?>
+                        <?php if ($esta_suspendido): ?>
+                            <form method="post" style="margin-bottom: 8px;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="conductor_id" value="<?= (int)$a['id'] ?>">
+                                <input type="hidden" name="accion" value="quitar_suspension">
+                                <button type="submit" class="btn btn-outline" style="width: 100%; font-size: 0.85em;" onclick="return confirm('Queres quitar la suspension de este conductor y de todos sus autos suspendidos?');">Quitar suspension</button>
+                            </form>
+                            <a href="<?= BASE_URL ?>admin/vehiculos.php?tipo=suspendidos&conductor_id=<?= (int)$a['id'] ?>#vehiculos-listado" class="btn btn-outline" style="width: 100%; font-size: 0.85em; margin-bottom:8px;">
+                                Ver autos suspendidos
+                            </a>
+                        <?php else: ?>
+                            <form method="post" style="margin-bottom: 5px; text-align: left; background: #f9f9f9; padding: 5px; border: 1px solid #ddd;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
+                                <input type="hidden" name="accion" value="banear_conductor">
+                                <label style="font-size: 0.8em; font-weight: bold;">Suspender conductor hasta:</label><br>
+                                <input type="datetime-local" name="fecha_ban" required style="width: 100%; box-sizing: border-box; margin-bottom: 5px; font-size: 0.85em;">
+                                <button type="submit" style="background-color: #f0ad4e; color: white; padding: 4px; border: none; cursor: pointer; border-radius: 3px; width: 100%; font-size: 0.85em;">Suspender</button>
+                            </form>
+                        <?php endif; ?>
 
                         <form method="post">
                             <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
                             <input type="hidden" name="accion" value="eliminar">
-                            <button type="submit" class="btn-rechazar" style="width: 100%; font-size: 0.85em;" onclick="return confirm('Â¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarÃ¡n sus viajes y vehÃ­culos.');">Eliminar Permanente</button>
+                            <button type="submit" class="btn-rechazar" style="width: 100%; font-size: 0.85em;" onclick="return confirm('¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarán sus viajes y vehículos.');">Eliminar Permanente</button>
                         </form>
                         <?php endif; ?>
                     </td>
@@ -476,7 +603,7 @@ require_once __DIR__ . '/../header.php';
     <?php endif; ?>
 </div>
 
-<!-- Modal para ver imÃ¡genes en tamaÃ±o completo -->
+<!-- Modal para ver imágenes en tamaño completo -->
 <div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.8); align-items:center; justify-content:center;">
     <span onclick="document.getElementById('imageModal').style.display='none'" style="position:absolute; top:20px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
     <img id="modalImage" style="max-width:90%; max-height:90%; object-fit:contain; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">

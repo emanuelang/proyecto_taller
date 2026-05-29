@@ -5,6 +5,54 @@ require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 require_once __DIR__ . '/../../core/account_lifecycle.php';
 
+function conductor_suspension_reason_from_report(PDO $pdo, int $conductor_id, int $reporte_id = 0): string
+{
+    $params = [$conductor_id];
+    $report_filter = '';
+    if ($reporte_id > 0) {
+        $report_filter = ' AND r.ID_reporte = ?';
+        $params[] = $reporte_id;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT r.ID_reporte, r.Descripcion, p.CiudadOrigen, p.CiudadDestino, p.HoraSalida
+        FROM Reportes r
+        LEFT JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
+        WHERE r.ID_conductor = ? $report_filter
+        ORDER BY r.Fecha DESC, r.Hora DESC
+        LIMIT 1
+    ");
+    $stmt->execute($params);
+    $reporte = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$reporte && $reporte_id > 0) {
+        return conductor_suspension_reason_from_report($pdo, $conductor_id, 0);
+    }
+
+    if ($reporte) {
+        $viaje = trim((string)($reporte['CiudadOrigen'] ?? '')) !== ''
+            ? " Viaje: {$reporte['CiudadOrigen']} -> {$reporte['CiudadDestino']} (" . date('d/m/Y H:i', strtotime($reporte['HoraSalida'])) . ")."
+            : '';
+        $detalle = trim((string)($reporte['Descripcion'] ?? ''));
+        return "Motivo: reporte #" . (int)$reporte['ID_reporte'] . "." . $viaje . " Detalle: " . ($detalle !== '' ? $detalle : 'Sin detalle adicional.');
+    }
+
+    return "Motivo: decision de un administrador.";
+}
+
+function notify_conductor_suspension(PDO $pdo, int $conductor_id, string $fecha_ban, string $reason): void
+{
+    $stmt = $pdo->prepare("SELECT ID_usuario FROM Conductores WHERE ID_conductor = ?");
+    $stmt->execute([$conductor_id]);
+    $usuario_id = (int)($stmt->fetchColumn() ?: 0);
+    if ($usuario_id <= 0) {
+        return;
+    }
+
+    $mensaje = "Tu cuenta de conductor fue suspendida hasta " . date('d/m/Y H:i', strtotime($fecha_ban)) . ". " . $reason;
+    $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$usuario_id, $mensaje]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     require_csrf();
 
@@ -12,17 +60,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
         $stmt_del = $pdo->prepare("DELETE FROM Reportes WHERE ID_reporte = ?");
         $stmt_del->execute([(int)$_POST['reporte_id']]);
         $msg_exito = "Reporte descartado.";
-    } elseif ($_POST['accion'] === 'resolver_reporte_pasajero' && isset($_POST['reporte_pasajero_id'])) {
-        $stmt_res = $pdo->prepare("UPDATE ReportesPasajeros SET Estado = 'Resuelto' WHERE ID_reporte_pasajero = ?");
-        $stmt_res->execute([(int)$_POST['reporte_pasajero_id']]);
-        $msg_exito = "Reporte de pasajero marcado como resuelto.";
     } elseif ($_POST['accion'] === 'eliminar_reporte_pasajero' && isset($_POST['reporte_pasajero_id'])) {
         $stmt_del = $pdo->prepare("DELETE FROM ReportesPasajeros WHERE ID_reporte_pasajero = ?");
         $stmt_del->execute([(int)$_POST['reporte_pasajero_id']]);
         $msg_exito = "Reporte de pasajero descartado.";
+    } elseif ($_POST['accion'] === 'suspender_usuario_reportado' && isset($_POST['usuario_id'])) {
+        $usuario_target = (int)$_POST['usuario_id'];
+        $fecha_ban = $_POST['fecha_ban'] ?? '';
+
+        if ($fecha_ban !== '') {
+            if ($usuario_target === (int)$_SESSION['user_id']) {
+                $msg_exito = "No puedes aplicarte sanciones a ti mismo.";
+            } else {
+                $stmt_check_admin = $pdo->prepare("SELECT COUNT(*) FROM Administradores WHERE ID_usuario = ?");
+                $stmt_check_admin->execute([$usuario_target]);
+                if ((int)$stmt_check_admin->fetchColumn() > 0) {
+                    $msg_exito = "No puedes sancionar a otro administrador.";
+                } else {
+                    $stmt_ban = $pdo->prepare("UPDATE Usuarios SET BaneadoHasta = ? WHERE ID_usuario = ?");
+                    $stmt_ban->execute([$fecha_ban, $usuario_target]);
+                    $msg_exito = "Usuario suspendido temporalmente hasta el $fecha_ban.";
+                }
+            }
+        }
+    } elseif ($_POST['accion'] === 'sancionar_usuario_reportado' && isset($_POST['usuario_id'])) {
+        $usuario_target = (int)$_POST['usuario_id'];
+
+        if ($usuario_target === (int)$_SESSION['user_id']) {
+            $msg_exito = "No puedes aplicarte sanciones a ti mismo.";
+        } else {
+            $stmt_check_admin = $pdo->prepare("SELECT COUNT(*) FROM Administradores WHERE ID_usuario = ?");
+            $stmt_check_admin->execute([$usuario_target]);
+            if ((int)$stmt_check_admin->fetchColumn() > 0) {
+                $msg_exito = "No puedes sancionar a otro administrador.";
+            } else {
+                try {
+                    $pdo->beginTransaction();
+                    deactivate_user_account($pdo, $usuario_target, 'El usuario fue sancionado permanentemente por administracion.');
+                    $pdo->commit();
+                    $msg_exito = "Usuario eliminado permanentemente. Sus viajes y reservas activas fueron cancelados.";
+                } catch (Exception $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    error_log("Error sancionando usuario desde reportes: " . $e->getMessage());
+                    $msg_exito = "No se pudo eliminar permanentemente al usuario.";
+                }
+            }
+        }
     } elseif ($_POST['accion'] === 'sancionar_conductor' && isset($_POST['conductor_id'])) {
         $conductor_target = (int)$_POST['conductor_id'];
-        $stmt_ban = $pdo->prepare("UPDATE Conductores SET Estado = 'Rechazado' WHERE ID_conductor = ?");
+        $stmt_ban = $pdo->prepare("UPDATE Conductores SET Estado = 'Eliminado', BaneadoHasta = NULL WHERE ID_conductor = ?");
         $stmt_ban->execute([$conductor_target]);
 
         $stmt_cancel_viajes = $pdo->prepare("
@@ -32,15 +120,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             WHERE cp.ID_conductor = ?
         ");
         $stmt_cancel_viajes->execute([$conductor_target]);
-        $msg_exito = "Conductor sancionado permanentemente y viajes cancelados.";
+        $msg_exito = "Conductor eliminado permanentemente y viajes cancelados.";
     } elseif ($_POST['accion'] === 'suspender_conductor' && isset($_POST['conductor_id'])) {
         $conductor_target = (int)$_POST['conductor_id'];
         $fecha_ban = $_POST['fecha_ban'] ?? '';
+        $reporte_origen = (int)($_POST['reporte_id'] ?? 0);
 
         if ($fecha_ban !== '') {
             $pdo->beginTransaction();
+            $reason = conductor_suspension_reason_from_report($pdo, $conductor_target, $reporte_origen);
             $stmt_ban = $pdo->prepare("UPDATE Conductores SET BaneadoHasta = ? WHERE ID_conductor = ?");
             $stmt_ban->execute([$fecha_ban, $conductor_target]);
+
+            $stmt_suspend_vehiculos = $pdo->prepare("
+                UPDATE Vehiculos v
+                JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+                SET v.Estado = 'Suspendido'
+                WHERE cv.ID_conductor = ?
+                  AND v.Estado = 'Aceptado'
+            ");
+            $stmt_suspend_vehiculos->execute([$conductor_target]);
 
             $stmt_viajes = $pdo->prepare("
                 SELECT p.ID_publicacion
@@ -56,8 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                 cancel_publication_with_refunds($pdo, (int)$publicacion_id, 'El conductor fue suspendido temporalmente por la administracion.');
             }
 
+            notify_conductor_suspension($pdo, $conductor_target, $fecha_ban, $reason);
             $pdo->commit();
-            $msg_exito = "Conductor suspendido temporalmente hasta el $fecha_ban.";
+            $msg_exito = "Conductor suspendido temporalmente hasta el $fecha_ban. Tambien se suspendieron sus vehiculos aprobados.";
         }
     }
 }
@@ -111,8 +211,10 @@ if ($publicacion_filtro > 0) {
 $stmt_reportes_pasajeros = $pdo->prepare("
     SELECT rp.ID_reporte_pasajero AS id, rp.Fecha, rp.Motivo, rp.Descripcion, rp.Estado,
            rp.ID_reserva,
+           u_reportado.ID_usuario AS reportado_usuario_id,
            u_reportado.Nombre AS reportado_nombre, u_reportado.Apellido AS reportado_apellido,
            u_reportado.DNI AS reportado_dni, u_reportado.Telefono AS reportado_telefono,
+           u_reportado.Correo AS reportado_correo, u_reportado.BaneadoHasta AS reportado_baneado_hasta,
            u_resp.Nombre AS responsable_nombre, u_resp.Apellido AS responsable_apellido,
            u_resp.DNI AS responsable_dni, u_resp.Telefono AS responsable_telefono,
            u_cond.Nombre AS conductor_nombre, u_cond.Apellido AS conductor_apellido,
@@ -170,16 +272,14 @@ include __DIR__ . '/_nav.php';
     </div>
 
     <?php if ($tipo_reportes === 'pasajeros'): ?>
-        <div class="admin-panel" style="margin-bottom:24px;">
-            <div class="admin-panel-head">
-                <h2>Reportes de pasajeros</h2>
-                <span class="results-count"><?= $total_reportes_pasajeros ?> total</span>
-            </div>
+        <h2>Reportes de pasajeros</h2>
+        <p class="results-count"><?= $total_reportes_pasajeros ?> total</p>
 
-            <?php if (empty($reportes_pasajeros)): ?>
-                <div class="admin-list-row"><span class="text-muted">No hay reportes de pasajeros pendientes o recientes.</span></div>
-            <?php else: ?>
-                <table class="table-admin">
+        <?php if (empty($reportes_pasajeros)): ?>
+            <p>No hay reportes de pasajeros pendientes o recientes.</p>
+        <?php else: ?>
+            <div style="overflow-x:auto; max-width:100%;">
+                <table class="table-admin" style="width:100%;">
                     <thead>
                         <tr>
                             <th>Fecha</th>
@@ -187,8 +287,7 @@ include __DIR__ . '/_nav.php';
                             <th>Pasajero / responsable</th>
                             <th>Viaje</th>
                             <th>Motivo</th>
-                            <th>Estado</th>
-                            <th style="width:220px;">Acciones</th>
+                            <th style="width:250px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -204,6 +303,10 @@ include __DIR__ . '/_nav.php';
                             <td>
                                 <strong><?= htmlspecialchars(trim($rp['reportado_nombre'] . ' ' . $rp['reportado_apellido'])) ?></strong><br>
                                 DNI: <?= htmlspecialchars($rp['reportado_dni'] ?: 'Sin DNI') ?> - Tel: <?= htmlspecialchars($rp['reportado_telefono'] ?: 'Sin telefono') ?>
+                                <br><span class="text-muted"><?= htmlspecialchars($rp['reportado_correo'] ?: 'Sin correo') ?></span>
+                                <?php if (!empty($rp['reportado_baneado_hasta']) && strtotime($rp['reportado_baneado_hasta']) > time()): ?>
+                                    <br><span class="badge badge-orange" style="margin-top:6px;">Suspendido hasta <?= date('d/m/Y H:i', strtotime($rp['reportado_baneado_hasta'])) ?></span>
+                                <?php endif; ?>
                                 <?php if ($rp['responsable_nombre']): ?>
                                     <br><span class="text-muted">Responsable: <?= htmlspecialchars(trim($rp['responsable_nombre'] . ' ' . $rp['responsable_apellido'])) ?> - DNI <?= htmlspecialchars($rp['responsable_dni'] ?: 'Sin DNI') ?></span>
                                 <?php endif; ?>
@@ -216,27 +319,34 @@ include __DIR__ . '/_nav.php';
                                 <strong><?= htmlspecialchars($rp['Motivo']) ?></strong><br>
                                 <span class="text-muted"><?= nl2br(htmlspecialchars($rp['Descripcion'] ?: 'Sin detalle adicional.')) ?></span>
                             </td>
-                            <td><span class="badge <?= $rp['Estado'] === 'Pendiente' ? 'badge-orange' : 'badge-success' ?>"><?= htmlspecialchars($rp['Estado']) ?></span></td>
                             <td>
-                                <form method="post" style="display:inline-block; margin-bottom:6px; width:100%;">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="reporte_pasajero_id" value="<?= (int)$rp['id'] ?>">
-                                    <input type="hidden" name="accion" value="resolver_reporte_pasajero">
-                                    <button type="submit" class="btn-aprobar" style="width:100%;">Marcar resuelto</button>
-                                </form>
                                 <form method="post" style="display:inline-block; width:100%;">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="reporte_pasajero_id" value="<?= (int)$rp['id'] ?>">
                                     <input type="hidden" name="accion" value="eliminar_reporte_pasajero">
                                     <button type="submit" class="btn-rechazar" style="width:100%;" onclick="return confirm('Descartar este reporte?');">Descartar</button>
                                 </form>
+                                <form method="post" style="display:inline-block; margin-top:6px; text-align:left; background:#f9f9f9; padding:5px; border:1px solid #ddd; width:100%; box-sizing:border-box;">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="usuario_id" value="<?= (int)$rp['reportado_usuario_id'] ?>">
+                                    <input type="hidden" name="accion" value="suspender_usuario_reportado">
+                                    <label style="font-size:0.8em; font-weight:bold;">Suspender usuario:</label><br>
+                                    <input type="datetime-local" name="fecha_ban" required style="width:100%; box-sizing:border-box; margin-bottom:5px; font-size:0.85em;">
+                                    <button type="submit" style="background-color:#f0ad4e; color:white; padding:4px; border:none; cursor:pointer; border-radius:3px; width:100%; font-size:0.85em;">Suspender usuario</button>
+                                </form>
+                                <form method="post" style="display:inline-block; margin-top:6px; width:100%;">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="usuario_id" value="<?= (int)$rp['reportado_usuario_id'] ?>">
+                                    <input type="hidden" name="accion" value="sancionar_usuario_reportado">
+                                    <button type="submit" class="btn-sancionar" style="background-color:#333; width:100%; font-size:0.85em;" onclick="return confirm('Esto eliminara permanentemente al usuario reportado. Proceder?');">Eliminar usuario</button>
+                                </form>
                             </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
     <?php else: ?>
         <?php if (empty($reportes)): ?>
             <p>No hay reportes recientes.</p>
@@ -291,6 +401,7 @@ include __DIR__ . '/_nav.php';
 
                             <form method="post" style="display:inline-block; margin-bottom: 5px; text-align: left; background: #f9f9f9; padding: 5px; border: 1px solid #ddd; width: 100%; box-sizing: border-box;">
                                 <?= csrf_field() ?>
+                                <input type="hidden" name="reporte_id" value="<?= (int)$r['id'] ?>">
                                 <input type="hidden" name="conductor_id" value="<?= (int)$r['conductor_id'] ?>">
                                 <input type="hidden" name="accion" value="suspender_conductor">
                                 <label style="font-size: 0.8em; font-weight: bold;">Suspender temporalmente:</label><br>
@@ -302,7 +413,7 @@ include __DIR__ . '/_nav.php';
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="conductor_id" value="<?= (int)$r['conductor_id'] ?>">
                                 <input type="hidden" name="accion" value="sancionar_conductor">
-                                <button type="submit" class="btn-sancionar" style="background-color: #333; width: 100%; font-size: 0.85em;" onclick="return confirm('Esto rechazara permanentemente al conductor. Proceder?');">Rechazo permanente</button>
+                                <button type="submit" class="btn-sancionar" style="background-color: #333; width: 100%; font-size: 0.85em;" onclick="return confirm('Esto eliminara permanentemente al conductor. Proceder?');">Eliminar conductor</button>
                             </form>
                         </td>
                     </tr>

@@ -15,9 +15,10 @@ if (!isset($_GET['reserva_id'])) {
 $reserva_id = (int) $_GET['reserva_id'];
 $usuario_id = $_SESSION['user_id'];
 
-// Verificar que la reserva pertenece al usuario y que no está calificada ya
+// Verificar que la reserva pertenece al usuario y que no esta calificada ya.
 $sql = "
-    SELECT r.ID_reserva, p.HoraSalida, cp.ID_conductor, u.Nombre as conductor_nombre, pr.ID_pasajero 
+    SELECT r.ID_reserva, r.ID_publicacion, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino,
+           cp.ID_conductor, u.Nombre as conductor_nombre, pr.ID_pasajero
     FROM Reservas r
     JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
     JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
@@ -32,28 +33,30 @@ $stmt->execute([':reserva_id' => $reserva_id, ':usuario_id' => $usuario_id]);
 $reserva = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$reserva) {
-    die("Reserva inválida o no te pertenece.");
+    $_SESSION['mensaje_error'] = "La reserva no es valida para tu usuario. La notificacion fue actualizada para evitar enlaces incorrectos.";
+    header("Location: " . BASE_URL . "reservas/historial_viajes.php");
+    exit;
 }
 
-// Verificar que ya pasó la fecha del viaje
 if (strtotime($reserva['HoraSalida']) > time()) {
-    die("Sólo podés calificar un viaje después de su fecha de inicio.");
+    $_SESSION['mensaje_error'] = "Solo podes calificar un viaje despues de su fecha de inicio.";
+    header("Location: " . BASE_URL . "reservas/historial_viajes.php");
+    exit;
 }
 
-// Verificar si ya qualificó
 $sql_check = "SELECT COUNT(*) FROM Calificaciones WHERE ID_reserva = ?";
 $stmt_check = $pdo->prepare($sql_check);
 $stmt_check->execute([$reserva_id]);
 if ($stmt_check->fetchColumn() > 0) {
-    $_SESSION['mensaje_exito'] = "Ya has calificado este viaje.";
+    $_SESSION['mensaje_exito'] = "Ya calificaste este viaje.";
     header("Location: historial_viajes.php");
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
-    $puntaje = (int) $_POST['puntaje'];
-    $comentario = $_POST['comentario'] ?? '';
+    $puntaje = (int) ($_POST['puntaje'] ?? 0);
+    $comentario = trim($_POST['comentario'] ?? '');
 
     if ($puntaje >= 1 && $puntaje <= 5) {
         $sql_insert = "
@@ -62,68 +65,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ";
         $stmt_i = $pdo->prepare($sql_insert);
         $stmt_i->execute([
-            $reserva_id, 
-            $reserva['ID_conductor'], 
-            $reserva['ID_pasajero'], 
-            $puntaje, 
+            $reserva_id,
+            $reserva['ID_conductor'],
+            $reserva['ID_pasajero'],
+            $puntaje,
             $comentario
         ]);
 
-        $_SESSION['mensaje_exito'] = "¡Gracias por tu calificación!";
+        $stmt_confirm = $pdo->prepare("
+            INSERT INTO ConfirmacionesViaje (ID_reserva, ID_usuario, ID_publicacion, ConfirmoLlegada)
+            VALUES (?, ?, ?, 1)
+            ON DUPLICATE KEY UPDATE
+                ConfirmoLlegada = VALUES(ConfirmoLlegada),
+                FechaConfirmacion = CURRENT_TIMESTAMP
+        ");
+        $stmt_confirm->execute([$reserva_id, (int)$usuario_id, (int)$reserva['ID_publicacion']]);
+
+        $fecha = date('d/m/Y H:i', strtotime($reserva['HoraSalida']));
+        $mensaje = "Tu llegada al viaje de {$reserva['CiudadOrigen']} a {$reserva['CiudadDestino']} del {$fecha} ya fue confirmada y la calificacion ya fue enviada.";
+        $confirmar_url = BASE_URL . 'reservas/confirmar_llegada.php?reserva_id=' . $reserva_id;
+        $calificar_url = BASE_URL . 'reservas/calificar.php?reserva_id=' . $reserva_id;
+        $report_url = BASE_URL . 'reportar.php?conductor_id=' . (int)$reserva['ID_conductor'] . '&publicacion_id=' . (int)$reserva['ID_publicacion'];
+        $stmt_notif = $pdo->prepare("
+            UPDATE Notificaciones
+            SET Mensaje = ?, AccionURL = NULL, AccionLabel = NULL, AccionSecundariaURL = ?, AccionSecundariaLabel = ?, Leida = FALSE, Fecha = CURRENT_TIMESTAMP
+            WHERE ID_usuario = ?
+              AND AccionURL IN (?, ?)
+        ");
+        $stmt_notif->execute([$mensaje, $report_url, 'Reportar conductor', (int)$usuario_id, $confirmar_url, $calificar_url]);
+
+        $_SESSION['mensaje_exito'] = "Gracias por tu calificacion!";
         header("Location: historial_viajes.php");
         exit;
-    } else {
-        $error = "Puntaje inválido. Debe ser entre 1 y 5.";
     }
+
+    $error = "Puntaje invalido. Debe ser entre 1 y 5.";
 }
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Calificar Conductor - Carpooling</title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
-    <style>
-        .star-select {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.1em;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="nav-menu">
-        <h2>Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h2>
-        <a href="<?= BASE_URL ?>reservas/historial_viajes.php" style="margin-left: auto;">← Cancelar y volver</a>
+
+<?php require_once __DIR__ . '/../header.php'; ?>
+
+<div class="page-shell create-trip-page">
+    <div class="create-trip-head">
+        <div>
+            <h1 class="page-title">Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h1>
+            <p class="page-subtitle">Ayuda a la comunidad contando como estuvo el viaje.</p>
+        </div>
+        <a href="<?= BASE_URL ?>reservas/historial_viajes.php" class="btn btn-outline">Cancelar y volver</a>
     </div>
-    
+
     <?php if (isset($error)): ?>
-        <p style="color:red; text-align: center; font-weight: bold;"><?= $error ?></p>
+        <div class="alert-error"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
-    <form method="POST">
+    <form method="POST" class="create-trip-form">
         <?= csrf_field() ?>
-        <h3 style="margin-top:0; color:var(--primary);">Tu Opinión Cuenta</h3>
-        <p style="color: #64748b; margin-bottom: 20px;">
-            Ayudá a la comunidad calificando cómo estuvo el viaje.
-        </p>
+        <section class="card create-trip-card">
+            <div class="form-section-head">
+                <span class="section-kicker">Tu opinion</span>
+                <h2>Calificacion del conductor</h2>
+            </div>
 
-        <label>Del 1 al 5, ¿cómo calificarías tu experiencia?</label>
-        <select name="puntaje" required class="star-select">
-            <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
-            <option value="4">⭐⭐⭐⭐ Muy bueno</option>
-            <option value="3">⭐⭐⭐ Bueno / Regular</option>
-            <option value="2">⭐⭐ Malo</option>
-            <option value="1">⭐ Pésimo</option>
-        </select>
+            <div class="driver-chip" style="margin-bottom:22px;">
+                <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($reserva['conductor_nombre'], 0, 1))) ?></span>
+                <div>
+                    <strong><?= htmlspecialchars($reserva['conductor_nombre']) ?></strong>
+                    <div class="text-muted" style="font-size:14px;">Selecciona de 1 a 5 estrellas.</div>
+                </div>
+            </div>
 
-        <label>Dejá una crítica/comentario (Opcional):</label>
-        <textarea name="comentario" rows="5" placeholder="¿Cómo estuvo el viaje, el conductor, el vehículo...?"></textarea>
+            <div class="field-group">
+                <label>Del 1 al 5, como calificarias tu experiencia?</label>
+                <div class="star-rating" style="display:flex; margin:6px 0 18px;" aria-label="Seleccionar calificacion">
+                    <input type="radio" id="star5" name="puntaje" value="5" required>
+                    <label for="star5" title="Excelente">★</label>
+                    <input type="radio" id="star4" name="puntaje" value="4">
+                    <label for="star4" title="Muy bueno">★</label>
+                    <input type="radio" id="star3" name="puntaje" value="3">
+                    <label for="star3" title="Bueno">★</label>
+                    <input type="radio" id="star2" name="puntaje" value="2">
+                    <label for="star2" title="Malo">★</label>
+                    <input type="radio" id="star1" name="puntaje" value="1">
+                    <label for="star1" title="Pesimo">★</label>
+                </div>
+            </div>
 
-        <button type="submit" class="success-bg" style="width: 100%; margin-top: 15px; font-size: 1.1em;">Enviar Calificación</button>
+            <div class="field-group">
+                <label>Deja una critica/comentario (opcional)</label>
+                <textarea name="comentario" rows="5" placeholder="Como estuvo el viaje, el conductor, el vehiculo...?"></textarea>
+            </div>
+
+            <div class="create-trip-actions">
+                <button type="submit" class="success-bg">Enviar calificacion</button>
+            </div>
+        </section>
     </form>
+</div>
+
+</main>
 </body>
 </html>

@@ -40,7 +40,7 @@ $total_finalizados = (int)$stmt_count_finalizados->fetchColumn();
 
 $stmt = $pdo->prepare("
     SELECT p.ID_publicacion AS id, p.CiudadOrigen, p.CiudadDestino, p.HoraSalida, p.Precio, p.Estado,
-           u.Nombre, u.Apellido, v.Marca, v.Modelo, v.Patente,
+           u.Nombre, u.Apellido, v.Marca, v.Modelo, v.Patente, v.CantidadAsientos,
            (SELECT COUNT(*) FROM Reportes rep WHERE rep.ID_publicacion = p.ID_publicacion) AS reportes_conductor,
            (
                SELECT COUNT(*)
@@ -49,8 +49,9 @@ $stmt = $pdo->prepare("
                WHERE rr.ID_publicacion = p.ID_publicacion
             ) AS reportes_pasajeros,
            (
-                SELECT COUNT(*)
+                SELECT COUNT(DISTINCT pr_count.ID_pasajero)
                 FROM Reservas rr
+                JOIN PasajerosReservas pr_count ON pr_count.ID_reserva = rr.ID_reserva
                 WHERE rr.ID_publicacion = p.ID_publicacion
                   AND rr.Estado = 'Completada'
            ) AS reservas_total,
@@ -129,6 +130,9 @@ include __DIR__ . '/_nav.php';
                     <th>Estado</th>
                     <th>Conductor</th>
                     <th>Vehiculo</th>
+                    <?php if ($tipo_viajes === 'activos'): ?>
+                        <th>Pasajeros</th>
+                    <?php endif; ?>
                     <?php if ($tipo_viajes === 'finalizados'): ?>
                         <th>Confirmaciones</th>
                         <th>Reportes</th>
@@ -156,6 +160,11 @@ include __DIR__ . '/_nav.php';
                         <?= htmlspecialchars($v['Marca'] ?? '???') ?> <?= htmlspecialchars($v['Modelo'] ?? '') ?><br>
                         <em><?= htmlspecialchars($v['Patente'] ?? 'Sin patente') ?></em>
                     </td>
+                    <?php if ($tipo_viajes === 'activos'): ?>
+                        <td>
+                            <span class="badge badge-primary"><?= (int)$v['reservas_total'] ?> / <?= max(0, (int)($v['CantidadAsientos'] ?? 0)) ?></span>
+                        </td>
+                    <?php endif; ?>
                     <?php if ($tipo_viajes === 'finalizados'): ?>
                         <td>
                             <?php
@@ -194,6 +203,7 @@ include __DIR__ . '/_nav.php';
                         </td>
                     <?php endif; ?>
                     <td style="text-align: center;">
+                        <a href="usuarios.php?tipo=activos&viaje_id=<?= (int)$v['id'] ?>#usuarios-listado" class="btn btn-outline" style="margin-bottom:8px; width:100%;">Ver pasajeros</a>
                         <form method="post" style="display:inline-block;">
                             <?= csrf_field() ?>
                             <input type="hidden" name="viaje_id" value="<?= (int)$v['id'] ?>">
