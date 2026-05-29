@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
@@ -23,14 +23,14 @@ $conductor_id = $_SESSION['conductor_id'];
 try {
     $pdo->beginTransaction();
 
-    // 1. Verificar que el vehículo pertenezca al conductor
+    // 1. Verificar que el vehÃ­culo pertenezca al conductor
     $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM ConductorVehiculo WHERE ID_conductor = ? AND ID_vehiculo = ?");
     $stmt_check->execute([$conductor_id, $vehiculo_id]);
     if ($stmt_check->fetchColumn() == 0) {
-        throw new Exception("El vehículo no te pertenece o no existe.");
+        throw new Exception("El vehÃ­culo no te pertenece o no existe.");
     }
 
-    // 2. Buscar TODAS las publicaciones asociadas a este vehículo (no solo las activas)
+    // 2. Buscar TODAS las publicaciones asociadas a este vehÃ­culo (no solo las activas)
     $stmt_pub = $pdo->prepare("
         SELECT ID_publicacion, CiudadOrigen, CiudadDestino, HoraSalida, Precio, Estado
         FROM Publicaciones
@@ -59,36 +59,33 @@ try {
 
             foreach ($reservas as $res) {
                 if ($res['Estado'] === 'Completada' && PAYMENTS_ENABLED) {
-                    // 4a. Reembolso automático para reservas ya pagadas
+                    // 4a. Reembolso automÃ¡tico para reservas ya pagadas
                     $reembolso = (float)$pub['Precio'];
                     $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
                         ->execute([$reembolso, $res['ID_usuario']]);
-                    $mensaje = "Tu viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") ha sido cancelado porque el conductor eliminó el vehículo. Se han reembolsado $" . number_format($reembolso, 2) . " a tu saldo.";
-                } else {
-                    // 4b. Notificar sin reembolso (Pendiente = aún no había pagado)
-                    $mensaje = "Tu reserva para el viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") fue cancelada porque el conductor eliminó el vehículo.";
                 }
+                $mensaje = "Tu reserva para el viaje de " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . " (" . date('d/m', strtotime($pub['HoraSalida'])) . ") fue cancelada porque el conductor eliminÃ³ el vehÃ­culo.";
 
                 // 5. Notificar al pasajero
                 $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")
                     ->execute([$res['ID_usuario'], $mensaje]);
             }
 
-            // 6. Cancelar todas las reservas activas de esta publicación
+            // 6. Cancelar todas las reservas activas de esta publicaciÃ³n
             $pdo->prepare("UPDATE Reservas SET Estado = 'Cancelada' WHERE ID_publicacion = ? AND Estado NOT IN ('Cancelada', 'Rechazada')")
                 ->execute([$pub_id]);
         }
 
-        // 7. Eliminar físicamente la publicación (sus reservas, pagos y calificaciones se eliminan por CASCADE)
+        // 7. Eliminar fÃ­sicamente la publicaciÃ³n (sus reservas, pagos y calificaciones se eliminan por CASCADE)
         $pdo->prepare("DELETE FROM Publicaciones WHERE ID_publicacion = ?")
             ->execute([$pub_id]);
     }
 
-    // 8. Eliminar relación ConductorVehiculo (tiene ON DELETE CASCADE, pero lo hacemos explícito por claridad)
+    // 8. Eliminar relaciÃ³n ConductorVehiculo (tiene ON DELETE CASCADE, pero lo hacemos explÃ­cito por claridad)
     $pdo->prepare("DELETE FROM ConductorVehiculo WHERE ID_vehiculo = ?")
         ->execute([$vehiculo_id]);
 
-    // 9. Finalmente eliminar el vehículo (ya no tiene publicaciones que lo referencien)
+    // 9. Finalmente eliminar el vehÃ­culo (ya no tiene publicaciones que lo referencien)
     $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?")
         ->execute([$vehiculo_id]);
 

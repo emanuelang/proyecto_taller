@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'], $_POST['veh
                 $pdo->prepare("UPDATE Publicaciones SET Estado = 'Cancelada' WHERE ID_publicacion = ?")->execute([$pub['ID_publicacion']]);
             }
 
-            $pdo->prepare("DELETE FROM Vehiculos WHERE ID_vehiculo = ?")->execute([$vehiculo_id]);
+            $pdo->prepare("UPDATE Vehiculos SET Estado = 'Rechazado' WHERE ID_vehiculo = ?")->execute([$vehiculo_id]);
             $pdo->commit();
             $msg = $accion === 'rechazar' ? "Vehiculo rechazado y viajes cancelados." : "Vehiculo eliminado y viajes cancelados.";
         } catch (Exception $e) {
@@ -59,7 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'], $_POST['veh
 }
 
 $search = $_GET['search'] ?? '';
-$tipo_vehiculos = ($_GET['tipo'] ?? 'pendientes') === 'aprobados' ? 'aprobados' : 'pendientes';
+$tipo_vehiculos = $_GET['tipo'] ?? 'pendientes';
+if (!in_array($tipo_vehiculos, ['pendientes', 'aprobados', 'eliminados'], true)) {
+    $tipo_vehiculos = 'pendientes';
+}
 $search_sql = '';
 $params_pendientes = [];
 $params_aceptados = [];
@@ -95,7 +98,20 @@ $stmt_total_aprobados = $pdo->prepare("
 ");
 $stmt_total_aprobados->execute($params_aceptados);
 $total_aprobados = (int)$stmt_total_aprobados->fetchColumn();
-$total_paginas = (int)ceil($total_aprobados / $limite);
+
+$stmt_total_eliminados = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM Vehiculos v
+    JOIN ConductorVehiculo cv ON v.ID_vehiculo = cv.ID_vehiculo
+    JOIN Conductores c ON cv.ID_conductor = c.ID_conductor
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE v.Estado IN ('Rechazado', 'Eliminado') $search_sql
+");
+$stmt_total_eliminados->execute($params_aceptados);
+$total_eliminados = (int)$stmt_total_eliminados->fetchColumn();
+
+$total_filtrado = $tipo_vehiculos === 'eliminados' ? $total_eliminados : $total_aprobados;
+$total_paginas = (int)ceil($total_filtrado / $limite);
 
 $base_sql = "
     SELECT v.ID_vehiculo AS id, v.Marca, v.Modelo, v.Color, v.Patente, v.CantidadAsientos,
@@ -115,6 +131,10 @@ $stmt_aprobados = $pdo->prepare($base_sql . " WHERE v.Estado = 'Aceptado' $searc
 $stmt_aprobados->execute($params_aceptados);
 $aceptados = $stmt_aprobados->fetchAll(PDO::FETCH_ASSOC);
 
+$stmt_eliminados = $pdo->prepare($base_sql . " WHERE v.Estado IN ('Rechazado', 'Eliminado') $search_sql ORDER BY v.ID_vehiculo DESC LIMIT $limite OFFSET $offset");
+$stmt_eliminados->execute($params_aceptados);
+$eliminados = $stmt_eliminados->fetchAll(PDO::FETCH_ASSOC);
+
 require_once __DIR__ . '/../header.php';
 include __DIR__ . '/_nav.php';
 ?>
@@ -123,21 +143,24 @@ include __DIR__ . '/_nav.php';
     <h2>Vehiculos</h2>
     <p>Revisa vehiculos pendientes de aprobacion y gestiona los ya aprobados.</p>
 
-    <div class="tabs" style="max-width:520px; margin:20px 0 24px;">
+    <div class="tabs" style="max-width:720px; margin:20px 0 24px;">
         <a href="vehiculos.php?tipo=pendientes<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>" class="tab <?= $tipo_vehiculos === 'pendientes' ? 'active' : '' ?>">
             Pendientes <span class="badge badge-orange" style="margin-left:8px;"><?= $total_pendientes ?></span>
         </a>
-        <a href="vehiculos.php?tipo=aprobados<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>" class="tab <?= $tipo_vehiculos === 'aprobados' ? 'active' : '' ?>">
+        <a href="vehiculos.php?tipo=aprobados<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>#vehiculos-listado" class="tab <?= $tipo_vehiculos === 'aprobados' ? 'active' : '' ?>">
             Aprobados <span class="badge badge-orange" style="margin-left:8px;"><?= $total_aprobados ?></span>
+        </a>
+        <a href="vehiculos.php?tipo=eliminados<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>#vehiculos-listado" class="tab <?= $tipo_vehiculos === 'eliminados' ? 'active' : '' ?>">
+            Eliminados <span class="badge badge-orange" style="margin-left:8px;"><?= $total_eliminados ?></span>
         </a>
     </div>
 
-    <form method="GET" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 500px;">
+    <form method="GET" action="vehiculos.php<?= $tipo_vehiculos !== 'pendientes' ? '#vehiculos-listado' : '' ?>" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 500px;">
         <input type="hidden" name="tipo" value="<?= htmlspecialchars($tipo_vehiculos) ?>">
         <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Buscar por patente, marca o duenio" style="flex:1; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
         <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Buscar</button>
         <?php if ($search): ?>
-            <a href="vehiculos.php?tipo=<?= urlencode($tipo_vehiculos) ?>" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
+            <a href="vehiculos.php?tipo=<?= urlencode($tipo_vehiculos) ?><?= $tipo_vehiculos !== 'pendientes' ? '#vehiculos-listado' : '' ?>" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
         <?php endif; ?>
     </form>
 
@@ -145,11 +168,24 @@ include __DIR__ . '/_nav.php';
         <p style="color: green; font-weight: bold;"><?= htmlspecialchars($msg) ?></p>
     <?php endif; ?>
 
-    <?php $lista = $tipo_vehiculos === 'pendientes' ? $pendientes : $aceptados; ?>
-    <h3><?= $tipo_vehiculos === 'pendientes' ? 'Vehiculos pendientes' : 'Vehiculos aprobados' ?></h3>
+    <?php
+    $lista = $pendientes;
+    $titulo_lista = 'Vehiculos pendientes';
+    $mensaje_vacio = 'pendientes de aprobacion';
+    if ($tipo_vehiculos === 'aprobados') {
+        $lista = $aceptados;
+        $titulo_lista = 'Vehiculos aprobados';
+        $mensaje_vacio = 'aprobados';
+    } elseif ($tipo_vehiculos === 'eliminados') {
+        $lista = $eliminados;
+        $titulo_lista = 'Vehiculos eliminados';
+        $mensaje_vacio = 'eliminados';
+    }
+    ?>
+    <h3 id="vehiculos-listado"><?= $titulo_lista ?></h3>
 
     <?php if (empty($lista)): ?>
-        <p>No hay vehiculos <?= $tipo_vehiculos === 'pendientes' ? 'pendientes de aprobacion' : 'aprobados' ?>.</p>
+        <p>No hay vehiculos <?= $mensaje_vacio ?>.</p>
     <?php else: ?>
         <table class="table-admin">
             <thead>
@@ -195,13 +231,15 @@ include __DIR__ . '/_nav.php';
                                 <input type="hidden" name="accion" value="rechazar">
                                 <button type="submit" class="btn-rechazar" onclick="return confirm('Rechazar este vehiculo?');">Rechazar</button>
                             </form>
-                        <?php else: ?>
+                        <?php elseif ($tipo_vehiculos === 'aprobados'): ?>
                             <form method="post">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="vehiculo_id" value="<?= (int)$v['id'] ?>">
                                 <input type="hidden" name="accion" value="eliminar">
                                 <button type="submit" class="btn-rechazar" onclick="return confirm('Seguro que deseas eliminar este vehiculo? Se cancelaran viajes activos.');">Eliminar</button>
                             </form>
+                        <?php else: ?>
+                            <span class="badge badge-orange">Eliminado</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -210,18 +248,18 @@ include __DIR__ . '/_nav.php';
         </table>
     <?php endif; ?>
 
-    <?php if ($tipo_vehiculos === 'aprobados' && $total_paginas > 1): ?>
+    <?php if ($tipo_vehiculos !== 'pendientes' && $total_paginas > 1): ?>
         <div class="pagination">
             <?php if ($pagina > 1): ?>
-                <a href="?tipo=aprobados&pagina=<?= $pagina - 1 ?>&search=<?= urlencode($search) ?>">&laquo; Anterior</a>
+                <a href="?tipo=<?= urlencode($tipo_vehiculos) ?>&pagina=<?= $pagina - 1 ?>&search=<?= urlencode($search) ?>#vehiculos-listado">&laquo; Anterior</a>
             <?php endif; ?>
 
             <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-                <a href="?tipo=aprobados&pagina=<?= $i ?>&search=<?= urlencode($search) ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+                <a href="?tipo=<?= urlencode($tipo_vehiculos) ?>&pagina=<?= $i ?>&search=<?= urlencode($search) ?>#vehiculos-listado" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
             <?php endfor; ?>
 
             <?php if ($pagina < $total_paginas): ?>
-                <a href="?tipo=aprobados&pagina=<?= $pagina + 1 ?>&search=<?= urlencode($search) ?>">Siguiente &raquo;</a>
+                <a href="?tipo=<?= urlencode($tipo_vehiculos) ?>&pagina=<?= $pagina + 1 ?>&search=<?= urlencode($search) ?>#vehiculos-listado">Siguiente &raquo;</a>
             <?php endif; ?>
         </div>
     <?php endif; ?>

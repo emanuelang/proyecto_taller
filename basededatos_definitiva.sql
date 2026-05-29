@@ -169,9 +169,35 @@ CREATE TABLE Notificaciones (
     ID_notificacion INT AUTO_INCREMENT PRIMARY KEY,
     ID_usuario INT NOT NULL,
     Mensaje TEXT NOT NULL,
+    AccionURL VARCHAR(255) NULL,
+    AccionLabel VARCHAR(80) NULL,
+    AccionSecundariaURL VARCHAR(255) NULL,
+    AccionSecundariaLabel VARCHAR(80) NULL,
     Leida BOOLEAN DEFAULT FALSE,
     Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
+);
+
+CREATE TABLE ConfirmacionesViaje (
+    ID_confirmacion INT AUTO_INCREMENT PRIMARY KEY,
+    ID_reserva INT NOT NULL UNIQUE,
+    ID_usuario INT NOT NULL,
+    ID_publicacion INT NOT NULL,
+    ConfirmoLlegada BOOLEAN NOT NULL DEFAULT TRUE,
+    FechaConfirmacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_reserva) REFERENCES Reservas(ID_reserva) ON DELETE CASCADE,
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE CASCADE
+);
+
+CREATE TABLE ConfirmacionesConductorViaje (
+    ID_confirmacion INT AUTO_INCREMENT PRIMARY KEY,
+    ID_publicacion INT NOT NULL UNIQUE,
+    ID_conductor INT NOT NULL,
+    Estado VARCHAR(30) NOT NULL DEFAULT 'Todo bien',
+    FechaConfirmacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE CASCADE,
+    FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE
 );
 
 -- Tabla para tickets de soporte enviados por usuarios

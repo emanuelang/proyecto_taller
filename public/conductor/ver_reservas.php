@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
@@ -10,6 +10,8 @@ if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
 }
 
 $viaje_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$post_viaje = isset($_GET['post_viaje']) && $_GET['post_viaje'] === '1';
+$post_viaje_suffix = $post_viaje ? '&post_viaje=1' : '';
 
 $stmt_viaje = $pdo->prepare("
     SELECT p.CiudadOrigen, p.CiudadDestino, p.HoraSalida, p.Precio
@@ -39,12 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'repor
     ];
 
     if (!isset($motivos_validos[$motivo])) {
-        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('Motivo de reporte invalido.'));
+        header("Location: ver_reservas.php?id=$viaje_id$post_viaje_suffix&err=" . urlencode('Motivo de reporte invalido.'));
         exit;
     }
 
     if ($descripcion !== '' && strlen($descripcion) > 800) {
-        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('La descripcion no puede superar 800 caracteres.'));
+        header("Location: ver_reservas.php?id=$viaje_id$post_viaje_suffix&err=" . urlencode('La descripcion no puede superar 800 caracteres.'));
         exit;
     }
 
@@ -66,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'repor
     $reportable = $stmt_reportable->fetch(PDO::FETCH_ASSOC);
 
     if (!$reportable) {
-        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('No se encontro la reserva a reportar.'));
+        header("Location: ver_reservas.php?id=$viaje_id$post_viaje_suffix&err=" . urlencode('No se encontro la reserva a reportar.'));
         exit;
     }
 
@@ -80,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'repor
     ");
     $stmt_dup_report->execute([$reserva_id, $_SESSION['conductor_id'], $motivo]);
     if ((int)$stmt_dup_report->fetchColumn() > 0) {
-        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('Ya existe un reporte pendiente con ese motivo.'));
+        header("Location: ver_reservas.php?id=$viaje_id$post_viaje_suffix&err=" . urlencode('Ya existe un reporte pendiente con ese motivo.'));
         exit;
     }
 
@@ -99,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'repor
         $descripcion !== '' ? $descripcion : null
     ]);
 
-    header("Location: ver_reservas.php?id=$viaje_id&msg=" . urlencode('Reporte enviado para revision de administracion.'));
+    header("Location: ver_reservas.php?id=$viaje_id$post_viaje_suffix&msg=" . urlencode('Reporte enviado para revision de administracion.'));
     exit;
 }
 
@@ -238,9 +240,18 @@ include __DIR__ . '/_nav.php';
 
 <div class="page-shell">
     <div class="no-print" style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:22px;">
-        <a href="viajes.php" class="btn btn-outline">Volver a Mis Viajes</a>
-        <button onclick="generarPDF()" class="btn success-bg">Descargar Lista (PDF)</button>
+        <a href="viajes.php<?= $post_viaje ? '?vista=historial' : '' ?>" class="btn btn-outline">Volver a Mis Viajes</a>
+        <?php if (!$post_viaje): ?>
+            <button onclick="generarPDF()" class="btn success-bg">Descargar Lista (PDF)</button>
+        <?php endif; ?>
     </div>
+
+    <?php if ($post_viaje): ?>
+        <div class="card" style="margin-bottom:18px;">
+            <h2 style="margin-top:0;">Revision posterior al viaje</h2>
+            <p class="text-muted" style="margin-bottom:0;">Elegi el pasajero correspondiente y envia un reporte si hubo un problema.</p>
+        </div>
+    <?php endif; ?>
 
     <?php if (isset($_GET['msg'])): ?>
         <div class="card" style="background:#f0fdf4; color:#047857;">
@@ -259,13 +270,13 @@ include __DIR__ . '/_nav.php';
             <div>
                 <h2 style="margin:0; color:white;">Planilla de Pasajeros</h2>
                 <p style="margin:6px 0 0; opacity:.9;">
-                    Viaje ID #<?= str_pad($viaje_id, 4, '0', STR_PAD_LEFT) ?> ·
-                    <?= htmlspecialchars($viaje['CiudadOrigen']) ?> → <?= htmlspecialchars($viaje['CiudadDestino']) ?>
+                    Viaje ID #<?= str_pad($viaje_id, 4, '0', STR_PAD_LEFT) ?> Â·
+                    <?= htmlspecialchars($viaje['CiudadOrigen']) ?> â†’ <?= htmlspecialchars($viaje['CiudadDestino']) ?>
                 </p>
             </div>
             <div style="text-align:right;">
                 <p style="margin:0; font-weight:850; font-size:22px;">Total: <?= count($reservas) ?> pasajero(s)</p>
-                <p style="margin:6px 0 0; opacity:.85;">Lista generada para validación al abordar</p>
+                <p style="margin:6px 0 0; opacity:.85;">Lista generada para validaciÃ³n al abordar</p>
             </div>
         </div>
 
@@ -306,7 +317,7 @@ include __DIR__ . '/_nav.php';
 
                         <?php if (!empty($r['CodigoAcceso'])): ?>
                             <div class="passenger-code">
-                                <small>Código de validación</small>
+                                <small>CÃ³digo de validaciÃ³n</small>
                                 <span><?= htmlspecialchars($r['CodigoAcceso']) ?></span>
                             </div>
                         <?php endif; ?>
@@ -337,18 +348,20 @@ include __DIR__ . '/_nav.php';
                                     <button type="submit" class="btn btn-danger" style="margin-top:12px;" onclick="return confirm('Enviar este reporte a administracion?');">Enviar reporte</button>
                                 </form>
                             </details>
+                            <?php if (!$post_viaje): ?>
                             <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>&csrf_token=<?= urlencode(csrf_token()) ?>"
                                class="btn btn-danger"
-                               onclick="return confirm('¿Seguro que deseas cancelar esta reserva confirmada?');">
+                               onclick="return confirm('Â¿Seguro que deseas cancelar esta reserva confirmada?');">
                                 Cancelar pasaje
                             </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
 
             <div style="margin-top:26px; text-align:center; color:#94a3b8; font-size:14px;">
-                <p>Solicitá el código de validación a cada pasajero al momento de subir al vehículo.</p>
+                <p>SolicitÃ¡ el cÃ³digo de validaciÃ³n a cada pasajero al momento de subir al vehÃ­culo.</p>
                 <p>Documento generado el <?= date('d/m/Y H:i') ?></p>
             </div>
         </div>

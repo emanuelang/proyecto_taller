@@ -45,10 +45,8 @@ try {
     if ($info['Estado'] === 'Completada' && PAYMENTS_ENABLED) {
         $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
             ->execute([$info['Precio'], $info['ID_usuario']]);
-        $msg = "El conductor te ha expulsado del viaje de {$info['CiudadOrigen']} a {$info['CiudadDestino']}. Se han reembolsado $" . number_format($info['Precio'], 2) . " a tu saldo.";
-    } else {
-        $msg = "El conductor te ha expulsado del viaje de {$info['CiudadOrigen']} a {$info['CiudadDestino']}.";
     }
+    $msg = "El conductor te ha expulsado del viaje de {$info['CiudadOrigen']} a {$info['CiudadDestino']}.";
 
     // 3. Notificar al pasajero
     $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")

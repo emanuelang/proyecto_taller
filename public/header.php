@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__ . '/../core/security.php';
 require_once __DIR__ . '/../core/session_guard.php';
+require_once __DIR__ . '/../core/trips.php';
 if (isset($pdo) && isset($_SESSION['user_id'])) {
     require_active_session($pdo);
+    sync_finished_trips($pdo);
 }
 ?>
 <!DOCTYPE html>
@@ -176,9 +178,18 @@ if ($es_admin && isset($pdo)) {
                 <p class="text-muted" style="text-align:center;">No tenés notificaciones.</p>
             <?php else: ?>
                 <?php foreach ($notificaciones as $n): ?>
-                    <div class="notif-item <?= !$n['Leida'] ? 'unread' : '' ?>">
+                    <div class="notif-item <?= !$n['Leida'] ? 'unread' : '' ?>" data-notification-id="<?= (int)$n['ID_notificacion'] ?>">
+                        <button type="button" class="notif-delete" aria-label="Eliminar notificacion" data-notification-id="<?= (int)$n['ID_notificacion'] ?>">×</button>
                         <small class="text-muted"><?= date('d/m H:i', strtotime($n['Fecha'])) ?></small><br>
-                        <?= htmlspecialchars($n['Mensaje']) ?>
+                        <span><?= htmlspecialchars($n['Mensaje']) ?></span>
+                        <div class="notif-actions">
+                            <?php if (!empty($n['AccionURL'])): ?>
+                                <a href="<?= htmlspecialchars($n['AccionURL']) ?>" class="btn btn-outline notif-action"><?= htmlspecialchars($n['AccionLabel'] ?: 'Ver accion') ?></a>
+                            <?php endif; ?>
+                            <?php if (!empty($n['AccionSecundariaURL'])): ?>
+                                <a href="<?= htmlspecialchars($n['AccionSecundariaURL']) ?>" class="btn btn-danger notif-action"><?= htmlspecialchars($n['AccionSecundariaLabel'] ?: 'Reportar') ?></a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>

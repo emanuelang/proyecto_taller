@@ -53,10 +53,8 @@ try {
             // 2. Reembolsar saldo
             $stmt_reembolso = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?");
             $stmt_reembolso->execute([$r['Precio'], $r['ID_usuario']]);
-            $msg = "El viaje de {$r['CiudadOrigen']} a {$r['CiudadDestino']} ({$r['HoraSalida']}) ha sido cancelado por el conductor. Se han reembolsado $" . number_format($r['Precio'], 2) . " a tu saldo.";
-        } else {
-            $msg = "El viaje de {$r['CiudadOrigen']} a {$r['CiudadDestino']} ({$r['HoraSalida']}) ha sido cancelado por el conductor.";
         }
+        $msg = "El viaje de {$r['CiudadOrigen']} a {$r['CiudadDestino']} ({$r['HoraSalida']}) ha sido cancelado por el conductor.";
 
         // 3. Notificar
         $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$r['ID_usuario'], $msg]);

@@ -1070,7 +1070,9 @@ form {
 }
 
 .notif-item {
+    position: relative;
     padding: 14px;
+    padding-right: 42px;
     border-radius: 14px;
     background: var(--surface-soft);
     margin-bottom: 12px;
@@ -1080,6 +1082,45 @@ form {
 .notif-item.unread {
     background: #e7f0ff;
     border-left: 4px solid var(--primary);
+}
+
+.notif-delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 10px;
+    background: #d7e8ff;
+    color: var(--primary);
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.notif-delete:hover {
+    background: #c5dcfb;
+}
+
+.notif-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.notif-action {
+    margin-top: 10px;
+    width: fit-content;
+    min-height: 34px;
+    padding: 7px 14px;
+    font-size: 14px;
+}
+
+.notif-actions .notif-action {
+    margin-top: 0;
 }
 
 .search-card {

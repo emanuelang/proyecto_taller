@@ -47,7 +47,19 @@ $stmt = $pdo->prepare("
                FROM ReportesPasajeros rp
                JOIN Reservas rr ON rp.ID_reserva = rr.ID_reserva
                WHERE rr.ID_publicacion = p.ID_publicacion
-           ) AS reportes_pasajeros
+            ) AS reportes_pasajeros,
+           (
+                SELECT COUNT(*)
+                FROM Reservas rr
+                WHERE rr.ID_publicacion = p.ID_publicacion
+                  AND rr.Estado = 'Completada'
+           ) AS reservas_total,
+           (
+                SELECT COUNT(*)
+                FROM ConfirmacionesViaje cv
+                WHERE cv.ID_publicacion = p.ID_publicacion
+                  AND cv.ConfirmoLlegada = 1
+           ) AS confirmaciones_llegada
     FROM Publicaciones p
     LEFT JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
     LEFT JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
@@ -59,6 +71,30 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$estado_filtro]);
 $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$confirmaciones_por_viaje = [];
+if ($tipo_viajes === 'finalizados' && !empty($viajes)) {
+    $ids_viajes = array_map(static fn($v) => (int)$v['id'], $viajes);
+    $placeholders = implode(',', array_fill(0, count($ids_viajes), '?'));
+    $stmt_conf = $pdo->prepare("
+        SELECT r.ID_publicacion, r.ID_reserva,
+               COALESCE(NULLIF(r.PasajeroNombre, ''), u.Nombre) AS nombre,
+               COALESCE(NULLIF(r.PasajeroApellido, ''), u.Apellido) AS apellido,
+               cv.FechaConfirmacion
+        FROM Reservas r
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+        JOIN Usuarios u ON pas.ID_usuario = u.ID_usuario
+        JOIN ConfirmacionesViaje cv ON r.ID_reserva = cv.ID_reserva
+        WHERE r.ID_publicacion IN ($placeholders)
+          AND cv.ConfirmoLlegada = 1
+        ORDER BY cv.FechaConfirmacion DESC
+    ");
+    $stmt_conf->execute($ids_viajes);
+    foreach ($stmt_conf->fetchAll(PDO::FETCH_ASSOC) as $conf) {
+        $confirmaciones_por_viaje[(int)$conf['ID_publicacion']][] = $conf;
+    }
+}
 
 require_once __DIR__ . '/../header.php';
 include __DIR__ . '/_nav.php';
@@ -94,6 +130,7 @@ include __DIR__ . '/_nav.php';
                     <th>Conductor</th>
                     <th>Vehiculo</th>
                     <?php if ($tipo_viajes === 'finalizados'): ?>
+                        <th>Confirmaciones</th>
                         <th>Reportes</th>
                     <?php endif; ?>
                     <th>Acciones</th>
@@ -120,6 +157,26 @@ include __DIR__ . '/_nav.php';
                         <em><?= htmlspecialchars($v['Patente'] ?? 'Sin patente') ?></em>
                     </td>
                     <?php if ($tipo_viajes === 'finalizados'): ?>
+                        <td>
+                            <?php
+                                $total_reservas = (int)$v['reservas_total'];
+                                $total_confirmadas = (int)$v['confirmaciones_llegada'];
+                                $confirmaciones = $confirmaciones_por_viaje[(int)$v['id']] ?? [];
+                            ?>
+                            <span class="badge badge-primary"><?= $total_confirmadas ?> / <?= $total_reservas ?> asistieron</span>
+                            <?php if (!empty($confirmaciones)): ?>
+                                <div style="margin-top:10px; display:grid; gap:6px;">
+                                    <?php foreach ($confirmaciones as $conf): ?>
+                                        <div class="text-muted" style="font-size:14px;">
+                                            <strong><?= htmlspecialchars(trim($conf['nombre'] . ' ' . $conf['apellido'])) ?></strong><br>
+                                            <?= date('d/m/Y H:i', strtotime($conf['FechaConfirmacion'])) ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="text-muted" style="margin-top:8px;">Sin confirmaciones</div>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if ($total_reportes_viaje > 0): ?>
                                 <span class="badge badge-orange"><?= $total_reportes_viaje ?> reporte(s)</span>

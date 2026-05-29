@@ -62,6 +62,40 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnOpen) btnOpen.addEventListener('click', () => setSidebar(true));
     if (btnNotifOpen) btnNotifOpen.addEventListener('click', () => setNotifications(true));
     if (btnNotifClose) btnNotifClose.addEventListener('click', () => setNotifications(false));
+    document.querySelectorAll('.notif-action').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            const href = link.getAttribute('href');
+            if (!href || href === '#') return;
+            event.preventDefault();
+            window.location.assign(href);
+        });
+    });
+    document.querySelectorAll('.notif-delete').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const notificationId = button.dataset.notificationId;
+            if (!notificationId) return;
+            const body = new URLSearchParams();
+            body.set('notification_id', notificationId);
+            body.set('csrf_token', window.CSRF_TOKEN || '');
+
+            fetch((window.BASE_URL || '') + 'notificaciones_eliminar.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body
+            })
+                .then((response) => {
+                    if (!response.ok) throw new Error('delete failed');
+                    const item = button.closest('.notif-item');
+                    if (item) item.remove();
+                    const list = document.querySelector('.notif-list');
+                    if (list && !list.querySelector('.notif-item')) {
+                        list.innerHTML = '<p class="text-muted" style="text-align:center;">No tenes notificaciones.</p>';
+                    }
+                })
+                .catch(() => {});
+        });
+    });
     if (overlay) {
         overlay.addEventListener('click', () => {
             setSidebar(false);

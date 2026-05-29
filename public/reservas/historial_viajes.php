@@ -64,6 +64,13 @@ function getCompaneros($pdo, $publicacion_id, $mi_usuario_id) {
     <h1 class="page-title">Mis reservas</h1>
     <p class="page-subtitle">Consultá tus viajes finalizados y calificá conductores</p>
 
+    <?php if (!empty($_SESSION['mensaje_exito'])): ?>
+        <div class="card" style="padding:14px 18px; margin-bottom:18px; border-left:4px solid var(--success);">
+            <?= htmlspecialchars($_SESSION['mensaje_exito']) ?>
+        </div>
+        <?php unset($_SESSION['mensaje_exito']); ?>
+    <?php endif; ?>
+
     <div class="tabs">
         <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="tab">Activas</a>
         <span class="tab active">Historial</span>

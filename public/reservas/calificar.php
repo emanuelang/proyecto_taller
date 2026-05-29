@@ -46,7 +46,7 @@ $stmt_check = $pdo->prepare($sql_check);
 $stmt_check->execute([$reserva_id]);
 if ($stmt_check->fetchColumn() > 0) {
     $_SESSION['mensaje_exito'] = "Ya has calificado este viaje.";
-    header("Location: mis_reservas.php");
+    header("Location: historial_viajes.php");
     exit;
 }
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         $_SESSION['mensaje_exito'] = "¡Gracias por tu calificación!";
-        header("Location: mis_reservas.php");
+        header("Location: historial_viajes.php");
         exit;
     } else {
         $error = "Puntaje inválido. Debe ser entre 1 y 5.";
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="nav-menu">
         <h2>Calificar a <?= htmlspecialchars($reserva['conductor_nombre']) ?></h2>
-        <a href="<?= BASE_URL ?>reservas/mis_reservas.php" style="margin-left: auto;">← Cancelar y volver</a>
+        <a href="<?= BASE_URL ?>reservas/historial_viajes.php" style="margin-left: auto;">← Cancelar y volver</a>
     </div>
     
     <?php if (isset($error)): ?>

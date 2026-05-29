@@ -204,13 +204,13 @@ require_once __DIR__ . '/header.php';
         </div>
 
         <select name="orden">
-            <option value="">Ordenar</option>
-            <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
-            <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
-            <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
-            <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
-            <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Más asientos disponibles</option>
-            <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Menos asientos disponibles</option>
+            <option value="">Ordenar por</option>
+            <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Tarifa: menor a mayor</option>
+            <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Tarifa: mayor a menor</option>
+            <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Salida: fechas mas proximas</option>
+            <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Salida: fechas mas lejanas</option>
+            <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Disponibilidad: mayor a menor</option>
+            <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Disponibilidad: menor a mayor</option>
         </select>
 
         <button type="submit">Buscar</button>
