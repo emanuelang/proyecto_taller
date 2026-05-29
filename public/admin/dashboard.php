@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+require_once __DIR__ . '/../../core/security.php';
 require_once __DIR__ . '/../../core/trips.php';
 
 sync_finished_trips($pdo);
@@ -19,39 +20,30 @@ $usuarios_activos = (int)$stmt_users->fetchColumn();
 $total_viajes = (int)$pdo->query("SELECT COUNT(*) FROM Publicaciones")->fetchColumn();
 $conductores_pendientes = (int)$pdo->query("SELECT COUNT(*) FROM Conductores WHERE Estado = 'Esperando'")->fetchColumn();
 
-$total_pagos = (float)($pdo->query("
-    SELECT COALESCE(SUM(pg.Monto),0)
-    FROM Pagos pg
-    JOIN Reservas r ON pg.ID_reserva = r.ID_reserva
-    WHERE pg.Estado = 'Completado' AND r.Estado = 'Completada'
-")->fetchColumn() ?: 0);
-$rentabilidad_plataforma = $total_pagos * 0.10;
+$reservas_confirmadas = (int)$pdo->query("SELECT COUNT(*) FROM Reservas WHERE Estado = 'Completada'")->fetchColumn();
 
 $inicio_mes = date('Y-m-01 00:00:00');
 $inicio_mes_siguiente = date('Y-m-01 00:00:00', strtotime('first day of next month'));
 $inicio_mes_anterior = date('Y-m-01 00:00:00', strtotime('first day of previous month'));
 
 $stmt_mes = $pdo->prepare("
-    SELECT COALESCE(SUM(pg.Monto),0)
-    FROM Pagos pg
-    JOIN Reservas r ON pg.ID_reserva = r.ID_reserva
-    WHERE pg.Estado = 'Completado' AND r.Estado = 'Completada'
-      AND pg.Fecha >= ? AND pg.Fecha < ?
+    SELECT COUNT(*)
+    FROM Reservas
+    WHERE Estado = 'Completada'
+      AND FechaReserva >= ? AND FechaReserva < ?
 ");
 $stmt_mes->execute([$inicio_mes, $inicio_mes_siguiente]);
-$ingresos_mes = (float)$stmt_mes->fetchColumn();
+$reservas_mes = (int)$stmt_mes->fetchColumn();
 
 $stmt_mes->execute([$inicio_mes_anterior, $inicio_mes]);
-$ingresos_mes_anterior = (float)$stmt_mes->fetchColumn();
+$reservas_mes_anterior = (int)$stmt_mes->fetchColumn();
 
-$ingresos_admin_mes = $ingresos_mes * 0.10;
-$ingresos_admin_anterior = $ingresos_mes_anterior * 0.10;
-$trend_up = $ingresos_admin_mes >= $ingresos_admin_anterior;
-$max_chart = max($ingresos_admin_mes, $ingresos_admin_anterior, 1);
-$bar_actual = max(8, (int)round(($ingresos_admin_mes / $max_chart) * 130));
-$bar_anterior = max(8, (int)round(($ingresos_admin_anterior / $max_chart) * 130));
-$diferencia = $ingresos_admin_mes - $ingresos_admin_anterior;
-$porcentaje = $ingresos_admin_anterior > 0 ? ($diferencia / $ingresos_admin_anterior) * 100 : ($ingresos_admin_mes > 0 ? 100 : 0);
+$trend_up = $reservas_mes >= $reservas_mes_anterior;
+$max_chart = max($reservas_mes, $reservas_mes_anterior, 1);
+$bar_actual = max(8, (int)round(($reservas_mes / $max_chart) * 130));
+$bar_anterior = max(8, (int)round(($reservas_mes_anterior / $max_chart) * 130));
+$diferencia = $reservas_mes - $reservas_mes_anterior;
+$porcentaje = $reservas_mes_anterior > 0 ? ($diferencia / $reservas_mes_anterior) * 100 : ($reservas_mes > 0 ? 100 : 0);
 $chart_color = $trend_up ? '#009b6b' : '#ef4444';
 
 $stmt_recientes = $pdo->query("
@@ -128,16 +120,16 @@ include __DIR__ . '/_nav.php';
 
         <article class="admin-kpi">
             <span class="admin-kpi-icon" style="background:#ecfdf5; color:var(--success);">↗</span>
-            <p class="admin-kpi-value">$<?= number_format($rentabilidad_plataforma, 0, ',', '.') ?></p>
-            <p class="admin-kpi-label">Rentabilidad (10%)</p>
-            <div class="admin-kpi-note">Comisiones cobradas</div>
+            <p class="admin-kpi-value"><?= number_format($reservas_confirmadas) ?></p>
+            <p class="admin-kpi-label">Reservas confirmadas</p>
+            <div class="admin-kpi-note">Historico total</div>
         </article>
     </section>
 
     <section class="admin-dashboard-layout">
         <article class="admin-panel">
             <div class="admin-panel-head">
-                <h2>Ingresos del mes</h2>
+                <h2>Reservas del mes</h2>
                 <span class="<?= $trend_up ? 'trend-up' : 'trend-down' ?>">
                     <?= $trend_up ? '↗' : '↘' ?> <?= number_format(abs($porcentaje), 1, ',', '.') ?>%
                 </span>
@@ -145,24 +137,24 @@ include __DIR__ . '/_nav.php';
             <div class="admin-chart">
                 <div class="admin-chart-summary">
                     <div>
-                        <p class="admin-chart-value">$<?= number_format($ingresos_admin_mes, 2, ',', '.') ?></p>
-                        <div class="text-muted">Comisión del mes actual vs mes anterior</div>
+                        <p class="admin-chart-value"><?= number_format($reservas_mes) ?></p>
+                        <div class="text-muted">Reservas confirmadas este mes vs mes anterior</div>
                     </div>
                     <div style="text-align:right;">
                         <strong class="<?= $trend_up ? 'trend-up' : 'trend-down' ?>">
-                            <?= $trend_up ? '+' : '-' ?>$<?= number_format(abs($diferencia), 2, ',', '.') ?>
+                            <?= $trend_up ? '+' : '-' ?><?= number_format(abs($diferencia)) ?>
                         </strong>
                         <div class="text-muted">Diferencia</div>
                     </div>
                 </div>
-                <svg viewBox="0 0 520 180" width="100%" height="180" role="img" aria-label="Comparación de ingresos">
+                <svg viewBox="0 0 520 180" width="100%" height="180" role="img" aria-label="Comparacion de reservas">
                     <line x1="42" y1="150" x2="490" y2="150" stroke="#dbe4f0" stroke-width="2"/>
                     <rect x="120" y="<?= 150 - $bar_anterior ?>" width="82" height="<?= $bar_anterior ?>" rx="12" fill="#cbd5e1"/>
                     <rect x="320" y="<?= 150 - $bar_actual ?>" width="82" height="<?= $bar_actual ?>" rx="12" fill="<?= $chart_color ?>"/>
                     <text x="161" y="172" text-anchor="middle" fill="#5d718f" font-size="14">Mes anterior</text>
                     <text x="361" y="172" text-anchor="middle" fill="#5d718f" font-size="14">Este mes</text>
-                    <text x="161" y="<?= max(22, 142 - $bar_anterior) ?>" text-anchor="middle" fill="#07142b" font-size="15" font-weight="700">$<?= number_format($ingresos_admin_anterior, 0, ',', '.') ?></text>
-                    <text x="361" y="<?= max(22, 142 - $bar_actual) ?>" text-anchor="middle" fill="#07142b" font-size="15" font-weight="700">$<?= number_format($ingresos_admin_mes, 0, ',', '.') ?></text>
+                    <text x="161" y="<?= max(22, 142 - $bar_anterior) ?>" text-anchor="middle" fill="#07142b" font-size="15" font-weight="700"><?= number_format($reservas_mes_anterior) ?></text>
+                    <text x="361" y="<?= max(22, 142 - $bar_actual) ?>" text-anchor="middle" fill="#07142b" font-size="15" font-weight="700"><?= number_format($reservas_mes) ?></text>
                 </svg>
             </div>
         </article>
@@ -216,7 +208,11 @@ include __DIR__ . '/_nav.php';
             <div class="admin-system-body">
                 <a href="conductores.php" class="btn btn-outline" style="width:100%; margin-bottom:12px;">Revisar conductores</a>
                 <a href="vehiculos.php" class="btn btn-outline" style="width:100%; margin-bottom:12px;">Revisar vehículos</a>
-                <a href="pagos.php" class="btn btn-outline" style="width:100%;">Ver pagos</a>
+                <?php if (PAYMENTS_ENABLED): ?>
+                    <a href="pagos.php" class="btn btn-outline" style="width:100%;">Ver pagos</a>
+                <?php else: ?>
+                    <a href="reportes.php" class="btn btn-outline" style="width:100%;">Ver reportes</a>
+                <?php endif; ?>
             </div>
         </article>
     </section>
@@ -243,11 +239,13 @@ include __DIR__ . '/_nav.php';
                     </div>
                     <div class="admin-actions">
                         <form method="POST" action="conductores.php">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['ID_conductor'] ?>">
                             <input type="hidden" name="accion" value="aprobar">
                             <button type="submit" class="btn-aprobar">Aprobar</button>
                         </form>
                         <form method="POST" action="conductores.php">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['ID_conductor'] ?>">
                             <input type="hidden" name="accion" value="rechazar">
                             <button type="submit" class="btn-rechazar" onclick="return confirm('¿Rechazar este conductor?');">Rechazar</button>

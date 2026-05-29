@@ -42,7 +42,7 @@ try {
     }
 
     // 2. Si la reserva está Completada (pagada), reembolsar al pasajero
-    if ($info['Estado'] === 'Completada') {
+    if ($info['Estado'] === 'Completada' && PAYMENTS_ENABLED) {
         $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
             ->execute([$info['Precio'], $info['ID_usuario']]);
         $msg = "El conductor te ha expulsado del viaje de {$info['CiudadOrigen']} a {$info['CiudadDestino']}. Se han reembolsado $" . number_format($info['Precio'], 2) . " a tu saldo.";

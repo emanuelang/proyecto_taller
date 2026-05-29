@@ -29,6 +29,12 @@ if (!defined('SESSION_TIMEOUT_SECONDS')) {
     define('SESSION_TIMEOUT_SECONDS', 30 * 60);
 }
 
+// Pagos online pausados para esta version del proyecto.
+// El codigo de Mercado Pago y billetera queda disponible para una version futura.
+if (!defined('PAYMENTS_ENABLED')) {
+    define('PAYMENTS_ENABLED', false);
+}
+
 if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
     $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     $isLogout = substr($scriptName, -11) === '/logout.php';

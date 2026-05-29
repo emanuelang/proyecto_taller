@@ -108,6 +108,16 @@ body.guest-body {
     margin-top: 12px;
 }
 
+.auth-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 14px;
+}
+
+.auth-grid .full {
+    grid-column: 1 / -1;
+}
+
 .auth-link-row {
     display: flex;
     justify-content: flex-end;
@@ -1803,6 +1813,10 @@ form {
 
     .auth-card h1 {
         font-size: 28px;
+    }
+
+    .auth-grid {
+        grid-template-columns: 1fr;
     }
 
     .auth-link-row {

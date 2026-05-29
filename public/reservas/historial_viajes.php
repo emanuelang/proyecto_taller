@@ -129,7 +129,7 @@ function getCompaneros($pdo, $publicacion_id, $mi_usuario_id) {
                         <?php endif; ?>
                     </div>
 
-                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $r['conductor_id'] ?>" class="btn btn-danger">Reportar</a>
+                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $r['conductor_id'] ?>&publicacion_id=<?= $r['publicacion_id'] ?>" class="btn btn-danger">Reportar</a>
                 </div>
             </article>
         <?php endforeach; ?>

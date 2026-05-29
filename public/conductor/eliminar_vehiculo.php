@@ -58,7 +58,7 @@ try {
             $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($reservas as $res) {
-                if ($res['Estado'] === 'Completada') {
+                if ($res['Estado'] === 'Completada' && PAYMENTS_ENABLED) {
                     // 4a. Reembolso automático para reservas ya pagadas
                     $reembolso = (float)$pub['Precio'];
                     $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
@@ -93,7 +93,8 @@ try {
         ->execute([$vehiculo_id]);
 
     $pdo->commit();
-    header("Location: vehiculos.php?msg=" . urlencode("Vehículo eliminado y viajes asociados cancelados/reembolsados."));
+    $mensaje_final = PAYMENTS_ENABLED ? "Vehiculo eliminado y viajes asociados cancelados/reembolsados." : "Vehiculo eliminado y viajes asociados cancelados.";
+    header("Location: vehiculos.php?msg=" . urlencode($mensaje_final));
     exit;
 
 } catch (Exception $e) {

@@ -5,6 +5,20 @@ require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 require_once __DIR__ . '/../../core/account_lifecycle.php';
 
+function dni_img_src(?string $value): string
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return '';
+    }
+
+    if (strpos($value, 'data:image/') === 0) {
+        return $value;
+    }
+
+    return BASE_URL . ltrim($value, '/');
+}
+
 // Procesar eliminación de usuario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['usuario_id'])) {
     require_csrf();
@@ -70,7 +84,7 @@ $total_paginas = ceil($stmt_count->fetchColumn() / $limite);
 
 // Obtener la lista de usuarios (que no sean administradores)
 $sql = "
-SELECT u.ID_usuario AS id, u.Nombre, u.Apellido, u.Correo, u.Telefono, u.DNI, u.BaneadoHasta,
+SELECT u.ID_usuario AS id, u.Nombre, u.Apellido, u.Correo, u.Telefono, u.DNI, u.DniFrenteImagen, u.DniDorsoImagen, u.BaneadoHasta,
        (SELECT COUNT(*) FROM Conductores WHERE ID_usuario = u.ID_usuario AND Estado = 'Aceptada') AS es_conductor
 FROM Usuarios u
 LEFT JOIN Administradores a ON u.ID_usuario = a.ID_usuario
@@ -117,6 +131,7 @@ require_once __DIR__ . '/../header.php';
                     <th>Nombre y Apellido</th>
                     <th>Contacto</th>
                     <th>DNI</th>
+                    <th>Imagen DNI</th>
                     <th>Rol Principal</th>
                     <th>Acciones</th>
                 </tr>
@@ -131,6 +146,27 @@ require_once __DIR__ . '/../header.php';
                         <strong>Tel:</strong> <?= htmlspecialchars($u['Telefono'] ?? '---') ?>
                     </td>
                     <td><?= htmlspecialchars($u['DNI']) ?></td>
+                    <td>
+                        <?php $dni_frente_src = dni_img_src($u['DniFrenteImagen'] ?? ''); ?>
+                        <?php $dni_dorso_src = dni_img_src($u['DniDorsoImagen'] ?? ''); ?>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <?php if ($dni_frente_src !== ''): ?>
+                                <a href="<?= htmlspecialchars($dni_frente_src) ?>" target="_blank" rel="noopener">
+                                    <img src="<?= htmlspecialchars($dni_frente_src) ?>" alt="DNI frente" style="width:120px; height:78px; object-fit:cover; border-radius:8px; border:1px solid var(--border-color);">
+                                </a>
+                            <?php else: ?>
+                                <span class="text-muted">Sin frente</span>
+                            <?php endif; ?>
+
+                            <?php if ($dni_dorso_src !== ''): ?>
+                                <a href="<?= htmlspecialchars($dni_dorso_src) ?>" target="_blank" rel="noopener">
+                                    <img src="<?= htmlspecialchars($dni_dorso_src) ?>" alt="DNI dorso" style="width:120px; height:78px; object-fit:cover; border-radius:8px; border:1px solid var(--border-color);">
+                                </a>
+                            <?php else: ?>
+                                <span class="text-muted">Sin dorso</span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
                     <td>
                         <?php if ($u['es_conductor'] > 0): ?>
                             <strong style="color: #0275d8;">Conductor</strong> / Pasajero

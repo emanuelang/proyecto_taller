@@ -2,6 +2,11 @@
 session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
+
+if (!PAYMENTS_ENABLED) {
+    header("Location: " . BASE_URL . "reservas/mis_reservas.php");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">

@@ -38,8 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
                 $reservas = $stmt_res->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($reservas as $res) {
-                    $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$pub['Precio'], $res['ID_usuario']]);
+                    if (PAYMENTS_ENABLED) {
+                        $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")->execute([$pub['Precio'], $res['ID_usuario']]);
+                    }
                     $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " → " . $pub['CiudadDestino'] . ") ha sido eliminado por la administración. Se reembolsaron $" . number_format($pub['Precio'], 2) . ".";
+                    if (!PAYMENTS_ENABLED) {
+                        $mensaje = "El conductor de tu viaje (" . $pub['CiudadOrigen'] . " -> " . $pub['CiudadDestino'] . ") ha sido eliminado por la administracion.";
+                    }
                     $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")->execute([$res['ID_usuario'], $mensaje]);
                 }
                 
@@ -116,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
 
 // Filtro de búsqueda
 $search = $_GET['search'] ?? '';
+$tipo_conductores = ($_GET['tipo'] ?? 'pendientes') === 'aprobados' ? 'aprobados' : 'pendientes';
 $search_sql = '';
 $params_pendientes = [];
 $params_aceptados = [];
@@ -125,6 +131,14 @@ if ($search !== '') {
     $params_pendientes = ["%$search%", "%$search%", "%$search%"];
     $params_aceptados = ["%$search%", "%$search%", "%$search%"];
 }
+
+$stmt_total_pendientes = $pdo->prepare("
+    SELECT COUNT(*) FROM Conductores c
+    JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
+    WHERE c.Estado = 'Esperando' $search_sql
+");
+$stmt_total_pendientes->execute($params_pendientes);
+$total_pendientes = (int)$stmt_total_pendientes->fetchColumn();
 
 // Obtener la lista de conductores pendientes y sus vehículos
 $sql1 = "
@@ -157,7 +171,8 @@ $count_sql = "
 ";
 $stmt_count = $pdo->prepare($count_sql);
 $stmt_count->execute($params_aceptados);
-$total_paginas = ceil($stmt_count->fetchColumn() / $limite);
+$total_aceptados = (int)$stmt_count->fetchColumn();
+$total_paginas = ceil($total_aceptados / $limite);
 
 // Obtener la lista de conductores aceptados
 $sql2 = "
@@ -186,11 +201,21 @@ require_once __DIR__ . '/../header.php';
     <h2>Conductores</h2>
     <p>Aquí puedes buscar y revisar las solicitudes u conductores activos.</p>
     
+    <div class="tabs" style="max-width:520px; margin:20px 0 24px;">
+        <a href="conductores.php?tipo=pendientes<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>" class="tab <?= $tipo_conductores === 'pendientes' ? 'active' : '' ?>">
+            Pendientes <span class="badge badge-orange" style="margin-left:8px;"><?= $total_pendientes ?></span>
+        </a>
+        <a href="conductores.php?tipo=aprobados<?= $search !== '' ? '&search=' . urlencode($search) : '' ?>" class="tab <?= $tipo_conductores === 'aprobados' ? 'active' : '' ?>">
+            Aprobados <span class="badge badge-orange" style="margin-left:8px;"><?= $total_aceptados ?></span>
+        </a>
+    </div>
+
     <form method="GET" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 500px;">
+        <input type="hidden" name="tipo" value="<?= htmlspecialchars($tipo_conductores) ?>">
         <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Buscar por Nombre, DNI o Correo" style="flex:1; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
         <button type="submit" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Buscar</button>
         <?php if($search): ?>
-            <a href="conductores.php" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
+            <a href="conductores.php?tipo=<?= urlencode($tipo_conductores) ?>" style="padding: 10px; background-color: #ccc; color: black; border-radius: 4px; text-decoration: none;">Limpiar</a>
         <?php endif; ?>
     </form>
 
@@ -198,6 +223,7 @@ require_once __DIR__ . '/../header.php';
         <p style="color: green; font-weight: bold;"><?= htmlspecialchars($msg) ?></p>
     <?php endif; ?>
 
+    <?php if ($tipo_conductores === 'pendientes'): ?>
     <?php if (empty($pendientes)): ?>
         <p>No hay solicitudes de conductores pendientes.</p>
     <?php else: ?>
@@ -262,11 +288,13 @@ require_once __DIR__ . '/../header.php';
                     </td>
                     <td>
                         <form method="post" style="margin-bottom: 5px;">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['id'] ?>">
                             <input type="hidden" name="accion" value="aprobar">
                             <button type="submit" class="btn-aprobar" onclick="return confirm('¿Aprobar a este conductor?');">Aprobar</button>
                         </form>
                         <form method="post">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $c['id'] ?>">
                             <input type="hidden" name="accion" value="rechazar">
                             <button type="submit" class="btn-rechazar" onclick="return confirm('¿Rechazar a este conductor?');">Rechazar</button>
@@ -277,9 +305,9 @@ require_once __DIR__ . '/../header.php';
             </tbody>
         </table>
     <?php endif; ?>
+    <?php endif; ?>
 
-    <hr style="margin-top: 40px; margin-bottom: 20px;">
-
+    <?php if ($tipo_conductores === 'aprobados'): ?>
     <h2>Conductores Aprobados</h2>
     <p>Lista de conductores activos en la plataforma. Puedes eliminarlos si infringen las reglas.</p>
 
@@ -352,6 +380,7 @@ require_once __DIR__ . '/../header.php';
                     </td>
                     <td style="vertical-align: middle; text-align: center;">
                         <form method="post" style="margin-bottom: 5px; text-align: left; background: #f9f9f9; padding: 5px; border: 1px solid #ddd;">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
                             <input type="hidden" name="accion" value="banear_conductor">
                             <label style="font-size: 0.8em; font-weight: bold;">Suspender conductor hasta:</label><br>
@@ -360,6 +389,7 @@ require_once __DIR__ . '/../header.php';
                         </form>
 
                         <form method="post">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="conductor_id" value="<?= $a['id'] ?>">
                             <input type="hidden" name="accion" value="eliminar">
                             <button type="submit" class="btn-rechazar" style="width: 100%; font-size: 0.85em;" onclick="return confirm('¿Seguro que deseas ELIMINAR a este conductor de la plataforma de forma permanente? Se borrarán sus viajes y vehículos.');">Eliminar Permanente</button>
@@ -374,17 +404,18 @@ require_once __DIR__ . '/../header.php';
     <?php if (isset($total_paginas) && $total_paginas > 1): ?>
     <div class="pagination">
         <?php if ($pagina > 1): ?>
-            <a href="?pagina=<?= $pagina - 1 ?>&search=<?= urlencode($search) ?>">&laquo; Anterior</a>
+            <a href="?tipo=aprobados&pagina=<?= $pagina - 1 ?>&search=<?= urlencode($search) ?>">&laquo; Anterior</a>
         <?php endif; ?>
 
         <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-            <a href="?pagina=<?= $i ?>&search=<?= urlencode($search) ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+            <a href="?tipo=aprobados&pagina=<?= $i ?>&search=<?= urlencode($search) ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
         <?php endfor; ?>
 
         <?php if ($pagina < $total_paginas): ?>
-            <a href="?pagina=<?= $pagina + 1 ?>&search=<?= urlencode($search) ?>">Siguiente &raquo;</a>
+            <a href="?tipo=aprobados&pagina=<?= $pagina + 1 ?>&search=<?= urlencode($search) ?>">Siguiente &raquo;</a>
         <?php endif; ?>
     </div>
+    <?php endif; ?>
     <?php endif; ?>
 </div>
 

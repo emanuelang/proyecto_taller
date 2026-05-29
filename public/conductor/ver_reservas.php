@@ -24,9 +24,99 @@ if (!$viaje) {
     die('Viaje no encontrado o sin permisos.');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'reportar_pasajero') {
+    require_csrf();
+
+    $reserva_id = (int)($_POST['reserva_id'] ?? 0);
+    $motivo = $_POST['motivo'] ?? '';
+    $descripcion = trim($_POST['descripcion'] ?? '');
+    $motivos_validos = [
+        'no_se_presento' => 'No se presento',
+        'no_pago' => 'No pago',
+        'datos_falsos' => 'Datos falsos',
+        'conducta_inapropiada' => 'Conducta inapropiada',
+        'otro' => 'Otro',
+    ];
+
+    if (!isset($motivos_validos[$motivo])) {
+        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('Motivo de reporte invalido.'));
+        exit;
+    }
+
+    if ($descripcion !== '' && strlen($descripcion) > 800) {
+        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('La descripcion no puede superar 800 caracteres.'));
+        exit;
+    }
+
+    $stmt_reportable = $pdo->prepare("
+        SELECT r.ID_reserva,
+               COALESCE(r.ID_usuario_responsable, pas.ID_usuario) AS responsable_id,
+               pas.ID_usuario AS usuario_reportado_id
+        FROM Reservas r
+        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+        JOIN ConductorPublicacion cp ON r.ID_publicacion = cp.ID_publicacion
+        WHERE r.ID_reserva = ?
+          AND r.ID_publicacion = ?
+          AND cp.ID_conductor = ?
+          AND r.Estado = 'Completada'
+        LIMIT 1
+    ");
+    $stmt_reportable->execute([$reserva_id, $viaje_id, $_SESSION['conductor_id']]);
+    $reportable = $stmt_reportable->fetch(PDO::FETCH_ASSOC);
+
+    if (!$reportable) {
+        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('No se encontro la reserva a reportar.'));
+        exit;
+    }
+
+    $stmt_dup_report = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM ReportesPasajeros
+        WHERE ID_reserva = ?
+          AND ID_conductor = ?
+          AND Motivo = ?
+          AND Estado = 'Pendiente'
+    ");
+    $stmt_dup_report->execute([$reserva_id, $_SESSION['conductor_id'], $motivo]);
+    if ((int)$stmt_dup_report->fetchColumn() > 0) {
+        header("Location: ver_reservas.php?id=$viaje_id&err=" . urlencode('Ya existe un reporte pendiente con ese motivo.'));
+        exit;
+    }
+
+    $stmt_insert_report = $pdo->prepare("
+        INSERT INTO ReportesPasajeros
+            (ID_reserva, ID_usuario_reportado, ID_usuario_responsable, ID_conductor, Motivo, Descripcion)
+        VALUES
+            (?, ?, ?, ?, ?, ?)
+    ");
+    $stmt_insert_report->execute([
+        $reserva_id,
+        $reportable['usuario_reportado_id'],
+        $reportable['responsable_id'],
+        $_SESSION['conductor_id'],
+        $motivos_validos[$motivo],
+        $descripcion !== '' ? $descripcion : null
+    ]);
+
+    header("Location: ver_reservas.php?id=$viaje_id&msg=" . urlencode('Reporte enviado para revision de administracion.'));
+    exit;
+}
+
 $stmt = $pdo->prepare("
-    SELECT r.ID_reserva AS reserva_id, r.Estado, r.CodigoAcceso,
-           u.Nombre AS nombre, u.Apellido AS apellido, u.Correo AS email, u.Telefono
+    SELECT r.ID_reserva AS reserva_id, r.Estado, r.CodigoAcceso, r.TipoPasaje,
+           u.ID_usuario AS usuario_reportado_id,
+           COALESCE(r.ID_usuario_responsable, u.ID_usuario) AS responsable_id,
+           COALESCE(NULLIF(r.PasajeroNombre, ''), u.Nombre) AS nombre,
+           COALESCE(NULLIF(r.PasajeroApellido, ''), u.Apellido) AS apellido,
+           COALESCE(NULLIF(r.PasajeroCorreo, ''), u.Correo) AS email,
+           COALESCE(NULLIF(r.PasajeroTelefono, ''), u.Telefono) AS telefono,
+           COALESCE(NULLIF(r.PasajeroDNI, ''), u.DNI) AS dni,
+           u.Nombre AS responsable_nombre,
+           u.Apellido AS responsable_apellido,
+           u.Correo AS responsable_email,
+           u.Telefono AS responsable_telefono,
+           u.DNI AS responsable_dni
     FROM Reservas r
     JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
     JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
@@ -183,7 +273,7 @@ include __DIR__ . '/_nav.php';
             <?php if (empty($reservas)): ?>
                 <div style="text-align:center; padding:46px;">
                     <h3 style="margin-top:0;">No hay pasajeros confirmados</h3>
-                    <p class="text-muted">Cuando alguien reserve y pague este viaje, aparecerá en esta lista.</p>
+                    <p class="text-muted">Cuando alguien confirme una reserva en este viaje, aparecera en esta lista.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($reservas as $index => $r): ?>
@@ -192,10 +282,26 @@ include __DIR__ . '/_nav.php';
                             <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px; flex-wrap:wrap;">
                                 <span class="mini-avatar" style="width:30px; height:30px;"><?= $index + 1 ?></span>
                                 <h3><?= htmlspecialchars(trim($r['nombre'] . ' ' . $r['apellido'])) ?></h3>
-                                <span class="badge badge-success">Pagado</span>
+                                <span class="badge badge-success">Reserva confirmada</span>
+                                <?php if (($r['TipoPasaje'] ?? 'propio') === 'tercero'): ?>
+                                    <span class="badge badge-orange">Tercero</span>
+                                <?php else: ?>
+                                    <span class="badge badge-primary">Titular</span>
+                                <?php endif; ?>
                             </div>
-                            <p><?= htmlspecialchars($r['email']) ?></p>
-                            <p><?= htmlspecialchars($r['Telefono'] ?: 'No especificado') ?></p>
+                            <p><strong>DNI:</strong> <?= htmlspecialchars($r['dni'] ?: 'No especificado') ?></p>
+                            <p><strong>Telefono:</strong> <?= htmlspecialchars($r['telefono'] ?: 'No especificado') ?></p>
+                            <p><strong>Email:</strong> <?= htmlspecialchars($r['email'] ?: 'No especificado') ?></p>
+
+                            <?php if (($r['TipoPasaje'] ?? 'propio') === 'tercero'): ?>
+                                <div class="info-tile" style="margin-top:12px;">
+                                    <span>Responsable de la reserva</span>
+                                    <strong><?= htmlspecialchars(trim($r['responsable_nombre'] . ' ' . $r['responsable_apellido'])) ?></strong>
+                                    <p style="margin:8px 0 0;"><strong>DNI:</strong> <?= htmlspecialchars($r['responsable_dni'] ?: 'No especificado') ?></p>
+                                    <p><strong>Telefono:</strong> <?= htmlspecialchars($r['responsable_telefono'] ?: 'No especificado') ?></p>
+                                    <p><strong>Email:</strong> <?= htmlspecialchars($r['responsable_email'] ?: 'No especificado') ?></p>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <?php if (!empty($r['CodigoAcceso'])): ?>
@@ -206,6 +312,31 @@ include __DIR__ . '/_nav.php';
                         <?php endif; ?>
 
                         <div class="no-print" style="grid-column:1 / -1; text-align:right;">
+                            <details style="margin-bottom:12px; text-align:left;">
+                                <summary class="btn btn-outline" style="display:inline-flex; cursor:pointer;">Reportar pasajero</summary>
+                                <form method="POST" style="margin-top:12px; padding:14px; border:1px solid var(--border-color); border-radius:12px; background:white;">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="accion" value="reportar_pasajero">
+                                    <input type="hidden" name="reserva_id" value="<?= (int)$r['reserva_id'] ?>">
+                                    <div class="info-grid" style="grid-template-columns: minmax(180px, 240px) 1fr; gap:12px;">
+                                        <label>
+                                            <span class="text-muted" style="display:block; font-weight:800; margin-bottom:6px;">Motivo</span>
+                                            <select name="motivo" required>
+                                                <option value="no_se_presento">No se presento</option>
+                                                <option value="no_pago">No pago</option>
+                                                <option value="datos_falsos">Datos falsos</option>
+                                                <option value="conducta_inapropiada">Conducta inapropiada</option>
+                                                <option value="otro">Otro</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span class="text-muted" style="display:block; font-weight:800; margin-bottom:6px;">Detalle</span>
+                                            <input type="text" name="descripcion" maxlength="800" placeholder="Agrega contexto para administracion">
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger" style="margin-top:12px;" onclick="return confirm('Enviar este reporte a administracion?');">Enviar reporte</button>
+                                </form>
+                            </details>
                             <a href="eliminar_reserva.php?id=<?= $r['reserva_id'] ?>&viaje=<?= $viaje_id ?>&csrf_token=<?= urlencode(csrf_token()) ?>"
                                class="btn btn-danger"
                                onclick="return confirm('¿Seguro que deseas cancelar esta reserva confirmada?');">

@@ -25,6 +25,49 @@ if ($viaje_id <= 0) {
     safe_error('Viaje no especificado.');
 }
 
+$tipo_pasaje = ($_POST['tipo_pasaje'] ?? 'propio') === 'tercero' ? 'tercero' : 'propio';
+$stmt_usuario_responsable = $pdo->prepare("SELECT Nombre, Apellido, DNI, Correo, Telefono FROM Usuarios WHERE ID_usuario = ?");
+$stmt_usuario_responsable->execute([$_SESSION['user_id']]);
+$usuario_responsable = $stmt_usuario_responsable->fetch(PDO::FETCH_ASSOC);
+
+if (!$usuario_responsable) {
+    safe_error('No se pudo cargar tu usuario.');
+}
+
+if ($tipo_pasaje === 'tercero') {
+    $pasajero_data = [
+        'nombre' => trim($_POST['pasajero_nombre'] ?? ''),
+        'apellido' => trim($_POST['pasajero_apellido'] ?? ''),
+        'dni' => trim($_POST['pasajero_dni'] ?? ''),
+        'telefono' => trim($_POST['pasajero_telefono'] ?? ''),
+        'correo' => trim($_POST['pasajero_correo'] ?? ''),
+    ];
+
+    if (strlen($pasajero_data['nombre']) < 2 || strlen($pasajero_data['nombre']) > 100 || !preg_match('/^[\p{L}\s]+$/u', $pasajero_data['nombre'])) {
+        safe_error('El nombre del pasajero no es valido.');
+    }
+    if (strlen($pasajero_data['apellido']) < 2 || strlen($pasajero_data['apellido']) > 100 || !preg_match('/^[\p{L}\s]+$/u', $pasajero_data['apellido'])) {
+        safe_error('El apellido del pasajero no es valido.');
+    }
+    if (!preg_match('/^[0-9]{7,8}$/', $pasajero_data['dni'])) {
+        safe_error('El DNI del pasajero debe tener 7 u 8 digitos numericos.');
+    }
+    if (!preg_match('/^[0-9]{8,15}$/', $pasajero_data['telefono'])) {
+        safe_error('El telefono del pasajero debe tener entre 8 y 15 digitos numericos.');
+    }
+    if ($pasajero_data['correo'] !== '' && (!filter_var($pasajero_data['correo'], FILTER_VALIDATE_EMAIL) || strlen($pasajero_data['correo']) > 150)) {
+        safe_error('El correo del pasajero no es valido.');
+    }
+} else {
+    $pasajero_data = [
+        'nombre' => $usuario_responsable['Nombre'],
+        'apellido' => $usuario_responsable['Apellido'],
+        'dni' => $usuario_responsable['DNI'],
+        'telefono' => $usuario_responsable['Telefono'],
+        'correo' => $usuario_responsable['Correo'],
+    ];
+}
+
 /* Verificar viaje, cupo y datos para el pago */
 $sql = "
     SELECT p.ID_publicacion,
@@ -86,6 +129,125 @@ $stmt_dup->execute([':viaje_id' => $viaje_id, ':usuario_id' => $_SESSION['user_i
 
 if ($stmt_dup->fetchColumn() > 0) {
     safe_error("Ya tenes una reserva confirmada para este viaje.");
+}
+
+if (!PAYMENTS_ENABLED) {
+    try {
+        $pdo->beginTransaction();
+
+        $stmt_lock = $pdo->prepare("
+            SELECT v.CantidadAsientos AS total,
+                   (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') AS ocupados
+            FROM Publicaciones p
+            JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
+            JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+            JOIN Usuarios u_cond ON c.ID_usuario = u_cond.ID_usuario
+            JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
+            WHERE p.ID_publicacion = ?
+              AND p.Estado = 'Activa'
+              AND p.HoraSalida >= NOW()
+              AND c.Estado = 'Aceptada'
+              AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+              AND u_cond.estado = 'activo'
+              AND (u_cond.BaneadoHasta IS NULL OR u_cond.BaneadoHasta <= NOW())
+              AND v.Estado = 'Aceptado'
+            FOR UPDATE
+        ");
+        $stmt_lock->execute([$viaje_id]);
+        $check = $stmt_lock->fetch(PDO::FETCH_ASSOC);
+
+        if (!$check || $check['ocupados'] >= $check['total']) {
+            $pdo->rollBack();
+            safe_error("Lo sentimos, los asientos se agotaron justo ahora. Intenta con otro viaje.");
+        }
+
+        $stmt_dup_lock = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM Reservas r
+            JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+            JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+            WHERE r.ID_publicacion = ?
+              AND pas.ID_usuario = ?
+              AND r.Estado = 'Completada'
+        ");
+        $stmt_dup_lock->execute([$viaje_id, $_SESSION['user_id']]);
+        if ($stmt_dup_lock->fetchColumn() > 0) {
+            $pdo->rollBack();
+            safe_error("Ya tenes una reserva confirmada para este viaje.");
+        }
+
+        $stmt_pasajero = $pdo->prepare("SELECT ID_pasajero FROM Pasajeros WHERE ID_usuario = ?");
+        $stmt_pasajero->execute([$_SESSION['user_id']]);
+        $pasajero = $stmt_pasajero->fetch();
+
+        if (!$pasajero) {
+            $pdo->prepare("INSERT INTO Pasajeros (ID_usuario) VALUES (?)")->execute([$_SESSION['user_id']]);
+            $pasajero_id = $pdo->lastInsertId();
+        } else {
+            $pasajero_id = $pasajero['ID_pasajero'];
+        }
+
+        $codigo_acceso = "CA-" . strtoupper(bin2hex(random_bytes(4)));
+
+        $stmt_res = $pdo->prepare("
+            INSERT INTO Reservas
+                (ID_publicacion, Estado, FechaReserva, CodigoAcceso, TipoPasaje, PasajeroNombre, PasajeroApellido, PasajeroDNI, PasajeroTelefono, PasajeroCorreo, ID_usuario_responsable)
+            VALUES
+                (?, 'Completada', NOW(), ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt_res->execute([
+            $viaje_id,
+            $codigo_acceso,
+            $tipo_pasaje,
+            $pasajero_data['nombre'],
+            $pasajero_data['apellido'],
+            $pasajero_data['dni'],
+            $pasajero_data['telefono'],
+            $pasajero_data['correo'] !== '' ? $pasajero_data['correo'] : null,
+            $_SESSION['user_id']
+        ]);
+        $reserva_id = $pdo->lastInsertId();
+
+        $pdo->prepare("INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)")->execute([$pasajero_id, $reserva_id]);
+
+        $pdo->commit();
+        ?>
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <title>Reserva confirmada - MOVEON</title>
+            <link rel="stylesheet" href="<?= BASE_URL ?>main.css">
+        </head>
+        <body>
+            <div class="page-shell">
+                <div class="card" style="max-width:560px; margin:60px auto; text-align:center;">
+                    <div class="badge badge-success" style="display:inline-flex; margin-bottom:16px;">Reserva confirmada</div>
+                    <h1 class="page-title" style="font-size:32px;">Tu asiento ya está reservado</h1>
+                    <p class="page-subtitle" style="font-size:18px; margin-bottom:24px;">
+                        No se realizo ningun cobro online. Coordina el pago del viaje con el conductor segun lo acordado.
+                    </p>
+
+                    <div class="info-tile" style="text-align:center; margin:22px 0;">
+                        <span>Código de validación</span>
+                        <strong style="font-size:30px; letter-spacing:2px; color:var(--primary);"><?= htmlspecialchars($codigo_acceso) ?></strong>
+                        <p class="text-muted" style="margin:10px 0 0;">Mostráselo al conductor al momento de abordar.</p>
+                    </div>
+
+                    <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="btn">Ver mis reservas</a>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Error creando reserva sin pago online: " . $e->getMessage());
+        safe_error("No se pudo completar la reserva.");
+    }
 }
 
 /* Verificar Saldo del Usuario */
@@ -166,8 +328,23 @@ if ($saldo_usuario >= $viaje['Precio']) {
         $codigo_acceso = "CA-" . strtoupper(bin2hex(random_bytes(4)));
         
         // 4. Crear Reserva Completada
-        $stmt_res = $pdo->prepare("INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva, CodigoAcceso) VALUES (?, 'Completada', NOW(), ?)");
-        $stmt_res->execute([$viaje_id, $codigo_acceso]);
+        $stmt_res = $pdo->prepare("
+            INSERT INTO Reservas
+                (ID_publicacion, Estado, FechaReserva, CodigoAcceso, TipoPasaje, PasajeroNombre, PasajeroApellido, PasajeroDNI, PasajeroTelefono, PasajeroCorreo, ID_usuario_responsable)
+            VALUES
+                (?, 'Completada', NOW(), ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt_res->execute([
+            $viaje_id,
+            $codigo_acceso,
+            $tipo_pasaje,
+            $pasajero_data['nombre'],
+            $pasajero_data['apellido'],
+            $pasajero_data['dni'],
+            $pasajero_data['telefono'],
+            $pasajero_data['correo'] !== '' ? $pasajero_data['correo'] : null,
+            $_SESSION['user_id']
+        ]);
         $reserva_id = $pdo->lastInsertId();
         
         // 5. Vincular Pasajero a Reserva
@@ -225,6 +402,8 @@ $external_reference = bin2hex(random_bytes(24));
 $_SESSION['pending_reserva'][$external_reference] = [
     'viaje_id' => $viaje_id,
     'user_id' => (int)$_SESSION['user_id'],
+    'tipo_pasaje' => $tipo_pasaje,
+    'pasajero' => $pasajero_data,
     'created_at' => time(),
 ];
 

@@ -104,7 +104,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="page-shell">
     <h1 class="page-title">Perfil de <?= htmlspecialchars($perfil['Nombre']) ?></h1>
-    <p class="page-subtitle"><?= $es_propio ? 'Gestioná tu información, billetera y preferencias' : 'Información pública del usuario' ?></p>
+    <p class="page-subtitle"><?= $es_propio ? 'Gestioná tu información y preferencias de viaje' : 'Información pública del usuario' ?></p>
 <?php if ($mensaje): ?>
     <div style="max-width:800px; margin: 0 auto; background-color: #d4edda; color: #155724; padding: 15px; border-radius: 6px; text-align: center;">
         <?= htmlspecialchars($mensaje) ?>
@@ -143,6 +143,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <div class="col-der">
         <?php if ($es_propio): ?>
+            <?php if (PAYMENTS_ENABLED): ?>
             <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 30px; text-align: center;">
                 <h3 style="margin-top:0; color: #166534;">Mi Billetera</h3>
                 <div style="font-size: 2.5em; font-weight: bold; color: #15803d; margin: 10px 0;">
@@ -153,6 +154,7 @@ if ($es_propio && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="retirar_dinero.php" class="btn" style="background-color: #3b82f6; color: white; border: none; text-decoration: none; padding: 10px 20px; border-radius: 5px;">Retirar Dinero</a>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php if ($modo_edicion): ?>
                 <form id="perfilEditForm" method="POST" enctype="multipart/form-data" style="padding:0; border:none; box-shadow:none; max-width:100%;">

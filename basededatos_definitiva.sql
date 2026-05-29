@@ -7,6 +7,8 @@ CREATE TABLE Usuarios (
     Nombre VARCHAR(100) NOT NULL,
     Apellido VARCHAR(100) NOT NULL,
     DNI VARCHAR(20) UNIQUE NOT NULL,
+    DniFrenteImagen MEDIUMTEXT NULL,
+    DniDorsoImagen MEDIUMTEXT NULL,
     Correo VARCHAR(150) UNIQUE NOT NULL,
     Telefono VARCHAR(20),
     Contraseña VARCHAR(255) NOT NULL,
@@ -95,6 +97,13 @@ CREATE TABLE Reservas (
     Estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
     FechaReserva DATETIME DEFAULT CURRENT_TIMESTAMP,
     CodigoAcceso VARCHAR(20) NULL,
+    TipoPasaje ENUM('propio','tercero') NOT NULL DEFAULT 'propio',
+    PasajeroNombre VARCHAR(100) NULL,
+    PasajeroApellido VARCHAR(100) NULL,
+    PasajeroDNI VARCHAR(20) NULL,
+    PasajeroTelefono VARCHAR(20) NULL,
+    PasajeroCorreo VARCHAR(150) NULL,
+    ID_usuario_responsable INT NULL,
     ID_publicacion INT NOT NULL,
     FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE CASCADE
 );
@@ -133,6 +142,26 @@ CREATE TABLE Reportes (
     Fecha DATE NOT NULL,
     Descripcion TEXT NOT NULL,
     ID_conductor INT NOT NULL,
+    ID_publicacion INT NULL,
+    ID_usuario_reportante INT NULL,
+    FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE,
+    FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE SET NULL,
+    FOREIGN KEY (ID_usuario_reportante) REFERENCES Usuarios(ID_usuario) ON DELETE SET NULL
+);
+
+CREATE TABLE ReportesPasajeros (
+    ID_reporte_pasajero INT AUTO_INCREMENT PRIMARY KEY,
+    ID_reserva INT NOT NULL,
+    ID_usuario_reportado INT NOT NULL,
+    ID_usuario_responsable INT NULL,
+    ID_conductor INT NOT NULL,
+    Motivo VARCHAR(80) NOT NULL,
+    Descripcion TEXT NULL,
+    Estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    Fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_reserva) REFERENCES Reservas(ID_reserva) ON DELETE CASCADE,
+    FOREIGN KEY (ID_usuario_reportado) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (ID_usuario_responsable) REFERENCES Usuarios(ID_usuario) ON DELETE SET NULL,
     FOREIGN KEY (ID_conductor) REFERENCES Conductores(ID_conductor) ON DELETE CASCADE
 );
 

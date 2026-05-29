@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/storage.php';
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 
 if (!isset($_SESSION['is_conductor']) || !$_SESSION['is_conductor']) {
@@ -48,7 +49,7 @@ try {
     $reembolsos = $stmt_info->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($reembolsos as $r) {
-        if ($r['EstadoReserva'] === 'Completada') {
+        if ($r['EstadoReserva'] === 'Completada' && PAYMENTS_ENABLED) {
             // 2. Reembolsar saldo
             $stmt_reembolso = $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?");
             $stmt_reembolso->execute([$r['Precio'], $r['ID_usuario']]);
@@ -70,7 +71,8 @@ try {
     $stmt_cancel->execute([$id]);
 
     $pdo->commit();
-    header('Location: viajes.php?msg=' . urlencode("Viaje cancelado y pasajeros reembolsados."));
+    $mensaje_final = PAYMENTS_ENABLED ? "Viaje cancelado y pasajeros reembolsados." : "Viaje cancelado y pasajeros notificados.";
+    header('Location: viajes.php?msg=' . urlencode($mensaje_final));
     exit;
 
 } catch (Exception $e) {

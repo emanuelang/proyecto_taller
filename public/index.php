@@ -10,6 +10,8 @@ if (isset($_SESSION['user_id'])) {
     require_active_session($pdo);
 }
 
+$usuario_logueado = isset($_SESSION['user_id']);
+
 /* ============================
    TRAER CIUDADES...
 ============================ */
@@ -253,22 +255,33 @@ require_once __DIR__ . '/header.php';
             </div>
 
             <div class="trip-footer">
-                <div class="driver-chip">
-                    <?php if (!empty($v['conductor_foto'])): ?>
-                        <img src="<?= htmlspecialchars($v['conductor_foto']) ?>" class="mini-avatar-img" alt="Foto de <?= htmlspecialchars($v['conductor_nombre']) ?>">
-                    <?php else: ?>
-                        <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($v['conductor_nombre'], 0, 1))) ?></span>
-                    <?php endif; ?>
-                    <div>
-                        <strong><?= htmlspecialchars($v['conductor_nombre']) ?></strong>
-                        <?php if (!empty($v['promedio_calif'])): ?>
-                            <div class="driver-rating">★ <?= number_format(floor($v['promedio_calif'] * 10) / 10, 1, ',', '.') ?> <span>(<?= (int)$v['total_calificaciones'] ?>)</span></div>
+                <?php if ($usuario_logueado): ?>
+                    <div class="driver-chip">
+                        <?php if (!empty($v['conductor_foto'])): ?>
+                            <img src="<?= htmlspecialchars($v['conductor_foto']) ?>" class="mini-avatar-img" alt="Foto de <?= htmlspecialchars($v['conductor_nombre']) ?>">
                         <?php else: ?>
-                            <div class="driver-rating muted">Nuevo</div>
+                            <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($v['conductor_nombre'], 0, 1))) ?></span>
                         <?php endif; ?>
+                        <div>
+                            <strong><?= htmlspecialchars($v['conductor_nombre']) ?></strong>
+                            <?php if (!empty($v['promedio_calif'])): ?>
+                                <div class="driver-rating">★ <?= number_format(floor($v['promedio_calif'] * 10) / 10, 1, ',', '.') ?> <span>(<?= (int)$v['total_calificaciones'] ?>)</span></div>
+                            <?php else: ?>
+                                <div class="driver-rating muted">Nuevo</div>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </div>
-                <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline">Ver Detalle</a>
+                    <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline">Ver Detalle</a>
+                <?php else: ?>
+                    <div class="driver-chip">
+                        <span class="mini-avatar">?</span>
+                        <div>
+                            <strong>Conductor protegido</strong>
+                            <div class="driver-rating muted">Registrate para ver más</div>
+                        </div>
+                    </div>
+                    <a href="<?= BASE_URL ?>login.php" class="btn btn-outline">Iniciar sesión</a>
+                <?php endif; ?>
             </div>
         </div>
     <?php endforeach; ?>

@@ -29,14 +29,17 @@ function cancel_publication_with_refunds(PDO $pdo, int $publicacion_id, string $
 
     $reembolsos = 0;
     foreach ($reservas as $reserva) {
-        $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
-            ->execute([(float)$pub['Precio'], (int)$reserva['ID_usuario']]);
-
-        $mensaje = $motivo . " Viaje: " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] .
-            ". Se reembolsaron $" . number_format((float)$pub['Precio'], 2, ',', '.') . " a tu saldo.";
+        if (PAYMENTS_ENABLED) {
+            $pdo->prepare("UPDATE Usuarios SET Saldo = Saldo + ? WHERE ID_usuario = ?")
+                ->execute([(float)$pub['Precio'], (int)$reserva['ID_usuario']]);
+            $mensaje = $motivo . " Viaje: " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] .
+                ". Se reembolsaron $" . number_format((float)$pub['Precio'], 2, ',', '.') . " a tu saldo.";
+            $reembolsos++;
+        } else {
+            $mensaje = $motivo . " Viaje: " . $pub['CiudadOrigen'] . " a " . $pub['CiudadDestino'] . ".";
+        }
         $pdo->prepare("INSERT INTO Notificaciones (ID_usuario, Mensaje) VALUES (?, ?)")
             ->execute([(int)$reserva['ID_usuario'], $mensaje]);
-        $reembolsos++;
     }
 
     $pdo->prepare("

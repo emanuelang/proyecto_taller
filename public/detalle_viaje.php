@@ -5,9 +5,12 @@ require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/security.php';
 require_once __DIR__ . '/../core/session_guard.php';
 
-if (isset($_SESSION['user_id'])) {
-    require_active_session($pdo);
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ' . BASE_URL . 'login.php');
+    exit;
 }
+
+require_active_session($pdo);
 
 if (!isset($_GET['id'])) {
     die('Viaje no especificado.');
@@ -61,18 +64,20 @@ if (!$viaje) {
 $asientos_disponibles = (int)$viaje['asientos'] - (int)$viaje['ocupados'];
 $asientos_disponibles = max(0, $asientos_disponibles);
 
-$ya_reservado = false;
-if (isset($_SESSION['user_id'])) {
-    $stmt_ya = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM Reservas r
-        JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
-        JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
-        WHERE r.ID_publicacion = ? AND pas.ID_usuario = ? AND r.Estado = 'Completada'
-    ");
-    $stmt_ya->execute([$viaje_id, $_SESSION['user_id']]);
-    $ya_reservado = (int)$stmt_ya->fetchColumn() > 0;
-}
+$stmt_ya = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM Reservas r
+    JOIN PasajerosReservas pr ON r.ID_reserva = pr.ID_reserva
+    JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
+    WHERE r.ID_publicacion = ? AND pas.ID_usuario = ? AND r.Estado = 'Completada'
+");
+$stmt_ya->execute([$viaje_id, $_SESSION['user_id']]);
+$ya_reservado = (int)$stmt_ya->fetchColumn() > 0;
+
+$es_dueno_viaje = !empty($_SESSION['is_conductor'])
+    && isset($_SESSION['conductor_id'])
+    && (int)$_SESSION['conductor_id'] === (int)$viaje['conductor_id'];
+$puede_ver_sensible = $ya_reservado;
 
 $promedio = $viaje['promedio_calif']
     ? number_format(floor((float)$viaje['promedio_calif'] * 10) / 10, 1, ',', '.')
@@ -116,10 +121,15 @@ require_once __DIR__ . '/header.php';
                 </div>
             </div>
 
-            <?php if (!empty($viaje['calle_salida'])): ?>
+            <?php if (!empty($viaje['calle_salida']) && $puede_ver_sensible): ?>
                 <div class="info-tile" style="margin-bottom:18px;">
                     <span>Punto de encuentro</span>
                     <strong><?= htmlspecialchars($viaje['calle_salida']) ?></strong>
+                </div>
+            <?php elseif (!empty($viaje['calle_salida'])): ?>
+                <div class="info-tile" style="margin-bottom:18px;">
+                    <span>Punto de encuentro</span>
+                    <strong class="text-muted">Disponible despues de confirmar la reserva</strong>
                 </div>
             <?php endif; ?>
 
@@ -198,25 +208,25 @@ require_once __DIR__ . '/header.php';
                         </div>
                     </div>
 
-                    <?php if (!empty($viaje['vehiculo_foto'])): ?>
+                    <?php if (!empty($viaje['vehiculo_foto']) && $puede_ver_sensible): ?>
                         <img src="<?= htmlspecialchars($viaje['vehiculo_foto']) ?>" class="vehicle-photo" alt="Foto del vehiculo">
                     <?php else: ?>
-                        <div class="vehicle-photo" style="display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-weight:800;">Auto</div>
+                        <div class="vehicle-photo" style="display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-weight:800;">
+                            <?= $puede_ver_sensible ? 'Auto' : 'Foto protegida' ?>
+                        </div>
                     <?php endif; ?>
                 </div>
 
                 <div class="plate">
                     <span class="text-muted" style="font-weight:800; text-transform:uppercase;">Matricula</span>
-                    <strong><?= htmlspecialchars($viaje['patente']) ?></strong>
+                    <strong><?= $puede_ver_sensible ? htmlspecialchars($viaje['patente']) : 'Disponible al reservar' ?></strong>
                 </div>
             </section>
         </aside>
     </div>
 
     <div class="reservation-status">
-        <?php if (!isset($_SESSION['user_id'])): ?>
-            <a href="<?= BASE_URL ?>login.php" class="btn">Inicia sesion para reservar</a>
-        <?php elseif ($ya_reservado): ?>
+        <?php if ($ya_reservado): ?>
             <div class="detail-box" style="background:#f0fdf4; border-color:#bbf7d0; color:#166534;">
                 <h3 style="margin:0 0 8px; color:#166534;">Asiento confirmado</h3>
                 <p style="margin:0;">Ya formas parte de este viaje. Revisá tus reservas para ver más detalles.</p>
@@ -225,12 +235,12 @@ require_once __DIR__ . '/header.php';
             <button disabled>Viaje no disponible</button>
         <?php elseif ($asientos_disponibles <= 0): ?>
             <button disabled>Viaje agotado</button>
-        <?php elseif (!empty($_SESSION['is_conductor']) && isset($_SESSION['conductor_id']) && (int)$_SESSION['conductor_id'] === (int)$viaje['conductor_id']): ?>
+        <?php elseif ($es_dueno_viaje): ?>
             <div class="detail-box" style="border-style:dashed;">
                 <strong>Este viaje fue publicado por vos.</strong>
             </div>
         <?php else: ?>
-            <form method="POST" action="<?= BASE_URL ?>reservar_viaje.php" style="padding:0; border:0; box-shadow:none;">
+            <form method="POST" action="<?= BASE_URL ?>pre_reserva.php" style="padding:0; border:0; box-shadow:none;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" value="<?= (int)$viaje['id'] ?>">
                 <button type="submit" class="btn success-bg" style="min-width:260px;">Continuar reserva</button>

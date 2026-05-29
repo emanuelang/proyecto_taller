@@ -22,10 +22,12 @@ require_once __DIR__ . '/header.php';
             <span class="brand-icon" style="background:#f4efff; color:#7c3aed;">🚗</span>
             <strong>Publicar viaje</strong>
         </div>
-        <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
-            <span class="brand-icon" style="background:#fff7ed; color:#f59e0b;">✓</span>
-            <strong>Pagos</strong>
-        </div>
+        <?php if (PAYMENTS_ENABLED): ?>
+            <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
+                <span class="brand-icon" style="background:#fff7ed; color:#f59e0b;">✓</span>
+                <strong>Pagos</strong>
+            </div>
+        <?php endif; ?>
         <div class="card" style="margin:0; display:flex; align-items:center; gap:14px; box-shadow:none;">
             <span class="brand-icon" style="background:#fff1f2; color:#e11d48;">◇</span>
             <strong>Seguridad</strong>
@@ -45,7 +47,7 @@ require_once __DIR__ . '/header.php';
 
     <details class="card">
         <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Cómo reservar un viaje?</summary>
-        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Buscá por ciudad de salida y llegada, entrá al detalle del viaje, revisá conductor, vehículo, precio y asientos disponibles. Si todo está bien, confirmá la reserva y seguí el proceso de pago.</p>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Buscá por ciudad de salida y llegada, entrá al detalle del viaje y confirmá la reserva. Los datos sensibles del punto de encuentro y vehículo se muestran recién después de reservar.</p>
     </details>
 
     <details class="card">
@@ -55,7 +57,7 @@ require_once __DIR__ . '/header.php';
 
     <details class="card">
         <summary style="cursor:pointer; font-size:20px; font-weight:800;">¿Qué pasa si se cancela un viaje?</summary>
-        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Si el conductor o administración cancela un viaje, las reservas activas se cancelan y el importe se devuelve al saldo de la billetera del pasajero cuando corresponde.</p>
+        <p class="text-muted" style="line-height:1.7; margin-bottom:0;">Si el conductor o administración cancela un viaje, las reservas activas se cancelan y los pasajeros reciben una notificación.</p>
     </details>
 
     <div class="card" style="text-align:center; background:#e7f0ff;">

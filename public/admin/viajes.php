@@ -7,89 +7,141 @@ require_once __DIR__ . '/../../core/trips.php';
 
 sync_finished_trips($pdo);
 
-// Procesar eliminación de publicación (viaje)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['viaje_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'], $_POST['viaje_id'])) {
     require_csrf();
     $viaje_target = (int)$_POST['viaje_id'];
-    $accion = $_POST['accion'];
-    
-    if ($accion === 'eliminar_viaje') {
+
+    if ($_POST['accion'] === 'eliminar_viaje') {
         $stmt_del = $pdo->prepare("DELETE FROM Publicaciones WHERE ID_publicacion = ?");
         $stmt_del->execute([$viaje_target]);
         $msg_exito = "Viaje eliminado permanentemente del sistema.";
     }
 }
 
-// Paginación
-$pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-if ($pagina < 1) $pagina = 1;
+$tipo_viajes = ($_GET['tipo'] ?? 'activos') === 'finalizados' ? 'finalizados' : 'activos';
+$estado_filtro = $tipo_viajes === 'finalizados' ? 'Finalizada' : 'Activa';
+
+$pagina = max(1, (int)($_GET['pagina'] ?? 1));
 $limite = 10;
 $offset = ($pagina - 1) * $limite;
 
-$total_registros = $pdo->query("SELECT COUNT(*) FROM Publicaciones")->fetchColumn();
-$total_paginas = ceil($total_registros / $limite);
+$stmt_count = $pdo->prepare("SELECT COUNT(*) FROM Publicaciones WHERE Estado = ?");
+$stmt_count->execute([$estado_filtro]);
+$total_registros = (int)$stmt_count->fetchColumn();
+$total_paginas = (int)ceil($total_registros / $limite);
 
-// Traer todos los viajes
-$stmt = $pdo->query("
+$stmt_count_activos = $pdo->prepare("SELECT COUNT(*) FROM Publicaciones WHERE Estado = 'Activa'");
+$stmt_count_activos->execute();
+$total_activos = (int)$stmt_count_activos->fetchColumn();
+
+$stmt_count_finalizados = $pdo->prepare("SELECT COUNT(*) FROM Publicaciones WHERE Estado = 'Finalizada'");
+$stmt_count_finalizados->execute();
+$total_finalizados = (int)$stmt_count_finalizados->fetchColumn();
+
+$stmt = $pdo->prepare("
     SELECT p.ID_publicacion AS id, p.CiudadOrigen, p.CiudadDestino, p.HoraSalida, p.Precio, p.Estado,
-           u.Nombre, u.Apellido, v.Marca, v.Modelo, v.Patente
+           u.Nombre, u.Apellido, v.Marca, v.Modelo, v.Patente,
+           (SELECT COUNT(*) FROM Reportes rep WHERE rep.ID_publicacion = p.ID_publicacion) AS reportes_conductor,
+           (
+               SELECT COUNT(*)
+               FROM ReportesPasajeros rp
+               JOIN Reservas rr ON rp.ID_reserva = rr.ID_reserva
+               WHERE rr.ID_publicacion = p.ID_publicacion
+           ) AS reportes_pasajeros
     FROM Publicaciones p
     LEFT JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
     LEFT JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
     LEFT JOIN Usuarios u ON c.ID_usuario = u.ID_usuario
     LEFT JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
+    WHERE p.Estado = ?
     ORDER BY p.HoraSalida DESC
     LIMIT $limite OFFSET $offset
 ");
+$stmt->execute([$estado_filtro]);
 $viajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 require_once __DIR__ . '/../header.php';
+include __DIR__ . '/_nav.php';
 ?>
 
-<?php include __DIR__ . '/_nav.php'; ?>
-
 <div style="padding: 20px;">
-    <h2>Gestión de Viajes (Publicaciones)</h2>
-    <p>Lista de todos los viajes del sistema. Puedes eliminar aquellos que infrinjan las reglas de la plataforma.</p>
-    
+    <h2>Gestion de viajes</h2>
+    <p>Filtra los viajes activos y finalizados. En finalizados podes revisar si tuvieron reportes asociados.</p>
+
     <?php if (isset($msg_exito)): ?>
         <p style="color: green; font-weight: bold; background: #e8f5e9; padding: 10px; border: 1px solid #c8e6c9;"><?= htmlspecialchars($msg_exito) ?></p>
     <?php endif; ?>
 
+    <div class="tabs" style="max-width:520px; margin:20px 0 24px;">
+        <a href="viajes.php?tipo=activos" class="tab <?= $tipo_viajes === 'activos' ? 'active' : '' ?>">
+            Activos <span class="badge badge-orange" style="margin-left:8px;"><?= $total_activos ?></span>
+        </a>
+        <a href="viajes.php?tipo=finalizados" class="tab <?= $tipo_viajes === 'finalizados' ? 'active' : '' ?>">
+            Finalizados <span class="badge badge-orange" style="margin-left:8px;"><?= $total_finalizados ?></span>
+        </a>
+    </div>
+
     <?php if (empty($viajes)): ?>
-        <p>No hay viajes publicados en el sistema.</p>
+        <p>No hay viajes <?= $tipo_viajes === 'finalizados' ? 'finalizados' : 'activos' ?> en el sistema.</p>
     <?php else: ?>
         <table class="table-admin">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Ruta y Fecha</th>
+                    <th>Ruta y fecha</th>
                     <th>Precio</th>
                     <th>Estado</th>
                     <th>Conductor</th>
-                    <th>Vehículo</th>
+                    <th>Vehiculo</th>
+                    <?php if ($tipo_viajes === 'finalizados'): ?>
+                        <th>Reportes</th>
+                    <?php endif; ?>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($viajes as $v): ?>
+                <?php
+                    $reportes_conductor = (int)$v['reportes_conductor'];
+                    $reportes_pasajeros = (int)$v['reportes_pasajeros'];
+                    $total_reportes_viaje = $reportes_conductor + $reportes_pasajeros;
+                ?>
                 <tr>
-                    <td><?= $v['id'] ?></td>
+                    <td><?= (int)$v['id'] ?></td>
                     <td>
-                        <strong><?= htmlspecialchars($v['CiudadOrigen']) ?> &rarr; <?= htmlspecialchars($v['CiudadDestino']) ?></strong><br>
+                        <strong><?= htmlspecialchars($v['CiudadOrigen']) ?> -> <?= htmlspecialchars($v['CiudadDestino']) ?></strong><br>
                         <?= date('d/m/Y H:i', strtotime($v['HoraSalida'])) ?>
                     </td>
-                    <td>$<?= number_format($v['Precio'], 2) ?></td>
+                    <td>$<?= number_format((float)$v['Precio'], 2, ',', '.') ?></td>
                     <td><?= htmlspecialchars($v['Estado']) ?></td>
-                    <td><?= htmlspecialchars(($v['Nombre'] ?? '---') . ' ' . ($v['Apellido'] ?? '')) ?></td>
+                    <td><?= htmlspecialchars(trim(($v['Nombre'] ?? '---') . ' ' . ($v['Apellido'] ?? ''))) ?></td>
                     <td>
                         <?= htmlspecialchars($v['Marca'] ?? '???') ?> <?= htmlspecialchars($v['Modelo'] ?? '') ?><br>
                         <em><?= htmlspecialchars($v['Patente'] ?? 'Sin patente') ?></em>
                     </td>
+                    <?php if ($tipo_viajes === 'finalizados'): ?>
+                        <td>
+                            <?php if ($total_reportes_viaje > 0): ?>
+                                <span class="badge badge-orange"><?= $total_reportes_viaje ?> reporte(s)</span>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                                    <?php if ($reportes_conductor > 0): ?>
+                                        <a href="reportes.php?tipo=conductores&publicacion_id=<?= (int)$v['id'] ?>" class="btn btn-outline" style="padding:8px 12px;">Conductores</a>
+                                    <?php endif; ?>
+                                    <?php if ($reportes_pasajeros > 0): ?>
+                                        <a href="reportes.php?tipo=pasajeros&publicacion_id=<?= (int)$v['id'] ?>" class="btn btn-outline" style="padding:8px 12px;">Pasajeros</a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <span class="text-muted">Sin reportes</span>
+                            <?php endif; ?>
+                        </td>
+                    <?php endif; ?>
                     <td style="text-align: center;">
                         <form method="post" style="display:inline-block;">
-                            <input type="hidden" name="viaje_id" value="<?= $v['id'] ?>">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="viaje_id" value="<?= (int)$v['id'] ?>">
                             <input type="hidden" name="accion" value="eliminar_viaje">
-                            <button type="submit" class="btn-rechazar" onclick="return confirm('¿Estás seguro de ELIMINAR este viaje permanentemente? Todas las reservas asociadas se cancelarán/borrarán.');">Eliminar Viaje</button>
+                            <button type="submit" class="btn-rechazar" onclick="return confirm('Estas seguro de eliminar este viaje permanentemente?');">Eliminar viaje</button>
                         </form>
                     </td>
                 </tr>
@@ -98,18 +150,18 @@ require_once __DIR__ . '/../header.php';
         </table>
     <?php endif; ?>
 
-    <?php if (isset($total_paginas) && $total_paginas > 1): ?>
+    <?php if ($total_paginas > 1): ?>
     <div class="pagination">
         <?php if ($pagina > 1): ?>
-            <a href="?pagina=<?= $pagina - 1 ?>">&laquo; Anterior</a>
+            <a href="?tipo=<?= $tipo_viajes ?>&pagina=<?= $pagina - 1 ?>">&laquo; Anterior</a>
         <?php endif; ?>
 
         <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-            <a href="?pagina=<?= $i ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+            <a href="?tipo=<?= $tipo_viajes ?>&pagina=<?= $i ?>" class="<?= $i === $pagina ? 'active' : '' ?>"><?= $i ?></a>
         <?php endfor; ?>
 
         <?php if ($pagina < $total_paginas): ?>
-            <a href="?pagina=<?= $pagina + 1 ?>">Siguiente &raquo;</a>
+            <a href="?tipo=<?= $tipo_viajes ?>&pagina=<?= $pagina + 1 ?>">Siguiente &raquo;</a>
         <?php endif; ?>
     </div>
     <?php endif; ?>

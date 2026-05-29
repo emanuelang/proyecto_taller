@@ -13,6 +13,11 @@ if (!isset($_SESSION['user_id'])) {
 
 require_active_session($pdo);
 
+if (!PAYMENTS_ENABLED) {
+    header("Location: " . BASE_URL . "perfil.php");
+    exit;
+}
+
 $error = '';
 $sandbox_url = '';
 
