@@ -4,6 +4,11 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 
+if (!PAYMENTS_ENABLED) {
+    header('Location: ' . BASE_URL . 'admin/dashboard.php');
+    exit;
+}
+
 // Filtros
 $estado_filtro = $_GET['estado'] ?? '';
 $search = $_GET['search'] ?? '';

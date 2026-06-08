@@ -3,8 +3,14 @@ session_start();
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../core/trips.php';
+require_once __DIR__ . '/../core/session_guard.php';
 
 sync_finished_trips($pdo);
+if (isset($_SESSION['user_id'])) {
+    require_active_session($pdo);
+}
+
+$usuario_logueado = isset($_SESSION['user_id']);
 
 /* ============================
    TRAER CIUDADES...
@@ -54,7 +60,13 @@ $offset = ($pagina_actual - 1) * $limite;
 /* ============================
    CONDICIONES BASE
 ============================ */
-$where_sql = "WHERE p.HoraSalida >= NOW() AND p.Estado = 'Activa'";
+$where_sql = "WHERE p.HoraSalida >= NOW()
+    AND p.Estado = 'Activa'
+    AND c.Estado = 'Aceptada'
+    AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+    AND u.estado = 'activo'
+    AND (u.BaneadoHasta IS NULL OR u.BaneadoHasta <= NOW())
+    AND v.Estado = 'Aceptado'";
 $params = [];
 
 if ($origen !== '') {
@@ -192,13 +204,13 @@ require_once __DIR__ . '/header.php';
         </div>
 
         <select name="orden">
-            <option value="">Ordenar</option>
-            <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Precio más barato</option>
-            <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Precio más caro</option>
-            <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Más nuevo</option>
-            <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Más viejo</option>
-            <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Más asientos disponibles</option>
-            <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Menos asientos disponibles</option>
+            <option value="">Ordenar por</option>
+            <option value="precio_asc" <?= ($orden=='precio_asc')?'selected':'' ?>>Tarifa: menor a mayor</option>
+            <option value="precio_desc" <?= ($orden=='precio_desc')?'selected':'' ?>>Tarifa: mayor a menor</option>
+            <option value="fecha_asc" <?= ($orden=='fecha_asc')?'selected':'' ?>>Salida: fechas mas proximas</option>
+            <option value="fecha_desc" <?= ($orden=='fecha_desc')?'selected':'' ?>>Salida: fechas mas lejanas</option>
+            <option value="asientos_desc" <?= ($orden=='asientos_desc')?'selected':'' ?>>Disponibilidad: mayor a menor</option>
+            <option value="asientos_asc" <?= ($orden=='asientos_asc')?'selected':'' ?>>Disponibilidad: menor a mayor</option>
         </select>
 
         <button type="submit">Buscar</button>
@@ -243,22 +255,33 @@ require_once __DIR__ . '/header.php';
             </div>
 
             <div class="trip-footer">
-                <div class="driver-chip">
-                    <?php if (!empty($v['conductor_foto'])): ?>
-                        <img src="<?= htmlspecialchars($v['conductor_foto']) ?>" class="mini-avatar-img" alt="Foto de <?= htmlspecialchars($v['conductor_nombre']) ?>">
-                    <?php else: ?>
-                        <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($v['conductor_nombre'], 0, 1))) ?></span>
-                    <?php endif; ?>
-                    <div>
-                        <strong><?= htmlspecialchars($v['conductor_nombre']) ?></strong>
-                        <?php if (!empty($v['promedio_calif'])): ?>
-                            <div class="driver-rating">★ <?= number_format(floor($v['promedio_calif'] * 10) / 10, 1, ',', '.') ?> <span>(<?= (int)$v['total_calificaciones'] ?>)</span></div>
+                <?php if ($usuario_logueado): ?>
+                    <div class="driver-chip">
+                        <?php if (!empty($v['conductor_foto'])): ?>
+                            <img src="<?= htmlspecialchars($v['conductor_foto']) ?>" class="mini-avatar-img" alt="Foto de <?= htmlspecialchars($v['conductor_nombre']) ?>">
                         <?php else: ?>
-                            <div class="driver-rating muted">Nuevo</div>
+                            <span class="mini-avatar"><?= htmlspecialchars(strtoupper(substr($v['conductor_nombre'], 0, 1))) ?></span>
                         <?php endif; ?>
+                        <div>
+                            <strong><?= htmlspecialchars($v['conductor_nombre']) ?></strong>
+                            <?php if (!empty($v['promedio_calif'])): ?>
+                                <div class="driver-rating">★ <?= number_format(floor($v['promedio_calif'] * 10) / 10, 1, ',', '.') ?> <span>(<?= (int)$v['total_calificaciones'] ?>)</span></div>
+                            <?php else: ?>
+                                <div class="driver-rating muted">Nuevo</div>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </div>
-                <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline">Ver Detalle</a>
+                    <a href="<?= BASE_URL ?>detalle_viaje.php?id=<?= $v['id'] ?>" class="btn btn-outline">Ver Detalle</a>
+                <?php else: ?>
+                    <div class="driver-chip">
+                        <span class="mini-avatar">?</span>
+                        <div>
+                            <strong>Conductor protegido</strong>
+                            <div class="driver-rating muted">Registrate para ver más</div>
+                        </div>
+                    </div>
+                    <a href="<?= BASE_URL ?>login.php" class="btn btn-outline">Iniciar sesión</a>
+                <?php endif; ?>
             </div>
         </div>
     <?php endforeach; ?>

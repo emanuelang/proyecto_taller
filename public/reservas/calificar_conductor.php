@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/../../config/database.php";
+require_once __DIR__ . "/../../config/app.php";
 require_once __DIR__ . "/../../core/security.php";
 
 header('Content-Type: application/json');
@@ -40,10 +41,12 @@ $usuario_id = $_SESSION['user_id'];
 
 try {
     $stmt = $pdo->prepare("
-        SELECT pr.ID_pasajero, cp.ID_conductor, c.ID_usuario AS conductor_usuario_id
+        SELECT pr.ID_pasajero, r.ID_publicacion, p.HoraSalida, p.CiudadOrigen, p.CiudadDestino,
+               cp.ID_conductor, c.ID_usuario AS conductor_usuario_id
         FROM PasajerosReservas pr
         JOIN Pasajeros pas ON pr.ID_pasajero = pas.ID_pasajero
         JOIN Reservas r ON pr.ID_reserva = r.ID_reserva
+        JOIN Publicaciones p ON r.ID_publicacion = p.ID_publicacion
         JOIN ConductorPublicacion cp ON r.ID_publicacion = cp.ID_publicacion
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
         WHERE r.ID_reserva = ? AND pas.ID_usuario = ?
@@ -73,6 +76,28 @@ try {
         VALUES (?, ?, ?, ?)
     ");
     $stmt_insert->execute([$puntuacion, $res['ID_pasajero'], $res['ID_conductor'], $reserva_id]);
+
+    $stmt_confirm = $pdo->prepare("
+        INSERT INTO ConfirmacionesViaje (ID_reserva, ID_usuario, ID_publicacion, ConfirmoLlegada)
+        VALUES (?, ?, ?, 1)
+        ON DUPLICATE KEY UPDATE
+            ConfirmoLlegada = VALUES(ConfirmoLlegada),
+            FechaConfirmacion = CURRENT_TIMESTAMP
+    ");
+    $stmt_confirm->execute([$reserva_id, (int)$usuario_id, (int)$res['ID_publicacion']]);
+
+    $fecha = date('d/m/Y H:i', strtotime($res['HoraSalida']));
+    $mensaje = "Tu llegada al viaje de {$res['CiudadOrigen']} a {$res['CiudadDestino']} del {$fecha} ya fue confirmada y la calificacion ya fue enviada.";
+    $confirmar_url = BASE_URL . 'reservas/confirmar_llegada.php?reserva_id=' . $reserva_id;
+    $calificar_url = BASE_URL . 'reservas/calificar.php?reserva_id=' . $reserva_id;
+    $report_url = BASE_URL . 'reportar.php?conductor_id=' . (int)$res['ID_conductor'] . '&publicacion_id=' . (int)$res['ID_publicacion'];
+    $stmt_notif = $pdo->prepare("
+        UPDATE Notificaciones
+        SET Mensaje = ?, AccionURL = NULL, AccionLabel = NULL, AccionSecundariaURL = ?, AccionSecundariaLabel = ?, Leida = FALSE, Fecha = CURRENT_TIMESTAMP
+        WHERE ID_usuario = ?
+          AND AccionURL IN (?, ?)
+    ");
+    $stmt_notif->execute([$mensaje, $report_url, 'Reportar conductor', (int)$usuario_id, $confirmar_url, $calificar_url]);
 
     echo json_encode(['success' => true, 'message' => 'Calificacion guardada exitosamente']);
 } catch (Exception $e) {

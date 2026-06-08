@@ -3,10 +3,18 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
+require_once __DIR__ . '/../../core/session_guard.php';
 require_once __DIR__ . '/../../core/mercadopago.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
+    exit;
+}
+
+require_active_session($pdo);
+
+if (!PAYMENTS_ENABLED) {
+    header("Location: " . BASE_URL . "reservas/mis_reservas.php");
     exit;
 }
 
@@ -24,26 +32,54 @@ if (!$pending || (time() - (int)$pending['created_at']) > 1800 || (int)$pending[
 
 $viaje_id = (int)$pending['viaje_id'];
 $usuario_id = (int)$pending['user_id'];
+$tipo_pasaje = ($pending['tipo_pasaje'] ?? 'propio') === 'tercero' ? 'tercero' : 'propio';
+$pasajero_data = $pending['pasajero'] ?? null;
+
+if (!is_array($pasajero_data)) {
+    $stmt_user_pending = $pdo->prepare("SELECT Nombre, Apellido, DNI, Correo, Telefono FROM Usuarios WHERE ID_usuario = ?");
+    $stmt_user_pending->execute([$usuario_id]);
+    $user_pending = $stmt_user_pending->fetch(PDO::FETCH_ASSOC);
+    if (!$user_pending) {
+        safe_error('No se pudo cargar el responsable de la reserva.');
+    }
+
+    $pasajero_data = [
+        'nombre' => $user_pending['Nombre'],
+        'apellido' => $user_pending['Apellido'],
+        'dni' => $user_pending['DNI'],
+        'telefono' => $user_pending['Telefono'],
+        'correo' => $user_pending['Correo'],
+    ];
+}
+
 $codigo_acceso = "CA-" . strtoupper(substr(bin2hex(random_bytes(8)), 0, 8));
 
 try {
     $pdo->beginTransaction();
 
     $stmt_viaje = $pdo->prepare("
-        SELECT p.ID_publicacion, p.Precio, p.Estado, c.ID_usuario AS conductor_usuario_id,
+        SELECT p.ID_publicacion, p.Precio, p.Estado, p.HoraSalida, c.ID_usuario AS conductor_usuario_id,
                v.CantidadAsientos AS total,
                (SELECT COUNT(*) FROM Reservas r WHERE r.ID_publicacion = p.ID_publicacion AND r.Estado = 'Completada') AS ocupados
         FROM Publicaciones p
         JOIN ConductorPublicacion cp ON p.ID_publicacion = cp.ID_publicacion
         JOIN Conductores c ON cp.ID_conductor = c.ID_conductor
+        JOIN Usuarios u_cond ON c.ID_usuario = u_cond.ID_usuario
         JOIN Vehiculos v ON p.ID_vehiculo = v.ID_vehiculo
         WHERE p.ID_publicacion = ?
+          AND p.Estado = 'Activa'
+          AND p.HoraSalida >= NOW()
+          AND c.Estado = 'Aceptada'
+          AND (c.BaneadoHasta IS NULL OR c.BaneadoHasta <= NOW())
+          AND u_cond.estado = 'activo'
+          AND (u_cond.BaneadoHasta IS NULL OR u_cond.BaneadoHasta <= NOW())
+          AND v.Estado = 'Aceptado'
         FOR UPDATE
     ");
     $stmt_viaje->execute([$viaje_id]);
     $viaje = $stmt_viaje->fetch(PDO::FETCH_ASSOC);
 
-    if (!$viaje || $viaje['Estado'] !== 'Activa') {
+    if (!$viaje) {
         throw new Exception('El viaje ya no esta disponible.');
     }
 
@@ -84,8 +120,23 @@ try {
         exit;
     }
 
-    $stmt_res = $pdo->prepare("INSERT INTO Reservas (ID_publicacion, Estado, FechaReserva, CodigoAcceso) VALUES (?, 'Completada', NOW(), ?)");
-    $stmt_res->execute([$viaje_id, $codigo_acceso]);
+    $stmt_res = $pdo->prepare("
+        INSERT INTO Reservas
+            (ID_publicacion, Estado, FechaReserva, CodigoAcceso, TipoPasaje, PasajeroNombre, PasajeroApellido, PasajeroDNI, PasajeroTelefono, PasajeroCorreo, ID_usuario_responsable)
+        VALUES
+            (?, 'Completada', NOW(), ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt_res->execute([
+        $viaje_id,
+        $codigo_acceso,
+        $tipo_pasaje,
+        $pasajero_data['nombre'] ?? '',
+        $pasajero_data['apellido'] ?? '',
+        $pasajero_data['dni'] ?? '',
+        $pasajero_data['telefono'] ?? '',
+        !empty($pasajero_data['correo']) ? $pasajero_data['correo'] : null,
+        $usuario_id
+    ]);
     $reserva_id = $pdo->lastInsertId();
 
     $pdo->prepare("INSERT INTO PasajerosReservas (ID_pasajero, ID_reserva) VALUES (?, ?)")->execute([$pasajero_id, $reserva_id]);

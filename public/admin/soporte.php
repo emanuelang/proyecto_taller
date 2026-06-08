@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/app.php';
 require_once __DIR__ . '/../../core/security.php';
 
-// Procesar resolución de tickets
+// Procesar resoluciÃ³n de tickets
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_POST['soporte_id'])) {
     require_csrf();
     $soporte_id = (int)$_POST['soporte_id'];
@@ -20,20 +20,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && isset($_
     }
 }
 
-// Filtro y Paginación
+// Filtro y PaginaciÃ³n
 $estado_filtro = $_GET['estado'] ?? 'Pendiente'; // Mostrar pendientes por defecto
+if (!in_array($estado_filtro, ['Pendiente', 'Resuelto'], true)) {
+    $estado_filtro = 'Pendiente';
+}
 
 $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 if ($pagina < 1) $pagina = 1;
 $limite = 10;
 $offset = ($pagina - 1) * $limite;
 
-$where_sql = "";
-$params = [];
-if ($estado_filtro !== 'Todos') {
-    $where_sql = "WHERE s.Estado = ?";
-    $params[] = $estado_filtro;
-}
+$where_sql = "WHERE s.Estado = ?";
+$params = [$estado_filtro];
+
+$stmt_totales = $pdo->query("
+    SELECT
+        SUM(CASE WHEN Estado = 'Pendiente' THEN 1 ELSE 0 END) AS pendientes,
+        SUM(CASE WHEN Estado = 'Resuelto' THEN 1 ELSE 0 END) AS resueltos
+    FROM Soporte
+");
+$totales_soporte = $stmt_totales->fetch(PDO::FETCH_ASSOC) ?: ['pendientes' => 0, 'resueltos' => 0];
+$total_pendientes = (int)$totales_soporte['pendientes'];
+$total_resueltos = (int)$totales_soporte['resueltos'];
 
 $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM Soporte s $where_sql");
 $stmt_count->execute($params);
@@ -63,21 +72,23 @@ require_once __DIR__ . '/../header.php';
     <h2>Tickets de Soporte al Usuario</h2>
     <p>Revisa y marca como resueltos los problemas reportados por los usuarios en la web.</p>
 
-    <form method="GET" style="margin-bottom: 20px; display:flex; gap: 10px; max-width: 400px;">
-        <select name="estado" style="flex:1; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-            <option value="Pendiente" <?= $estado_filtro === 'Pendiente' ? 'selected' : '' ?>>Pendientes de resolución</option>
-            <option value="Resuelto" <?= $estado_filtro === 'Resuelto' ? 'selected' : '' ?>>Tickets Resueltos</option>
-            <option value="Todos" <?= $estado_filtro === 'Todos' ? 'selected' : '' ?>>Ver Todos</option>
-        </select>
-        <button type="submit" style="padding: 10px 20px; background-color: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;">Filtrar</button>
-    </form>
+    <div class="tabs" style="max-width:620px; margin:20px 0 24px;">
+        <a href="soporte.php?estado=Pendiente#soporte-listado" class="tab <?= $estado_filtro === 'Pendiente' ? 'active' : '' ?>">
+            Faltan resolver <span class="badge badge-orange" style="margin-left:8px;"><?= $total_pendientes ?></span>
+        </a>
+        <a href="soporte.php?estado=Resuelto#soporte-listado" class="tab <?= $estado_filtro === 'Resuelto' ? 'active' : '' ?>">
+            Resueltos <span class="badge badge-orange" style="margin-left:8px;"><?= $total_resueltos ?></span>
+        </a>
+    </div>
 
     <?php if (isset($msg_exito)): ?>
         <p style="color: green; font-weight: bold; background: #e8f5e9; padding: 10px; border: 1px solid #c8e6c9;"><?= htmlspecialchars($msg_exito) ?></p>
     <?php endif; ?>
 
+    <h3 id="soporte-listado"><?= $estado_filtro === 'Pendiente' ? 'Tickets pendientes' : 'Tickets resueltos' ?></h3>
+
     <?php if (empty($tickets)): ?>
-        <p>No hay tickets en esta categoría.</p>
+        <p>No hay tickets en esta categorÃ­a.</p>
     <?php else: ?>
         <table class="table-admin">
             <thead>
@@ -110,6 +121,7 @@ require_once __DIR__ . '/../header.php';
                     <td style="text-align: center;">
                         <?php if ($t['Estado'] === 'Pendiente'): ?>
                         <form method="post" style="margin-bottom: 5px;">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="soporte_id" value="<?= $t['id'] ?>">
                             <input type="hidden" name="accion" value="resolver">
                             <button type="submit" class="btn-aprobar" style="width: 100%;">Marcar Resuelto</button>
@@ -117,9 +129,10 @@ require_once __DIR__ . '/../header.php';
                         <?php endif; ?>
                         
                         <form method="post">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="soporte_id" value="<?= $t['id'] ?>">
                             <input type="hidden" name="accion" value="eliminar">
-                            <button type="submit" class="btn-rechazar" style="width: 100%;" onclick="return confirm('¿Seguro que deseas ELIMINAR este ticket permanentemente?');">Eliminar</button>
+                            <button type="submit" class="btn-rechazar" style="width: 100%;" onclick="return confirm('Â¿Seguro que deseas ELIMINAR este ticket permanentemente?');">Eliminar</button>
                         </form>
                     </td>
                 </tr>
@@ -130,15 +143,15 @@ require_once __DIR__ . '/../header.php';
         <?php if ($total_paginas > 1): ?>
         <div class="pagination">
             <?php if ($pagina > 1): ?>
-                <a href="?pagina=<?= $pagina - 1 ?>&estado=<?= urlencode($estado_filtro) ?>">&laquo; Anterior</a>
+                <a href="?pagina=<?= $pagina - 1 ?>&estado=<?= urlencode($estado_filtro) ?>#soporte-listado">&laquo; Anterior</a>
             <?php endif; ?>
 
             <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
-                <a href="?pagina=<?= $i ?>&estado=<?= urlencode($estado_filtro) ?>" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
+                <a href="?pagina=<?= $i ?>&estado=<?= urlencode($estado_filtro) ?>#soporte-listado" class="<?= $i == $pagina ? 'active' : '' ?>"><?= $i ?></a>
             <?php endfor; ?>
 
             <?php if ($pagina < $total_paginas): ?>
-                <a href="?pagina=<?= $pagina + 1 ?>&estado=<?= urlencode($estado_filtro) ?>">Siguiente &raquo;</a>
+                <a href="?pagina=<?= $pagina + 1 ?>&estado=<?= urlencode($estado_filtro) ?>#soporte-listado">Siguiente &raquo;</a>
             <?php endif; ?>
         </div>
         <?php endif; ?>

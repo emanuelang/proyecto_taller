@@ -15,25 +15,28 @@ try {
 }
 
 $admin_tabs = [
-    ['href' => 'dashboard.php', 'page' => 'dashboard.php', 'icon' => '▦', 'label' => 'Dashboard'],
-    ['href' => 'conductores.php', 'page' => 'conductores.php', 'icon' => '♙', 'label' => 'Conductores'],
-    ['href' => 'vehiculos.php', 'page' => 'vehiculos.php', 'icon' => '▰', 'label' => 'Vehículos'],
-    ['href' => 'usuarios.php', 'page' => 'usuarios.php', 'icon' => '♧', 'label' => 'Usuarios'],
-    ['href' => 'viajes.php', 'page' => 'viajes.php', 'icon' => '⌖', 'label' => 'Viajes'],
-    ['href' => 'reportes.php', 'page' => 'reportes.php', 'icon' => '▤', 'label' => 'Reportes'],
-    ['href' => 'soporte.php', 'page' => 'soporte.php', 'icon' => '☎', 'label' => 'Soporte'],
-    ['href' => 'pagos.php', 'page' => 'pagos.php', 'icon' => '$', 'label' => 'Pagos'],
+    ['href' => 'dashboard.php', 'page' => 'dashboard.php', 'icon' => '[]', 'label' => 'Dashboard'],
+    ['href' => 'conductores.php', 'page' => 'conductores.php', 'icon' => 'U', 'label' => 'Conductores'],
+    ['href' => 'vehiculos.php', 'page' => 'vehiculos.php', 'icon' => 'V', 'label' => 'Vehiculos'],
+    ['href' => 'usuarios.php', 'page' => 'usuarios.php', 'icon' => 'P', 'label' => 'Usuarios'],
+    ['href' => 'viajes.php', 'page' => 'viajes.php', 'icon' => 'O', 'label' => 'Viajes'],
+    ['href' => 'reportes.php', 'page' => 'reportes.php', 'icon' => '!', 'label' => 'Reportes'],
+    ['href' => 'soporte.php', 'page' => 'soporte.php', 'icon' => '?', 'label' => 'Soporte'],
 ];
+
+if (PAYMENTS_ENABLED) {
+    $admin_tabs[] = ['href' => 'pagos.php', 'page' => 'pagos.php', 'icon' => '$', 'label' => 'Pagos'];
+}
 ?>
 
 <div class="admin-shell">
     <div class="admin-page-head">
-        <span class="admin-pill">◇ ADMIN</span>
-        <h1 class="page-title">Panel de Administración</h1>
-        <p class="page-subtitle">Bienvenido, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Administrador') ?>. Tenés acceso completo al sistema.</p>
+        <span class="admin-pill">ADMIN</span>
+        <h1 class="page-title">Panel de Administracion</h1>
+        <p class="page-subtitle">Bienvenido, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Administrador') ?>. Tenes acceso completo al sistema.</p>
     </div>
 
-    <nav class="admin-tabs" aria-label="Navegación de administración">
+    <nav class="admin-tabs" aria-label="Navegacion de administracion">
         <?php foreach ($admin_tabs as $tab): ?>
             <?php $active = $current_page === $tab['page']; ?>
             <a href="<?= $tab['href'] ?>" class="admin-tab <?= $active ? 'active' : '' ?>">

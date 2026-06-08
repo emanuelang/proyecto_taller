@@ -2,6 +2,7 @@
 session_start();
 require_once __DIR__ . "/../../config/database.php";
 require_once __DIR__ . "/../../config/app.php";
+require_once __DIR__ . "/../../core/security.php";
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: " . BASE_URL . "login.php");
@@ -64,6 +65,20 @@ function getCompaneros($pdo, $publicacion_id, $mi_usuario_id) {
     <h1 class="page-title">Mis reservas</h1>
     <p class="page-subtitle">Consultá tus viajes finalizados y calificá conductores</p>
 
+    <?php if (!empty($_SESSION['mensaje_exito'])): ?>
+        <div class="card" style="padding:14px 18px; margin-bottom:18px; border-left:4px solid var(--success);">
+            <?= htmlspecialchars($_SESSION['mensaje_exito']) ?>
+        </div>
+        <?php unset($_SESSION['mensaje_exito']); ?>
+    <?php endif; ?>
+
+    <?php if (!empty($_SESSION['mensaje_error'])): ?>
+        <div class="card" style="padding:14px 18px; margin-bottom:18px; border-left:4px solid var(--danger); color:var(--danger);">
+            <?= htmlspecialchars($_SESSION['mensaje_error']) ?>
+        </div>
+        <?php unset($_SESSION['mensaje_error']); ?>
+    <?php endif; ?>
+
     <div class="tabs">
         <a href="<?= BASE_URL ?>reservas/mis_reservas.php" class="tab">Activas</a>
         <span class="tab active">Historial</span>
@@ -83,7 +98,21 @@ function getCompaneros($pdo, $publicacion_id, $mi_usuario_id) {
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <span class="badge badge-primary">Finalizado</span>
+                        <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;">
+                            <span class="badge badge-primary">Finalizado</span>
+                            <form method="POST" action="<?= BASE_URL ?>reservas/eliminar_historial.php">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="reserva_id" value="<?= (int)$r['reserva_id'] ?>">
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger"
+                                    style="width:38px; min-width:38px; height:38px; min-height:38px; padding:0; border-radius:14px; font-size:20px; line-height:1;"
+                                    aria-label="Quitar reserva del historial"
+                                    title="Quitar del historial"
+                                    onclick="return confirm('Quitar esta reserva del historial?');"
+                                >x</button>
+                            </form>
+                        </div>
                         <div class="trip-price" style="margin-top:12px;">$<?= number_format($r['precio'], 0, ',', '.') ?></div>
                     </div>
                 </div>
@@ -129,7 +158,7 @@ function getCompaneros($pdo, $publicacion_id, $mi_usuario_id) {
                         <?php endif; ?>
                     </div>
 
-                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $r['conductor_id'] ?>" class="btn btn-danger">Reportar</a>
+                    <a href="<?= BASE_URL ?>reportar.php?conductor_id=<?= $r['conductor_id'] ?>&publicacion_id=<?= $r['publicacion_id'] ?>" class="btn btn-danger">Reportar</a>
                 </div>
             </article>
         <?php endforeach; ?>
