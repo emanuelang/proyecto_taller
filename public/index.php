@@ -94,6 +94,44 @@ $sql_count = "
 $stmt_count = $pdo->prepare($sql_count);
 $stmt_count->execute($params);
 $total_viajes = $stmt_count->fetchColumn();
+
+$hay_busqueda = $origen !== '' || $destino !== '' || $orden !== '';
+if ($hay_busqueda) {
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS BusquedasViajes (
+                ID_busqueda INT AUTO_INCREMENT PRIMARY KEY,
+                ID_usuario INT NULL,
+                CiudadOrigen VARCHAR(100) NULL,
+                CiudadDestino VARCHAR(100) NULL,
+                Orden VARCHAR(50) NULL,
+                Resultados INT NOT NULL DEFAULT 0,
+                IP VARCHAR(45) NULL,
+                UserAgent VARCHAR(255) NULL,
+                Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $stmt_busqueda = $pdo->prepare("
+            INSERT INTO BusquedasViajes
+                (ID_usuario, CiudadOrigen, CiudadDestino, Orden, Resultados, IP, UserAgent)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt_busqueda->execute([
+            $_SESSION['user_id'] ?? null,
+            $origen !== '' ? $origen : null,
+            $destino !== '' ? $destino : null,
+            $orden !== '' ? $orden : null,
+            (int)$total_viajes,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null,
+        ]);
+    } catch (Exception $e) {
+        error_log('No se pudo registrar la busqueda de viajes: ' . $e->getMessage());
+    }
+}
+
 $total_paginas = ceil($total_viajes / $limite);
 
 if ($pagina_actual > $total_paginas && $total_paginas > 0) {

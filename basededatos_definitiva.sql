@@ -211,6 +211,19 @@ CREATE TABLE Soporte (
     FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE BusquedasViajes (
+    ID_busqueda INT AUTO_INCREMENT PRIMARY KEY,
+    ID_usuario INT NULL,
+    CiudadOrigen VARCHAR(100) NULL,
+    CiudadDestino VARCHAR(100) NULL,
+    Orden VARCHAR(50) NULL,
+    Resultados INT NOT NULL DEFAULT 0,
+    IP VARCHAR(45) NULL,
+    UserAgent VARCHAR(255) NULL,
+    Fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 4. Tablas Intermedias (Relaciones N:M)
 CREATE TABLE ConductorVehiculo (
     ID_conductor INT,

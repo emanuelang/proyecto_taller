@@ -36,7 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Validar firma de seguridad (para evitar importar un script de otra base de datos y romper todo)
-    if (strpos($content, '-- Backup Generado Automáticamente por la Plataforma Carpooling') === false) {
+    if (
+        strpos($content, '-- Backup Generado Automáticamente por la Plataforma Carpooling') === false
+        && strpos($content, '-- Backup Generado Automaticamente por la Plataforma Carpooling') === false
+    ) {
         header("Location: dashboard.php?error=invalid_signature");
         exit;
     }

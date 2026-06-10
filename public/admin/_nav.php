@@ -29,11 +29,108 @@ if (PAYMENTS_ENABLED) {
 }
 ?>
 
+<style>
+    .manual-help-button {
+        min-width: 190px;
+        border: 1px solid rgba(37, 99, 235, .18);
+        border-radius: 22px;
+        background: #fff;
+        color: var(--text-main);
+        box-shadow: var(--shadow);
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 900;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: transform .16s ease, box-shadow .16s ease;
+    }
+
+    .manual-help-button:hover,
+    .manual-help-button.active {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 34px rgba(37, 99, 235, .16);
+    }
+
+    .manual-help-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 20px;
+        background:
+            radial-gradient(circle at 72% 22%, #3bb9ff 0 10%, transparent 11%),
+            radial-gradient(circle at 22% 76%, #ff6b57 0 8%, transparent 9%),
+            radial-gradient(circle at 72% 68%, #d7f850 0 16%, transparent 17%),
+            linear-gradient(135deg, #37b9ff 0%, #13c991 52%, #e8f65c 100%);
+        display: grid;
+        place-items: center;
+        position: relative;
+        color: white;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+    }
+
+    .manual-help-icon::before {
+        content: "";
+        width: 28px;
+        height: 22px;
+        border: 3px solid #fff;
+        border-radius: 4px 4px 8px 8px;
+        border-top: 0;
+        box-shadow: 0 -9px 0 -6px #fff;
+    }
+
+    .manual-help-icon::after {
+        content: "?";
+        position: absolute;
+        right: 7px;
+        bottom: 6px;
+        width: 20px;
+        height: 20px;
+        border-radius: 8px;
+        background: rgba(255,255,255,.96);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 900;
+    }
+
+    .manual-help-copy {
+        display: grid;
+        gap: 1px;
+    }
+
+    .manual-help-copy small {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    @media (max-width: 760px) {
+        .admin-page-head {
+            flex-direction: column;
+        }
+
+        .manual-help-button {
+            width: 100%;
+        }
+    }
+</style>
+
 <div class="admin-shell">
-    <div class="admin-page-head">
-        <span class="admin-pill">ADMIN</span>
-        <h1 class="page-title">Panel de Administracion</h1>
-        <p class="page-subtitle">Bienvenido, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Administrador') ?>. Tenes acceso completo al sistema.</p>
+    <div class="admin-page-head" style="display:flex; justify-content:space-between; gap:18px; align-items:flex-start;">
+        <div>
+            <span class="admin-pill">ADMIN</span>
+            <h1 class="page-title">Panel de Administracion</h1>
+            <p class="page-subtitle">Bienvenido, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Administrador') ?>. Tenes acceso completo al sistema.</p>
+        </div>
+        <a href="manual_admin.php" class="manual-help-button <?= $current_page === 'manual_admin.php' ? 'active' : '' ?>">
+            <span class="manual-help-icon" aria-hidden="true"></span>
+            <span class="manual-help-copy">
+                Manual de uso
+                <small>Ayuda del panel</small>
+            </span>
+        </a>
     </div>
 
     <nav class="admin-tabs" aria-label="Navegacion de administracion">
