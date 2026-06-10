@@ -11,7 +11,7 @@ CREATE TABLE Usuarios (
     DniDorsoImagen MEDIUMTEXT NULL,
     Correo VARCHAR(150) UNIQUE NOT NULL,
     Telefono VARCHAR(20),
-    Contraseña VARCHAR(255) NOT NULL,
+    `Contraseña` VARCHAR(255) NOT NULL,
     FotoPerfil MEDIUMTEXT NULL,
     Descripcion TEXT NULL,
     Preferencias TEXT NULL,
@@ -19,6 +19,7 @@ CREATE TABLE Usuarios (
     TokenRecuperacion VARCHAR(255) NULL,
     ExpiracionToken DATETIME NULL,
     BaneadoHasta DATETIME NULL DEFAULT NULL,
+    FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
     Estado VARCHAR(50) DEFAULT 'Activo'
 );
 
@@ -34,7 +35,7 @@ CREATE TABLE Conductores (
     LicenciaConducir VARCHAR(100) NOT NULL,
     SeguroVehiculo VARCHAR(100) NOT NULL,
     CuentaBancaria VARCHAR(100) NOT NULL,
-    Estado VARCHAR(50) DEFAULT 'Pendiente',
+    Estado VARCHAR(50) DEFAULT 'Esperando',
     FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
     BaneadoHasta DATETIME NULL DEFAULT NULL,
     -- Datos de contacto y pago del conductor
@@ -45,8 +46,7 @@ CREATE TABLE Conductores (
     FotoCara MEDIUMTEXT NULL,
     ID_usuario INT NOT NULL,
     vehiculo_activo_id INT NULL,
-    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (vehiculo_activo_id) REFERENCES Vehiculos(ID_vehiculo) ON DELETE SET NULL
+    FOREIGN KEY (ID_usuario) REFERENCES Usuarios(ID_usuario) ON DELETE CASCADE
 );
 
 CREATE TABLE Administradores (
@@ -64,6 +64,7 @@ CREATE TABLE Vehiculos (
     Marca VARCHAR(100) NOT NULL,
     Patente VARCHAR(50) DEFAULT 'Sin Patente',
     Estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente',
+    FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
     -- Foto general (legacy/compatibilidad)
     Foto MEDIUMTEXT,
     -- Documentación del vehículo (almacenada en Base64)
@@ -264,3 +265,7 @@ CREATE TABLE AdministradorPublicacion (
     FOREIGN KEY (ID_administrador) REFERENCES Administradores(ID_administrador) ON DELETE CASCADE,
     FOREIGN KEY (ID_publicacion) REFERENCES Publicaciones(ID_publicacion) ON DELETE CASCADE
 );
+
+ALTER TABLE Conductores
+    ADD CONSTRAINT fk_conductores_vehiculo_activo
+    FOREIGN KEY (vehiculo_activo_id) REFERENCES Vehiculos(ID_vehiculo) ON DELETE SET NULL;

@@ -34,7 +34,13 @@ C:\xampp\htdocs\proyecto_taller
 CREATE DATABASE carpooling CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 ```
 
-4. Importar `basededatos_definitiva.sql` o un backup SQL generado desde el panel.
+4. Si la base esta vacia, importar `basededatos_definitiva.sql` o un backup SQL generado desde el panel.
+
+Si ya existe una base con datos, no reimportar `basededatos_definitiva.sql` encima. Primero hacer backup y despues ejecutar:
+
+```text
+database/actualizar_base_actual.sql
+```
 
 5. Revisar la configuracion de conexion en:
 
@@ -77,6 +83,8 @@ core/                   Logica compartida
 config/                 Configuracion del sistema
 docs/                   Documentacion tecnica y de usuario
 basededatos_definitiva.sql
+database/actualizar_base_actual.sql
+database/seed_admin_demo.php
 ```
 
 ## Base de datos
@@ -95,6 +103,12 @@ El sistema utiliza tablas como:
 - `Soporte`
 - `Notificaciones`
 - `BusquedasViajes`
+
+Archivos relacionados:
+
+- `basededatos_definitiva.sql`: estructura completa para una instalacion nueva.
+- `database/actualizar_base_actual.sql`: actualiza una base vieja sin borrar datos.
+- `database/seed_admin_demo.php`: carga datos de prueba para desarrollo o demostracion.
 
 ## Roles del sistema
 

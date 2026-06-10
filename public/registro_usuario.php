@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errores)) {
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO Usuarios (Nombre, Apellido, DNI, DniFrenteImagen, DniDorsoImagen, Correo, Telefono, Contraseña)
+                INSERT INTO Usuarios (Nombre, Apellido, DNI, DniFrenteImagen, DniDorsoImagen, Correo, Telefono, `Contraseña`)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([

@@ -20,10 +20,12 @@ MOVEON es una aplicacion web PHP/MySQL para publicar viajes compartidos, reserva
 ## Instalacion local
 
 1. Copiar el proyecto en `C:\xampp\htdocs\proyecto_taller`.
-2. Crear una base de datos MySQL para la aplicacion.
-3. Importar `basededatos_definitiva.sql` o un backup SQL generado por el panel.
+2. Crear una base de datos MySQL para la aplicacion, por ejemplo `carpooling`.
+3. Si la base esta vacia, importar `basededatos_definitiva.sql`.
 4. Revisar `config/database.php` y `config/local.php` para usuario, clave, host y nombre de base.
 5. Abrir `http://localhost/proyecto_taller/public/`.
+
+Si ya existe una base con datos, no reimportar `basededatos_definitiva.sql` encima. Primero hacer un backup y luego ejecutar `database/actualizar_base_actual.sql`, que agrega columnas/tablas faltantes sin borrar datos.
 
 ## Configuracion
 
@@ -42,13 +44,23 @@ En la version actual los pagos estan ocultos/desactivados para mantener el flujo
 - `core/`: logica compartida de viajes, reservas, seguridad y servicios.
 - `config/`: configuracion de base de datos y aplicacion.
 - `docs/`: documentacion tecnica, usuario, administracion y recuperacion.
-- `basededatos_definitiva.sql`: estructura y datos iniciales o de prueba.
+- `basededatos_definitiva.sql`: estructura definitiva para crear una base nueva.
+- `database/actualizar_base_actual.sql`: migracion para actualizar una base vieja sin perder datos.
+- `database/seed_admin_demo.php`: datos de prueba para desarrollo o demostraciones.
 
 ## Base de datos
 
 El sistema usa tablas como `Usuarios`, `Conductores`, `Vehiculos`, `Publicaciones`, `Reservas`, `Pasajeros`, `PasajerosReservas`, `Reportes`, `ReportesPasajeros`, `Soporte`, `Notificaciones` y tablas de confirmaciones de viaje.
 
 Los datos sensibles cargados por usuarios incluyen DNI, telefono, imagenes de DNI, foto de perfil y datos del vehiculo. Deben tratarse como informacion privada.
+
+### Instalacion nueva vs actualizacion
+
+- Instalacion nueva: crear una base vacia e importar `basededatos_definitiva.sql`.
+- Base existente: hacer backup y ejecutar `database/actualizar_base_actual.sql`.
+- Datos demo: ejecutar `database/seed_admin_demo.php` solo en entornos de prueba.
+
+No mezclar estos usos: el SQL definitivo crea la estructura completa, el script de actualizacion corrige bases viejas, y el seed carga informacion ficticia.
 
 ## Roles
 
