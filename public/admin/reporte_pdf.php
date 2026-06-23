@@ -261,6 +261,7 @@ $trip_chart = [
     ['label' => 'Cancelados', 'value' => $viajes_cancelados, 'color' => '#d83a34'],
 ];
 $max_monthly = max(1, max(array_map(static fn($row) => max((int)$row['reservas'], (int)$row['viajes']), $monthly)));
+$monthly_total_activity = array_sum(array_map(static fn($row) => (int)$row['reservas'] + (int)$row['viajes'], $monthly));
 ?>
 <!doctype html>
 <html lang="es">
@@ -306,8 +307,12 @@ $max_monthly = max(1, max(array_map(static fn($row) => max((int)$row['reservas']
         th { text-align: left; color: #60718d; background: #eef3f9; padding: 8px; }
         td { padding: 8px; border-bottom: 1px solid #e5edf7; }
         .note { background: #fff7db; border: 1px solid #ffe9a3; padding: 10px; font-size: 11px; color: #664d03; border-radius: 4px; }
-        .line-chart { width: 100%; height: 170px; }
-        .axis { stroke: #d8e2ee; stroke-width: 2; }
+        .monthly-chart { min-height: 170px; display: grid; gap: 8px; align-content: start; padding-top: 2px; }
+        .monthly-row { display: grid; grid-template-columns: 42px 1fr 44px 1fr 44px; gap: 7px; align-items: center; font-size: 10px; color: #60718d; }
+        .monthly-label { font-weight: 800; color: #25364d; text-transform: uppercase; }
+        .monthly-track { height: 12px; border-radius: 2px; background: #e7edf5; overflow: hidden; }
+        .monthly-track span { display: block; height: 100%; min-width: 2px; }
+        .monthly-value { text-align: right; font-weight: 800; color: #25364d; }
         .legend { display: flex; gap: 16px; font-size: 11px; color: #60718d; margin-top: 8px; }
         .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 2px; }
         .footer { margin-top: 12px; color: #60718d; font-size: 10px; display: flex; justify-content: space-between; }
@@ -392,19 +397,26 @@ $max_monthly = max(1, max(array_map(static fn($row) => max((int)$row['reservas']
         <section class="grid grid-2" style="margin-top:12px;">
             <div class="panel">
                 <h2>Evolucion mensual: reservas vs viajes</h2>
-                <svg class="line-chart" viewBox="0 0 620 170" role="img" aria-label="Evolucion mensual">
-                    <line class="axis" x1="34" y1="138" x2="596" y2="138"/>
-                    <?php foreach ($monthly as $idx => $row): ?>
+                <div class="monthly-chart" role="img" aria-label="Evolucion mensual">
+                    <?php foreach ($monthly as $row): ?>
                         <?php
-                            $x = 56 + ($idx * 96);
-                            $h_res = max(2, ((int)$row['reservas'] / $max_monthly) * 105);
-                            $h_via = max(2, ((int)$row['viajes'] / $max_monthly) * 105);
+                            $reservas_val = (int)$row['reservas'];
+                            $viajes_val = (int)$row['viajes'];
+                            $w_res = $reservas_val > 0 ? max(3, min(100, ($reservas_val / $max_monthly) * 100)) : 0;
+                            $w_via = $viajes_val > 0 ? max(3, min(100, ($viajes_val / $max_monthly) * 100)) : 0;
                         ?>
-                        <rect x="<?= $x ?>" y="<?= 138 - $h_res ?>" width="24" height="<?= $h_res ?>" fill="#118c8b"/>
-                        <rect x="<?= $x + 30 ?>" y="<?= 138 - $h_via ?>" width="24" height="<?= $h_via ?>" fill="#d83a34"/>
-                        <text x="<?= $x + 27 ?>" y="158" text-anchor="middle" fill="#60718d" font-size="10"><?= htmlspecialchars($row['label']) ?></text>
+                        <div class="monthly-row">
+                            <span class="monthly-label"><?= htmlspecialchars($row['label']) ?></span>
+                            <div class="monthly-track"><span style="width:<?= $w_res ?>%; background:#118c8b;"></span></div>
+                            <span class="monthly-value"><?= number_format($reservas_val) ?></span>
+                            <div class="monthly-track"><span style="width:<?= $w_via ?>%; background:#d83a34;"></span></div>
+                            <span class="monthly-value"><?= number_format($viajes_val) ?></span>
+                        </div>
                     <?php endforeach; ?>
-                </svg>
+                    <?php if ($monthly_total_activity === 0): ?>
+                        <div class="note">No hay reservas ni viajes registrados en los ultimos meses medidos.</div>
+                    <?php endif; ?>
+                </div>
                 <div class="legend"><span><i style="background:#118c8b;"></i>Reservas</span><span><i style="background:#d83a34;"></i>Viajes</span></div>
             </div>
 

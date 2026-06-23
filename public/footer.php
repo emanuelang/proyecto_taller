@@ -1,4 +1,4 @@
 <hr>
 <footer>
-    <small>Carpooling – Proyecto académico</small>
+    <small>MOVEON</small>
 </footer>
